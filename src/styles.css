@@ -1364,3 +1364,175 @@ img {
     text-align: left;
   }
 }
+
+/* === 3차 소비자 화면 정리 === */
+/* 손님 화면은 매물 플랫폼처럼 넓게 보여주고, 관리자 버튼은 플로팅에서 완전히 제외합니다. */
+.site-header {
+  position: sticky;
+  top: 0;
+}
+
+.section-head,
+.detail-platform,
+#properties,
+#property-detail,
+#detail-gallery,
+#detail-info,
+#detail-desc,
+#detail-options,
+#detail-location,
+#detail-related {
+  scroll-margin-top: 136px;
+}
+
+.section-head {
+  padding-top: 8px;
+}
+
+.platform-layout {
+  display: block;
+}
+
+.list-panel {
+  position: relative;
+  top: auto;
+  max-height: none;
+  overflow: visible;
+  margin-bottom: 28px;
+}
+
+.property-list {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 14px;
+}
+
+.property-list-item {
+  grid-template-columns: 148px 1fr;
+  min-height: 156px;
+}
+
+.list-thumb img {
+  height: 136px;
+}
+
+.detail-platform {
+  width: 100%;
+}
+
+.detail-tabs {
+  top: 96px;
+  margin-bottom: 16px;
+}
+
+.detail-body-layout {
+  grid-template-columns: minmax(0, 1fr) 380px;
+  gap: 24px;
+}
+
+.gallery-main img {
+  height: min(48vw, 640px);
+  min-height: 460px;
+}
+
+.content-card,
+.gallery-card,
+.sticky-contact-card {
+  border-color: #e0cbb6;
+}
+
+.sticky-contact-card {
+  top: 156px;
+}
+
+.floating-buttons {
+  right: 18px;
+  bottom: 20px;
+  gap: 10px;
+}
+
+.floating-buttons a,
+.floating-buttons button {
+  min-width: 84px;
+  padding: 15px 18px;
+  box-shadow: 0 10px 24px rgba(42, 24, 12, 0.18);
+}
+
+.floating-buttons button,
+.floating-buttons [type="button"] {
+  display: none !important;
+}
+
+.consumer-only button {
+  display: none !important;
+}
+
+.map-placeholder {
+  display: none !important;
+}
+
+/* 지도 이미지나 링크가 없는 매물은 위치 영역 자체가 JSX에서 숨겨집니다. 혹시 예전 캐시가 남아도 빈 박스는 감춥니다. */
+.map-section:has(.map-placeholder) {
+  display: none;
+}
+
+@media (max-width: 1180px) {
+  .property-list {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .detail-body-layout {
+    grid-template-columns: 1fr;
+  }
+
+  .sticky-contact-card {
+    position: static;
+    order: -1;
+  }
+}
+
+@media (max-width: 760px) {
+  .section-head,
+  .detail-platform,
+  #properties,
+  #property-detail,
+  #detail-gallery,
+  #detail-info,
+  #detail-desc,
+  #detail-options,
+  #detail-location,
+  #detail-related {
+    scroll-margin-top: 92px;
+  }
+
+  .property-list {
+    grid-template-columns: 1fr;
+  }
+
+  .property-list-item {
+    grid-template-columns: 112px 1fr;
+  }
+
+  .list-thumb img {
+    height: 112px;
+  }
+
+  .gallery-main img {
+    height: 62vw;
+    min-height: 300px;
+  }
+
+  .detail-tabs {
+    top: 82px;
+  }
+
+  .floating-buttons {
+    left: 10px;
+    right: 10px;
+    bottom: 10px;
+  }
+
+  .floating-buttons a {
+    min-width: 0;
+  }
+}
