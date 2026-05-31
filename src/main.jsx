@@ -1,845 +1,1366 @@
-import React, { useEffect, useMemo, useState } from 'react';
-import { createRoot } from 'react-dom/client';
-import { supabase, isSupabaseReady } from './supabaseClient';
-import './styles.css';
+* {
+  box-sizing: border-box;
+}
 
-const OFFICE = {
-  name: '칸공인중개사사무소',
-  address: '경상북도 구미시 인의동 991-4번지 4층',
-  broker: '정점식',
-  phone: '010-5323-3883',
-  tel: '054-474-0367',
-  regNo: '제47190-2023-00014',
-  blog: 'https://blog.naver.com/atm750/224293919179'
-};
+:root {
+  --brown: #6f3f1f;
+  --brown-dark: #4f2d16;
+  --gold: #c58b4a;
+  --cream: #f7f1e8;
+  --paper: #fffdf9;
+  --line: #e7d8c7;
+  --text: #1f1a17;
+  --muted: #7a6f68;
+  --green: #10a241;
+  --orange: #ff8a00;
+  --blue: #0f63d9;
+  --shadow: 0 16px 44px rgba(50, 31, 18, 0.11);
+}
 
-const emptyForm = {
-  title: '',
-  category: '원룸 월세',
-  trade_type: '월세',
-  address: '',
-  deposit: '',
-  rent: '',
-  maintenance_fee: '',
-  area: '',
-  floor_info: '',
-  direction: '',
-  parking: '',
-  move_in: '',
-  approval_date: '',
-  room_bath: '',
-  structure: '',
-  summary: '',
-  description: '',
-  photosText: '',
-  map_image: '',
-  map_link: '',
-  convenienceText: '편의점 인근\n버스 이용 편리\n공단 출퇴근 동선',
-  safetyText: '실사진 확인 매물\n직접 확인 후 안내\n공동현관',
-  educationText: '생활권 학교 확인 가능\n학원가 이동 가능',
-  is_featured: false
-};
+html {
+  scroll-behavior: smooth;
+}
 
-const sampleProperties = [
-  {
-    id: 'sample-1',
-    title: '구미 인의동 원룸 월세｜200/30 관리비포함 리모델링 풀옵션',
-    category: '원룸 월세',
-    trade_type: '월세',
-    address: '경상북도 구미시 인의동 일원',
-    deposit: '200만원',
-    rent: '30만원',
-    maintenance_fee: '월세 포함',
-    area: '약 30㎡',
-    floor_info: '2층 / 총 4층',
-    direction: '동향',
-    parking: '건물 내 주차 가능',
-    move_in: '즉시입주 협의',
-    approval_date: '계약 전 확인',
-    room_bath: '방1 / 욕실1',
-    structure: '철근콘크리트구조',
-    summary: '인동 생활권과 공단 출퇴근 동선을 함께 보기 좋은 관리비포함 원룸입니다.',
-    description: '리모델링 컨디션, 풀옵션, 관리비포함 조건을 우선으로 보는 직장인·자취 수요자에게 추천드립니다.',
-    photos: [
-      'https://images.unsplash.com/photo-1522708323590-d24dbb6b0267?auto=format&fit=crop&w=1200&q=80',
-      'https://images.unsplash.com/photo-1505693416388-ac5ce068fe85?auto=format&fit=crop&w=1200&q=80',
-      'https://images.unsplash.com/photo-1556912173-3bb406ef7e77?auto=format&fit=crop&w=1200&q=80'
-    ],
-    map_image: '',
-    map_link: 'https://map.naver.com',
-    convenience: ['편의점 인근', '버스 이용 편리', '인동 생활권', '공단 출퇴근 동선'],
-    safety: ['공동현관', '실사진 확인 매물', '직접 확인 후 안내'],
-    education: ['인의동 생활권', '경운대 이동 가능', '직장인 자취 추천'],
-    is_featured: true,
-    created_at: new Date().toISOString()
-  },
-  {
-    id: 'sample-2',
-    title: '구미 진평동 미니투룸 월세｜500/45 관리비포함 강동병원 인근',
-    category: '미니투룸 월세',
-    trade_type: '월세',
-    address: '경상북도 구미시 진평동 일원',
-    deposit: '500만원',
-    rent: '45만원',
-    maintenance_fee: '월세 포함',
-    area: '약 35㎡',
-    floor_info: '3층 / 총 4층',
-    direction: '남향',
-    parking: '주차 가능',
-    move_in: '협의 가능',
-    approval_date: '계약 전 확인',
-    room_bath: '방1.5 / 욕실1',
-    structure: '철근콘크리트구조',
-    summary: '강동병원 인근 생활권, 국가산단 출퇴근 동선이 좋은 미니투룸입니다.',
-    description: '원룸보다 넓은 구조를 찾는 직장인, 1인 넓은 방 선호 고객에게 적합합니다.',
-    photos: [
-      'https://images.unsplash.com/photo-1560448204-e02f11c3d0e2?auto=format&fit=crop&w=1200&q=80',
-      'https://images.unsplash.com/photo-1560185127-6ed189bf02f4?auto=format&fit=crop&w=1200&q=80'
-    ],
-    map_image: '',
-    map_link: 'https://map.naver.com',
-    convenience: ['강동병원 인근', '진평동 먹자상권', '공단 출퇴근 편리'],
-    safety: ['직접 확인 매물', '실사진 안내', '입주 전 상태 확인'],
-    education: ['생활편의시설 인접', '직장인 추천'],
-    is_featured: false,
-    created_at: new Date(Date.now() - 1000000).toISOString()
+body {
+  margin: 0;
+  color: var(--text);
+  background: #f4efe8;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Noto Sans KR", Arial, sans-serif;
+}
+
+a {
+  color: inherit;
+  text-decoration: none;
+}
+
+button,
+input,
+select,
+textarea {
+  font: inherit;
+}
+
+button {
+  cursor: pointer;
+}
+
+img {
+  max-width: 100%;
+  display: block;
+}
+
+.site-header {
+  position: sticky;
+  top: 0;
+  z-index: 50;
+  background: rgba(255, 253, 249, 0.96);
+  backdrop-filter: blur(16px);
+  border-bottom: 1px solid var(--line);
+}
+
+.top-contact {
+  max-width: 1440px;
+  margin: 0 auto;
+  padding: 8px 24px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-weight: 800;
+  color: var(--brown);
+  border-bottom: 1px solid #f0e5d8;
+}
+
+.top-contact a {
+  font-size: 22px;
+}
+
+.brand-row {
+  max-width: 1440px;
+  margin: 0 auto;
+  padding: 14px 24px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 24px;
+}
+
+.brand {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.logo-mark {
+  width: 56px;
+  height: 56px;
+  border-radius: 16px;
+  display: grid;
+  place-items: center;
+  color: #fff;
+  background: linear-gradient(135deg, var(--brown), var(--gold));
+  font-weight: 900;
+  letter-spacing: -0.04em;
+  box-shadow: var(--shadow);
+}
+
+.brand strong {
+  display: block;
+  font-size: 22px;
+  letter-spacing: -0.04em;
+}
+
+.brand span {
+  display: block;
+  color: var(--muted);
+  margin-top: 2px;
+}
+
+.site-header nav {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
+.site-header nav a,
+.site-header nav button {
+  border: 0;
+  background: #fff;
+  padding: 10px 14px;
+  border-radius: 999px;
+  color: var(--brown);
+  font-weight: 800;
+  box-shadow: inset 0 0 0 1px var(--line);
+}
+
+.hero {
+  position: relative;
+  min-height: 420px;
+  overflow: hidden;
+  background:
+    radial-gradient(circle at 75% 35%, rgba(255,255,255,.25), transparent 30%),
+    linear-gradient(135deg, #8b5229 0%, #5d3219 45%, #25170f 100%);
+}
+
+.hero::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background-image:
+    linear-gradient(90deg, rgba(255,255,255,.05) 1px, transparent 1px),
+    linear-gradient(0deg, rgba(255,255,255,.05) 1px, transparent 1px);
+  background-size: 42px 42px;
+  opacity: .5;
+}
+
+.hero-overlay {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(90deg, rgba(0,0,0,.25), rgba(0,0,0,0));
+}
+
+.hero-content {
+  position: relative;
+  z-index: 2;
+  max-width: 1440px;
+  margin: 0 auto;
+  padding: 68px 24px 82px;
+  color: #fff;
+}
+
+.hero-badge {
+  display: inline-flex;
+  padding: 9px 14px;
+  border-radius: 999px;
+  background: rgba(255,255,255,.14);
+  border: 1px solid rgba(255,255,255,.22);
+  font-weight: 800;
+}
+
+.hero h1 {
+  margin: 18px 0 14px;
+  font-size: clamp(38px, 5vw, 70px);
+  line-height: 1.08;
+  letter-spacing: -0.07em;
+}
+
+.hero p {
+  max-width: 720px;
+  color: rgba(255,255,255,.88);
+  font-size: 18px;
+  line-height: 1.7;
+}
+
+.hero-search {
+  width: min(760px, 100%);
+  display: flex;
+  gap: 10px;
+  padding: 10px;
+  border-radius: 20px;
+  background: rgba(255,255,255,.96);
+  box-shadow: var(--shadow);
+  margin: 28px 0 18px;
+}
+
+.hero-search input {
+  flex: 1;
+  min-width: 0;
+  border: 0;
+  padding: 16px 18px;
+  font-size: 18px;
+  outline: none;
+  background: transparent;
+}
+
+.hero-search a {
+  display: grid;
+  place-items: center;
+  padding: 0 28px;
+  border-radius: 14px;
+  color: #fff;
+  background: var(--brown);
+  font-weight: 900;
+}
+
+.hero-actions,
+.side-actions {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.primary-btn,
+.secondary-btn,
+.call-btn,
+.map-link {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 48px;
+  padding: 12px 20px;
+  border-radius: 14px;
+  border: 0;
+  font-weight: 900;
+}
+
+.primary-btn {
+  color: #fff;
+  background: var(--brown);
+}
+
+.secondary-btn {
+  color: var(--brown);
+  background: #fff;
+  box-shadow: inset 0 0 0 1px var(--line);
+}
+
+.hero-region-card {
+  position: absolute;
+  right: max(24px, calc((100vw - 1440px) / 2 + 24px));
+  bottom: 46px;
+  z-index: 3;
+  width: 300px;
+  padding: 22px;
+  border-radius: 28px;
+  background: rgba(255, 253, 249, .92);
+  box-shadow: var(--shadow);
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 10px;
+}
+
+.hero-region-card strong {
+  grid-column: 1 / -1;
+  color: var(--brown);
+  font-size: 20px;
+}
+
+.hero-region-card span {
+  padding: 10px 12px;
+  border-radius: 12px;
+  background: var(--cream);
+  font-weight: 800;
+}
+
+.page-shell {
+  max-width: 1440px;
+  margin: 0 auto;
+  padding: 30px 24px 70px;
+}
+
+.notice,
+.empty-box {
+  border-radius: 18px;
+  padding: 18px;
+  background: #fff;
+  border: 1px solid var(--line);
+  margin-bottom: 18px;
+}
+
+.notice {
+  display: grid;
+  gap: 6px;
+}
+
+.notice.warning {
+  border-color: #ffd28a;
+  background: #fff8e8;
+}
+
+.notice.error {
+  border-color: #ffb4b4;
+  background: #fff0f0;
+}
+
+.category-strip {
+  display: flex;
+  gap: 10px;
+  overflow-x: auto;
+  padding: 4px 0 20px;
+}
+
+.category-strip button {
+  flex: 0 0 auto;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  background: #fff;
+  padding: 14px 20px;
+  font-weight: 900;
+  color: var(--brown);
+}
+
+.category-strip button.active {
+  background: var(--brown);
+  color: #fff;
+  border-color: var(--brown);
+}
+
+.section-head {
+  display: flex;
+  justify-content: space-between;
+  gap: 20px;
+  align-items: end;
+  margin: 8px 0 22px;
+}
+
+.eyebrow {
+  margin: 0 0 8px;
+  color: var(--brown);
+  font-size: 12px;
+  font-weight: 900;
+  letter-spacing: .14em;
+}
+
+.section-head h2,
+.content-card h2,
+.site-footer h2 {
+  margin: 0;
+  letter-spacing: -0.06em;
+  font-size: clamp(26px, 3vw, 42px);
+}
+
+.muted {
+  color: var(--muted);
+}
+
+.toolbar {
+  display: flex;
+  gap: 10px;
+}
+
+.toolbar input,
+.toolbar select,
+.field input,
+.field select,
+.field textarea,
+.login-box input {
+  width: 100%;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  background: #fff;
+  padding: 14px 15px;
+  outline: none;
+}
+
+.compact-toolbar input {
+  min-width: 280px;
+}
+
+.platform-layout {
+  display: grid;
+  grid-template-columns: 390px minmax(0, 1fr);
+  gap: 22px;
+  align-items: start;
+}
+
+.list-panel {
+  position: sticky;
+  top: 104px;
+  max-height: calc(100vh - 126px);
+  overflow: auto;
+  padding: 16px;
+  border-radius: 24px;
+  background: #fff;
+  border: 1px solid var(--line);
+  box-shadow: var(--shadow);
+}
+
+.list-title-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding-bottom: 12px;
+  border-bottom: 1px solid var(--line);
+  margin-bottom: 12px;
+}
+
+.list-title-row strong {
+  font-size: 20px;
+}
+
+.property-list {
+  display: grid;
+  gap: 12px;
+}
+
+.property-list-item {
+  width: 100%;
+  border: 1px solid var(--line);
+  border-radius: 18px;
+  background: #fff;
+  padding: 10px;
+  text-align: left;
+  display: grid;
+  grid-template-columns: 118px 1fr;
+  gap: 12px;
+  transition: .2s;
+}
+
+.property-list-item:hover,
+.property-list-item.active {
+  border-color: var(--brown);
+  box-shadow: 0 8px 22px rgba(111,63,31,.15);
+}
+
+.list-thumb {
+  position: relative;
+  border-radius: 14px;
+  overflow: hidden;
+  background: var(--cream);
+}
+
+.list-thumb img {
+  width: 100%;
+  height: 118px;
+  object-fit: cover;
+}
+
+.list-thumb span,
+.featured-chip {
+  position: absolute;
+  left: 8px;
+  top: 8px;
+  border-radius: 999px;
+  background: var(--orange);
+  color: #fff;
+  padding: 5px 8px;
+  font-size: 12px;
+  font-weight: 900;
+}
+
+.list-info p {
+  margin: 2px 0 6px;
+  color: var(--muted);
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.list-info h3 {
+  margin: 0 0 8px;
+  font-size: 17px;
+  line-height: 1.35;
+  letter-spacing: -0.04em;
+}
+
+.list-price {
+  color: var(--brown);
+  font-weight: 900;
+}
+
+.list-price em {
+  color: var(--muted);
+  font-size: 12px;
+  font-style: normal;
+  margin-left: 4px;
+}
+
+.mini-facts {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+  margin-top: 8px;
+}
+
+.mini-facts span {
+  padding: 5px 7px;
+  border-radius: 999px;
+  background: var(--cream);
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.detail-platform {
+  min-width: 0;
+}
+
+.detail-tabs {
+  position: sticky;
+  top: 104px;
+  z-index: 30;
+  display: flex;
+  gap: 6px;
+  overflow-x: auto;
+  margin-bottom: 12px;
+  padding: 8px;
+  border-radius: 18px;
+  background: rgba(255,253,249,.96);
+  border: 1px solid var(--line);
+  backdrop-filter: blur(12px);
+}
+
+.detail-tabs a {
+  flex: 0 0 auto;
+  padding: 10px 14px;
+  border-radius: 12px;
+  font-weight: 900;
+  color: var(--brown);
+}
+
+.detail-tabs a:hover {
+  background: var(--cream);
+}
+
+.detail-body-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 360px;
+  gap: 22px;
+  align-items: start;
+}
+
+.detail-main {
+  min-width: 0;
+  display: grid;
+  gap: 18px;
+}
+
+.gallery-card,
+.content-card,
+.sticky-contact-card {
+  background: #fff;
+  border: 1px solid var(--line);
+  border-radius: 24px;
+  box-shadow: var(--shadow);
+  overflow: hidden;
+}
+
+.gallery-main {
+  position: relative;
+  background: #111;
+}
+
+.gallery-main img {
+  width: 100%;
+  height: min(56vw, 620px);
+  min-height: 420px;
+  object-fit: cover;
+}
+
+.photo-count {
+  position: absolute;
+  right: 16px;
+  bottom: 16px;
+  border-radius: 999px;
+  background: rgba(0,0,0,.64);
+  color: #fff;
+  padding: 8px 12px;
+  font-weight: 900;
+}
+
+.gallery-arrow {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 48px;
+  height: 48px;
+  border-radius: 999px;
+  border: 0;
+  background: rgba(255,255,255,.86);
+  font-size: 36px;
+  color: var(--brown);
+}
+
+.gallery-arrow.left {
+  left: 16px;
+}
+
+.gallery-arrow.right {
+  right: 16px;
+}
+
+.thumb-row {
+  display: flex;
+  gap: 10px;
+  overflow-x: auto;
+  padding: 12px;
+  background: #fff;
+}
+
+.thumb-row button {
+  flex: 0 0 112px;
+  border: 3px solid transparent;
+  border-radius: 12px;
+  padding: 0;
+  overflow: hidden;
+  background: var(--cream);
+}
+
+.thumb-row button.active {
+  border-color: var(--brown);
+}
+
+.thumb-row img {
+  width: 100%;
+  height: 78px;
+  object-fit: cover;
+}
+
+.content-card {
+  padding: 26px;
+}
+
+.content-title-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 18px;
+}
+
+.content-title-row span {
+  padding: 8px 12px;
+  border-radius: 999px;
+  background: var(--cream);
+  color: var(--brown);
+  font-weight: 900;
+  font-size: 13px;
+}
+
+.info-table {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  border-top: 2px solid var(--brown);
+  border-left: 1px solid var(--line);
+}
+
+.info-row {
+  display: grid;
+  grid-template-columns: 130px 1fr;
+  border-right: 1px solid var(--line);
+  border-bottom: 1px solid var(--line);
+  min-height: 58px;
+}
+
+.info-row span {
+  display: flex;
+  align-items: center;
+  padding: 12px;
+  background: var(--cream);
+  color: var(--muted);
+  font-weight: 900;
+}
+
+.info-row strong {
+  display: flex;
+  align-items: center;
+  padding: 12px;
+  font-weight: 900;
+}
+
+.lead-text {
+  font-size: 20px;
+  line-height: 1.6;
+  font-weight: 900;
+  color: var(--brown);
+}
+
+.description-card p {
+  line-height: 1.85;
+}
+
+.check-points {
+  margin-top: 18px;
+  padding: 18px;
+  border-radius: 18px;
+  background: var(--cream);
+}
+
+.check-points ul {
+  margin: 10px 0 0;
+  padding-left: 20px;
+  line-height: 1.8;
+}
+
+.option-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(110px, 1fr));
+  gap: 12px;
+  margin-top: 18px;
+}
+
+.option-item {
+  min-height: 112px;
+  border: 1px solid var(--line);
+  border-radius: 18px;
+  background: #fff;
+  display: grid;
+  place-items: center;
+  gap: 8px;
+  padding: 14px;
+  text-align: center;
+  font-weight: 900;
+}
+
+.option-item span {
+  width: 48px;
+  height: 48px;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  background: var(--cream);
+  font-size: 24px;
+}
+
+.sub-grid-block {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 14px;
+  margin-top: 20px;
+}
+
+.sub-grid-block h3 {
+  margin: 0 0 10px;
+}
+
+.tag-list {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.tag-list span {
+  padding: 8px 12px;
+  border-radius: 999px;
+  background: var(--cream);
+  color: var(--brown);
+  font-weight: 800;
+}
+
+.map-image {
+  width: 100%;
+  max-height: 430px;
+  object-fit: cover;
+  border-radius: 18px;
+  border: 1px solid var(--line);
+  margin-top: 16px;
+}
+
+.map-link {
+  margin-top: 14px;
+  color: #fff;
+  background: var(--brown);
+}
+
+.related-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 14px;
+  margin-top: 18px;
+}
+
+.related-card {
+  border: 1px solid var(--line);
+  border-radius: 18px;
+  background: #fff;
+  overflow: hidden;
+  text-align: left;
+  padding: 0 0 14px;
+}
+
+.related-card img {
+  width: 100%;
+  height: 138px;
+  object-fit: cover;
+}
+
+.related-card span,
+.related-card strong,
+.related-card em {
+  display: block;
+  padding: 0 12px;
+}
+
+.related-card span {
+  margin-top: 12px;
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.related-card strong {
+  margin-top: 6px;
+  line-height: 1.35;
+  min-height: 44px;
+}
+
+.related-card em {
+  margin-top: 8px;
+  color: var(--green);
+  font-style: normal;
+  font-weight: 900;
+}
+
+.legal-box p {
+  margin: 8px 0;
+  color: #5e554f;
+  font-weight: 700;
+}
+
+.sticky-contact-card {
+  position: sticky;
+  top: 164px;
+  padding: 24px;
+}
+
+.badge-line {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.badge-line span {
+  padding: 6px 9px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  color: var(--brown);
+  font-size: 12px;
+  font-weight: 900;
+}
+
+.sticky-contact-card h1 {
+  margin: 14px 0 18px;
+  font-size: 24px;
+  line-height: 1.25;
+  letter-spacing: -0.05em;
+}
+
+.big-price {
+  padding: 18px;
+  border-radius: 18px;
+  background: #fff7ea;
+  display: grid;
+  gap: 8px;
+}
+
+.big-price span,
+.big-price strong,
+.big-price em {
+  font-style: normal;
+  font-weight: 900;
+}
+
+.big-price span {
+  color: var(--green);
+  font-size: 20px;
+}
+
+.big-price strong {
+  font-size: 23px;
+}
+
+.big-price em {
+  color: var(--orange);
+  font-size: 18px;
+}
+
+.side-address {
+  padding-bottom: 16px;
+  border-bottom: 1px solid var(--line);
+  font-weight: 800;
+  line-height: 1.5;
+}
+
+.side-facts {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+  margin: 16px 0;
+}
+
+.side-facts span {
+  padding: 12px;
+  border-radius: 14px;
+  background: var(--cream);
+  font-weight: 900;
+}
+
+.side-actions a {
+  flex: 1;
+}
+
+.office-mini-card {
+  margin-top: 18px;
+  padding-top: 18px;
+  border-top: 1px solid var(--line);
+  display: flex;
+  gap: 12px;
+  align-items: center;
+}
+
+.agent-avatar {
+  width: 62px;
+  height: 62px;
+  flex: 0 0 62px;
+  display: grid;
+  place-items: center;
+  border-radius: 18px;
+  background: var(--brown);
+  color: #fff;
+  font-weight: 900;
+}
+
+.office-mini-card p {
+  margin: 4px 0;
+  color: var(--muted);
+}
+
+.office-mini-card a {
+  color: var(--blue);
+  font-weight: 900;
+}
+
+.blog-link {
+  display: block;
+  margin-top: 16px;
+  padding: 14px;
+  border-radius: 14px;
+  text-align: center;
+  color: var(--brown);
+  background: var(--cream);
+  font-weight: 900;
+}
+
+.modal-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,.46);
+  z-index: 100;
+  padding: 24px;
+  overflow: auto;
+}
+
+.admin-modal {
+  max-width: 1280px;
+  margin: 0 auto;
+  background: var(--paper);
+  border-radius: 28px;
+  padding: 26px;
+  box-shadow: var(--shadow);
+}
+
+.modal-head,
+.form-topline {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 16px;
+}
+
+.modal-head h2,
+.form-topline h3 {
+  margin: 0;
+  font-size: 30px;
+  letter-spacing: -0.05em;
+}
+
+.icon-btn {
+  width: 44px;
+  height: 44px;
+  border-radius: 999px;
+  border: 1px solid var(--line);
+  background: #fff;
+  font-size: 24px;
+}
+
+.login-box {
+  max-width: 420px;
+  margin: 30px auto;
+  display: grid;
+  gap: 12px;
+}
+
+.admin-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.4fr) minmax(320px, .8fr);
+  gap: 24px;
+  margin-top: 22px;
+}
+
+.property-form,
+.admin-list {
+  padding: 20px;
+  border: 1px solid var(--line);
+  border-radius: 24px;
+  background: #fff;
+}
+
+.admin-section-block,
+.admin-details {
+  border: 1px solid var(--line);
+  border-radius: 20px;
+  padding: 18px;
+  margin-top: 16px;
+  background: #fffdf9;
+}
+
+.priority-block {
+  background: #fff8ea;
+}
+
+.admin-section-block h4 {
+  margin: 0 0 14px;
+  font-size: 20px;
+}
+
+.admin-details summary {
+  font-size: 18px;
+  font-weight: 900;
+  color: var(--brown);
+  cursor: pointer;
+}
+
+.field {
+  display: grid;
+  gap: 7px;
+  margin-bottom: 12px;
+}
+
+.field span {
+  font-weight: 900;
+  color: #5c514b;
+}
+
+.two-cols,
+.three-cols {
+  display: grid;
+  gap: 12px;
+}
+
+.two-cols {
+  grid-template-columns: 1fr 1fr;
+}
+
+.three-cols {
+  grid-template-columns: repeat(3, 1fr);
+}
+
+.small-btn {
+  border: 1px solid var(--line);
+  background: #fff;
+  padding: 10px 14px;
+  border-radius: 12px;
+  font-weight: 900;
+  color: var(--brown);
+}
+
+.upload-dropzone {
+  border: 2px dashed #cabba9;
+  border-radius: 18px;
+  padding: 22px;
+  background: #fff;
+  text-align: center;
+}
+
+.upload-dropzone.dragging {
+  border-color: var(--brown);
+  background: var(--cream);
+}
+
+.upload-dropzone input {
+  margin-top: 12px;
+}
+
+.upload-preview-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
+  gap: 12px;
+  margin-top: 12px;
+}
+
+.upload-preview-item {
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  padding: 8px;
+  background: #fff;
+}
+
+.upload-preview-item img {
+  width: 100%;
+  height: 92px;
+  object-fit: cover;
+  border-radius: 10px;
+}
+
+.upload-preview-item small {
+  display: block;
+  margin: 6px 0;
+  font-weight: 800;
+}
+
+.upload-preview-item div {
+  display: flex;
+  gap: 4px;
+  flex-wrap: wrap;
+}
+
+.upload-preview-item button {
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #fff;
+  padding: 5px 7px;
+}
+
+.manual-url-box summary {
+  cursor: pointer;
+  font-weight: 900;
+  color: var(--muted);
+  margin: 8px 0;
+}
+
+.check-line {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 16px 0;
+  font-weight: 900;
+}
+
+.submit-btn {
+  width: 100%;
+}
+
+.status-text {
+  color: var(--brown);
+  font-weight: 900;
+  line-height: 1.6;
+}
+
+.admin-list {
+  max-height: 80vh;
+  overflow: auto;
+}
+
+.admin-list h3 {
+  margin-top: 0;
+}
+
+.admin-list-item {
+  padding: 14px 0;
+  border-bottom: 1px solid var(--line);
+}
+
+.admin-list-item strong,
+.admin-list-item span {
+  display: block;
+}
+
+.admin-list-item span {
+  color: var(--muted);
+  margin: 6px 0;
+}
+
+.admin-list-item button {
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: #fff;
+  padding: 8px 10px;
+  margin-right: 6px;
+  font-weight: 800;
+}
+
+.floating-buttons {
+  position: fixed;
+  right: 18px;
+  bottom: 18px;
+  z-index: 60;
+  display: grid;
+  gap: 8px;
+}
+
+.floating-buttons a,
+.floating-buttons button {
+  border: 0;
+  border-radius: 999px;
+  padding: 13px 20px;
+  background: var(--brown-dark);
+  color: #fff;
+  font-weight: 900;
+  box-shadow: var(--shadow);
+}
+
+.floating-buttons button {
+  background: #fff;
+  color: var(--brown-dark);
+  border: 1px solid var(--line);
+}
+
+.site-footer {
+  background: #2b211b;
+  color: #fff;
+  padding: 54px 24px;
+  display: flex;
+  justify-content: space-between;
+  gap: 30px;
+}
+
+.site-footer > div {
+  max-width: 1440px;
+}
+
+.site-footer p {
+  color: rgba(255,255,255,.75);
+}
+
+.footer-info {
+  text-align: right;
+}
+
+@media (max-width: 1180px) {
+  .platform-layout,
+  .detail-body-layout,
+  .admin-grid {
+    grid-template-columns: 1fr;
   }
-];
 
-function linesToArray(value) {
-  return String(value || '')
-    .split('\n')
-    .map((line) => line.trim())
-    .filter(Boolean);
-}
-
-function arrayToLines(value) {
-  return Array.isArray(value) ? value.join('\n') : '';
-}
-
-function propertyToForm(property) {
-  return {
-    ...emptyForm,
-    ...property,
-    photosText: arrayToLines(property.photos),
-    convenienceText: arrayToLines(property.convenience),
-    safetyText: arrayToLines(property.safety),
-    educationText: arrayToLines(property.education)
-  };
-}
-
-function formToPayload(form) {
-  return {
-    title: form.title.trim(),
-    category: form.category.trim(),
-    trade_type: form.trade_type.trim(),
-    address: form.address.trim(),
-    deposit: form.deposit.trim(),
-    rent: form.rent.trim(),
-    maintenance_fee: form.maintenance_fee.trim(),
-    area: form.area.trim(),
-    floor_info: form.floor_info.trim(),
-    direction: form.direction.trim(),
-    parking: form.parking.trim(),
-    move_in: form.move_in.trim(),
-    approval_date: form.approval_date.trim(),
-    room_bath: form.room_bath.trim(),
-    structure: form.structure.trim(),
-    summary: form.summary.trim(),
-    description: form.description.trim(),
-    photos: linesToArray(form.photosText),
-    map_image: form.map_image.trim(),
-    map_link: form.map_link.trim(),
-    convenience: linesToArray(form.convenienceText),
-    safety: linesToArray(form.safetyText),
-    education: linesToArray(form.educationText),
-    is_featured: Boolean(form.is_featured)
-  };
-}
-
-function App() {
-  const [properties, setProperties] = useState(sampleProperties);
-  const [selected, setSelected] = useState(sampleProperties[0]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState('');
-  const [keyword, setKeyword] = useState('');
-  const [category, setCategory] = useState('전체');
-  const [adminOpen, setAdminOpen] = useState(false);
-  const [isAdmin, setIsAdmin] = useState(false);
-
-  async function loadProperties() {
-    setError('');
-    setLoading(true);
-
-    if (!isSupabaseReady) {
-      setProperties(sampleProperties);
-      setSelected((prev) => prev || sampleProperties[0]);
-      setLoading(false);
-      return;
-    }
-
-    const { data, error: fetchError } = await supabase
-      .from('properties')
-      .select('*')
-      .order('is_featured', { ascending: false })
-      .order('created_at', { ascending: false });
-
-    if (fetchError) {
-      setError(fetchError.message);
-      setProperties(sampleProperties);
-      setSelected(sampleProperties[0]);
-    } else {
-      const list = data?.length ? data : sampleProperties;
-      setProperties(list);
-      setSelected((prev) => list.find((item) => item.id === prev?.id) || list[0]);
-    }
-
-    setLoading(false);
+  .list-panel,
+  .sticky-contact-card,
+  .detail-tabs {
+    position: static;
+    max-height: none;
   }
 
-  useEffect(() => {
-    loadProperties();
-  }, []);
-
-  const categories = useMemo(() => {
-    const list = ['전체', ...new Set(properties.map((item) => item.category).filter(Boolean))];
-    return list;
-  }, [properties]);
-
-  const filtered = useMemo(() => {
-    const q = keyword.trim().toLowerCase();
-    return properties.filter((item) => {
-      const matchCategory = category === '전체' || item.category === category;
-      const text = [item.title, item.address, item.summary, item.category, item.deposit, item.rent]
-        .join(' ')
-        .toLowerCase();
-      return matchCategory && (!q || text.includes(q));
-    });
-  }, [properties, keyword, category]);
-
-  return (
-    <div>
-      <Header />
-      <Hero />
-      <main className="page-shell">
-        {!isSupabaseReady && <SetupNotice />}
-        {error && <ErrorNotice message={error} />}
-        <section className="toolbar-section">
-          <div>
-            <p className="eyebrow">KAN REAL ESTATE</p>
-            <h2>구미 원룸·투룸·다가구 매물</h2>
-            <p className="muted">사진, 가격, 위치, 입주조건을 한눈에 확인하고 바로 상담할 수 있습니다.</p>
-          </div>
-          <div className="toolbar">
-            <input
-              value={keyword}
-              onChange={(e) => setKeyword(e.target.value)}
-              placeholder="지역·가격·키워드 검색"
-            />
-            <select value={category} onChange={(e) => setCategory(e.target.value)}>
-              {categories.map((name) => (
-                <option key={name} value={name}>{name}</option>
-              ))}
-            </select>
-          </div>
-        </section>
-
-        {loading ? (
-          <div className="empty-box">매물을 불러오는 중입니다.</div>
-        ) : (
-          <section className="grid-layout">
-            <div className="property-grid">
-              {filtered.map((property) => (
-                <PropertyCard
-                  key={property.id}
-                  property={property}
-                  active={selected?.id === property.id}
-                  onClick={() => setSelected(property)}
-                />
-              ))}
-              {!filtered.length && <div className="empty-box">검색 조건에 맞는 매물이 없습니다.</div>}
-            </div>
-            <PropertyDetail property={selected || filtered[0]} />
-          </section>
-        )}
-      </main>
-      <Footer />
-      <FloatingButtons onAdmin={() => setAdminOpen(true)} />
-      {adminOpen && (
-        <AdminModal
-          isAdmin={isAdmin}
-          setIsAdmin={setIsAdmin}
-          onClose={() => setAdminOpen(false)}
-          properties={properties}
-          reload={loadProperties}
-        />
-      )}
-    </div>
-  );
-}
-
-function Header() {
-  return (
-    <header className="site-header">
-      <div className="brand">
-        <div className="logo-mark">KAN</div>
-        <div>
-          <strong>{OFFICE.name}</strong>
-          <span>구미 원룸·투룸·다가구매매 전문 상담</span>
-        </div>
-      </div>
-      <nav>
-        <a href={`tel:${OFFICE.phone}`}>전화상담</a>
-        <a href={OFFICE.blog} target="_blank" rel="noreferrer">구미 원룸 안내</a>
-      </nav>
-    </header>
-  );
-}
-
-function Hero() {
-  return (
-    <section className="hero">
-      <div className="hero-overlay" />
-      <div className="hero-content">
-        <p className="hero-badge">구미 인동 · 인의동 · 진평동 · 구평동 · 옥계동</p>
-        <h1>구미 원룸 월세부터 수익형 다가구 매매까지<br />현장에서 확인한 매물만 안내합니다.</h1>
-        <p>
-          가격, 관리비, 위치, 사진, 입주조건을 정확하게 확인하고 상담하세요.
-          임대 손님과 투자 매수자를 연결하는 칸공인중개사 홈페이지입니다.
-        </p>
-        <div className="hero-actions">
-          <a className="primary-btn" href={`tel:${OFFICE.phone}`}>010-5323-3883 전화상담</a>
-          <a className="secondary-btn" href="#request">매물의뢰하기</a>
-        </div>
-      </div>
-    </section>
-  );
-}
-
-function SetupNotice() {
-  return (
-    <div className="notice warning">
-      <strong>Supabase 연결 전 미리보기 상태입니다.</strong>
-      <span>Vercel 환경변수 VITE_SUPABASE_URL, VITE_SUPABASE_ANON_KEY를 넣으면 실제 DB 매물로 전환됩니다.</span>
-    </div>
-  );
-}
-
-function ErrorNotice({ message }) {
-  return (
-    <div className="notice error">
-      <strong>DB 연결 확인 필요</strong>
-      <span>{message}</span>
-    </div>
-  );
-}
-
-function PropertyCard({ property, active, onClick }) {
-  const cover = property.photos?.[0] || 'https://images.unsplash.com/photo-1564013799919-ab600027ffc6?auto=format&fit=crop&w=1200&q=80';
-  return (
-    <button className={`property-card ${active ? 'active' : ''}`} onClick={onClick}>
-      <div className="thumb-wrap">
-        <img src={cover} alt={property.title} />
-        {property.is_featured && <span className="featured-chip">추천</span>}
-      </div>
-      <div className="card-body">
-        <div className="chips">
-          <span>{property.category}</span>
-          <span>{property.trade_type}</span>
-        </div>
-        <h3>{property.title}</h3>
-        <p>{property.summary}</p>
-        <div className="price-line">
-          <strong>{property.deposit || '-'} / {property.rent || '-'}</strong>
-          <span>{property.maintenance_fee}</span>
-        </div>
-      </div>
-    </button>
-  );
-}
-
-function PropertyDetail({ property }) {
-  const [open, setOpen] = useState({ convenience: false, safety: false, education: false });
-
-  useEffect(() => {
-    setOpen({ convenience: false, safety: false, education: false });
-  }, [property?.id]);
-
-  if (!property) {
-    return <aside className="detail-panel empty-box">매물을 선택하세요.</aside>;
+  .list-panel {
+    order: 2;
   }
 
-  const facts = [
-    ['소재지', property.address],
-    ['임대조건', `${property.deposit || '-'} / ${property.rent || '-'}`],
-    ['관리비', property.maintenance_fee],
-    ['면적', property.area],
-    ['층수', property.floor_info],
-    ['방향', property.direction],
-    ['방/욕실', property.room_bath],
-    ['주차', property.parking],
-    ['입주', property.move_in],
-    ['사용승인일', property.approval_date],
-    ['구조', property.structure]
-  ];
+  .detail-body-layout {
+    display: flex;
+    flex-direction: column;
+  }
 
-  return (
-    <aside className="detail-panel">
-      <div className="detail-head">
-        <div>
-          <p className="eyebrow">SELECTED PROPERTY</p>
-          <h2>{property.title}</h2>
-          <p>{property.description || property.summary}</p>
-        </div>
-        <a className="call-btn" href={`tel:${OFFICE.phone}`}>전화상담</a>
-      </div>
+  .sticky-contact-card {
+    order: -1;
+  }
 
-      <div className="fact-grid">
-        {facts.map(([label, value]) => (
-          <div key={label}>
-            <span>{label}</span>
-            <strong>{value || '계약 전 확인'}</strong>
-          </div>
-        ))}
-      </div>
-
-      <section className="photo-section">
-        <h3>매물 사진</h3>
-        <div className="photo-list">
-          {(property.photos?.length ? property.photos : []).map((src, index) => (
-            <figure key={`${src}-${index}`}>
-              <img src={src} alt={`${property.title} 사진 ${index + 1}`} />
-              <figcaption>{index + 1}. {property.category} 실사진 확인</figcaption>
-            </figure>
-          ))}
-        </div>
-      </section>
-
-      <section className="map-section">
-        <h3>위치 안내</h3>
-        {property.map_image ? (
-          <img className="map-image" src={property.map_image} alt="매물 지도" />
-        ) : (
-          <div className="map-placeholder">지도 이미지를 등록하면 이 영역에 표시됩니다.</div>
-        )}
-        {property.map_link && <a className="map-link" href={property.map_link} target="_blank" rel="noreferrer">지도 바로가기</a>}
-      </section>
-
-      <Accordion
-        title="편의시설"
-        open={open.convenience}
-        onClick={() => setOpen((prev) => ({ ...prev, convenience: !prev.convenience }))}
-        items={property.convenience}
-      />
-      <Accordion
-        title="안전시설"
-        open={open.safety}
-        onClick={() => setOpen((prev) => ({ ...prev, safety: !prev.safety }))}
-        items={property.safety}
-      />
-      <Accordion
-        title="교육·생활권"
-        open={open.education}
-        onClick={() => setOpen((prev) => ({ ...prev, education: !prev.education }))}
-        items={property.education}
-      />
-
-      <section className="legal-box">
-        <h3>중개대상물 표시·광고 안내</h3>
-        <p>상호명: {OFFICE.name}</p>
-        <p>소재지: {OFFICE.address}</p>
-        <p>대표공인중개사: {OFFICE.broker}</p>
-        <p>등록번호: {OFFICE.regNo}</p>
-        <p>연락처: {OFFICE.phone} / {OFFICE.tel}</p>
-        <p>※ 세부 조건은 계약 전 현장 및 공부서류 확인 후 최종 안내드립니다.</p>
-      </section>
-    </aside>
-  );
+  .hero-region-card {
+    display: none;
+  }
 }
 
-function Accordion({ title, open, onClick, items = [] }) {
-  return (
-    <section className="accordion">
-      <button onClick={onClick}>
-        <span>{title}</span>
-        <strong>{open ? '닫기' : '보기'}</strong>
-      </button>
-      {open && (
-        <ul>
-          {(items?.length ? items : ['계약 전 확인 후 안내']).map((item) => <li key={item}>{item}</li>)}
-        </ul>
-      )}
-    </section>
-  );
+@media (max-width: 760px) {
+  .top-contact,
+  .brand-row,
+  .section-head,
+  .site-footer {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .site-header nav {
+    justify-content: flex-start;
+    overflow-x: auto;
+    flex-wrap: nowrap;
+  }
+
+  .hero-content {
+    padding: 42px 18px 56px;
+  }
+
+  .hero-search,
+  .toolbar,
+  .hero-actions,
+  .side-actions {
+    flex-direction: column;
+  }
+
+  .page-shell {
+    padding: 22px 14px 80px;
+  }
+
+  .property-list-item {
+    grid-template-columns: 98px 1fr;
+  }
+
+  .list-thumb img {
+    height: 100px;
+  }
+
+  .gallery-main img {
+    height: 62vw;
+    min-height: 280px;
+  }
+
+  .info-table,
+  .sub-grid-block,
+  .related-grid,
+  .two-cols,
+  .three-cols,
+  .side-facts {
+    grid-template-columns: 1fr;
+  }
+
+  .info-row {
+    grid-template-columns: 110px 1fr;
+  }
+
+  .content-card,
+  .sticky-contact-card,
+  .property-form,
+  .admin-list,
+  .admin-modal {
+    padding: 16px;
+    border-radius: 18px;
+  }
+
+  .modal-backdrop {
+    padding: 10px;
+  }
+
+  .floating-buttons {
+    left: 12px;
+    right: 12px;
+    bottom: 10px;
+    display: flex;
+  }
+
+  .floating-buttons a,
+  .floating-buttons button {
+    flex: 1;
+    text-align: center;
+    padding: 12px 10px;
+  }
+
+  .footer-info {
+    text-align: left;
+  }
 }
-
-function AdminModal({ isAdmin, setIsAdmin, onClose, properties, reload }) {
-  const [password, setPassword] = useState('');
-  const [form, setForm] = useState(emptyForm);
-  const [editingId, setEditingId] = useState(null);
-  const [status, setStatus] = useState('');
-  const adminPassword = import.meta.env.VITE_ADMIN_PASSWORD || '3883';
-  const photoUrls = linesToArray(form.photosText);
-
-  function login(e) {
-    e.preventDefault();
-    if (password === adminPassword) {
-      setIsAdmin(true);
-      setStatus('관리자 모드로 들어왔습니다.');
-    } else {
-      setStatus('비밀번호가 맞지 않습니다.');
-    }
-  }
-
-  function updateField(name, value) {
-    setForm((prev) => ({ ...prev, [name]: value }));
-  }
-
-  function startEdit(property) {
-    setEditingId(property.id);
-    setForm(propertyToForm(property));
-    setStatus('선택한 매물을 수정 중입니다.');
-  }
-
-  function resetForm() {
-    setEditingId(null);
-    setForm(emptyForm);
-    setStatus('새 매물 등록 상태입니다.');
-  }
-
-  async function uploadPhotoFiles(fileList) {
-    const files = Array.from(fileList || []).filter((file) => file.type.startsWith('image/'));
-
-    if (!files.length) {
-      setStatus('업로드할 사진 파일이 없습니다. JPG, PNG 같은 이미지 파일을 선택하세요.');
-      return;
-    }
-
-    if (!isSupabaseReady) {
-      setStatus('Supabase 연결 전에는 사진 업로드가 되지 않습니다.');
-      return;
-    }
-
-    setStatus(`사진 ${files.length}장을 업로드 중입니다. 잠시 기다려주세요.`);
-
-    const uploadedUrls = [];
-
-    for (const [index, file] of files.entries()) {
-      const rawExt = file.name.split('.').pop() || 'jpg';
-      const ext = rawExt.toLowerCase().replace(/[^a-z0-9]/g, '') || 'jpg';
-      const uniqueId =
-        typeof crypto !== 'undefined' && crypto.randomUUID
-          ? crypto.randomUUID()
-          : `${Date.now()}-${Math.random().toString(36).slice(2)}`;
-      const filePath = `properties/${uniqueId}-${index}.${ext}`;
-
-      const { error: uploadError } = await supabase.storage
-        .from('property-images')
-        .upload(filePath, file, {
-          cacheControl: '3600',
-          upsert: false,
-          contentType: file.type || 'image/jpeg'
-        });
-
-      if (uploadError) {
-        setStatus(`사진 업로드 실패: ${uploadError.message}`);
-        return;
-      }
-
-      const { data } = supabase.storage.from('property-images').getPublicUrl(filePath);
-      if (data?.publicUrl) uploadedUrls.push(data.publicUrl);
-    }
-
-    setForm((prev) => {
-      const before = linesToArray(prev.photosText);
-      return {
-        ...prev,
-        photosText: [...before, ...uploadedUrls].join('\n')
-      };
-    });
-
-    setStatus(`사진 ${uploadedUrls.length}장 업로드 완료. 매물 등록/수정 저장을 눌러야 홈페이지에 최종 반영됩니다.`);
-  }
-
-  function removePhoto(index) {
-    setForm((prev) => {
-      const next = linesToArray(prev.photosText);
-      next.splice(index, 1);
-      return { ...prev, photosText: next.join('\n') };
-    });
-  }
-
-  function movePhoto(index, direction) {
-    setForm((prev) => {
-      const next = linesToArray(prev.photosText);
-      const target = index + direction;
-      if (target < 0 || target >= next.length) return prev;
-      [next[index], next[target]] = [next[target], next[index]];
-      return { ...prev, photosText: next.join('\n') };
-    });
-  }
-
-  async function saveProperty(e) {
-    e.preventDefault();
-    setStatus('저장 중입니다.');
-
-    if (!form.title.trim()) {
-      setStatus('제목은 필수입니다.');
-      return;
-    }
-
-    if (!isSupabaseReady) {
-      setStatus('Supabase 환경변수 연결 전에는 실제 저장이 되지 않습니다.');
-      return;
-    }
-
-    const payload = formToPayload(form);
-    const request = editingId
-      ? supabase.from('properties').update(payload).eq('id', editingId)
-      : supabase.from('properties').insert(payload);
-
-    const { error } = await request;
-    if (error) {
-      setStatus(`저장 실패: ${error.message}`);
-      return;
-    }
-
-    setStatus(editingId ? '수정 완료되었습니다.' : '등록 완료되었습니다.');
-    resetForm();
-    await reload();
-  }
-
-  async function deleteProperty(id) {
-    if (!isSupabaseReady) {
-      setStatus('Supabase 연결 전에는 삭제가 되지 않습니다.');
-      return;
-    }
-    const ok = window.confirm('이 매물을 삭제할까요?');
-    if (!ok) return;
-    const { error } = await supabase.from('properties').delete().eq('id', id);
-    if (error) {
-      setStatus(`삭제 실패: ${error.message}`);
-      return;
-    }
-    setStatus('삭제 완료되었습니다.');
-    await reload();
-  }
-
-  return (
-    <div className="modal-backdrop">
-      <div className="admin-modal">
-        <div className="modal-head">
-          <div>
-            <p className="eyebrow">ADMIN</p>
-            <h2>매물 관리자</h2>
-          </div>
-          <button className="icon-btn" onClick={onClose}>×</button>
-        </div>
-
-        {!isAdmin ? (
-          <form className="login-box" onSubmit={login}>
-            <label>관리자 비밀번호</label>
-            <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} placeholder="비밀번호 입력" />
-            <button className="primary-btn" type="submit">관리자 들어가기</button>
-            <p className="status-text">{status || '기본 비밀번호는 3883입니다. Vercel 환경변수에서 변경할 수 있습니다.'}</p>
-          </form>
-        ) : (
-          <div className="admin-grid">
-            <form className="property-form" onSubmit={saveProperty}>
-              <div className="form-topline">
-                <h3>{editingId ? '매물 수정' : '새 매물 등록'}</h3>
-                <button type="button" className="small-btn" onClick={resetForm}>새 등록</button>
-              </div>
-
-              <Field label="제목" value={form.title} onChange={(v) => updateField('title', v)} />
-              <div className="two-cols">
-                <Field label="카테고리" value={form.category} onChange={(v) => updateField('category', v)} />
-                <Field label="거래형태" value={form.trade_type} onChange={(v) => updateField('trade_type', v)} />
-              </div>
-              <Field label="주소" value={form.address} onChange={(v) => updateField('address', v)} />
-              <div className="three-cols">
-                <Field label="보증금" value={form.deposit} onChange={(v) => updateField('deposit', v)} />
-                <Field label="월세/매매가" value={form.rent} onChange={(v) => updateField('rent', v)} />
-                <Field label="관리비" value={form.maintenance_fee} onChange={(v) => updateField('maintenance_fee', v)} />
-              </div>
-              <div className="two-cols">
-                <Field label="면적" value={form.area} onChange={(v) => updateField('area', v)} />
-                <Field label="층수" value={form.floor_info} onChange={(v) => updateField('floor_info', v)} />
-              </div>
-              <div className="three-cols">
-                <Field label="방향" value={form.direction} onChange={(v) => updateField('direction', v)} />
-                <Field label="방/욕실" value={form.room_bath} onChange={(v) => updateField('room_bath', v)} />
-                <Field label="주차" value={form.parking} onChange={(v) => updateField('parking', v)} />
-              </div>
-              <div className="three-cols">
-                <Field label="입주" value={form.move_in} onChange={(v) => updateField('move_in', v)} />
-                <Field label="사용승인일" value={form.approval_date} onChange={(v) => updateField('approval_date', v)} />
-                <Field label="구조" value={form.structure} onChange={(v) => updateField('structure', v)} />
-              </div>
-              <TextArea label="요약" value={form.summary} onChange={(v) => updateField('summary', v)} />
-              <TextArea label="상세설명" value={form.description} onChange={(v) => updateField('description', v)} />
-              <PhotoUploader
-                photos={photoUrls}
-                onUpload={uploadPhotoFiles}
-                onRemove={removePhoto}
-                onMove={movePhoto}
-              />
-              <details className="manual-url-box">
-                <summary>사진 주소 직접 확인/수정</summary>
-                <TextArea
-                  label="업로드된 사진 URL — 한 줄에 1개씩"
-                  value={form.photosText}
-                  onChange={(v) => updateField('photosText', v)}
-                  rows={4}
-                />
-              </details>
-              <div className="two-cols">
-                <Field label="지도 이미지 URL" value={form.map_image} onChange={(v) => updateField('map_image', v)} />
-                <Field label="지도 링크" value={form.map_link} onChange={(v) => updateField('map_link', v)} />
-              </div>
-              <TextArea label="편의시설 — 한 줄에 1개씩" value={form.convenienceText} onChange={(v) => updateField('convenienceText', v)} />
-              <TextArea label="안전시설 — 한 줄에 1개씩" value={form.safetyText} onChange={(v) => updateField('safetyText', v)} />
-              <TextArea label="교육·생활권 — 한 줄에 1개씩" value={form.educationText} onChange={(v) => updateField('educationText', v)} />
-              <label className="check-line">
-                <input type="checkbox" checked={form.is_featured} onChange={(e) => updateField('is_featured', e.target.checked)} />
-                추천 매물로 표시
-              </label>
-              <button className="primary-btn" type="submit">{editingId ? '수정 저장' : '매물 등록'}</button>
-              <p className="status-text">{status}</p>
-            </form>
-
-            <div className="admin-list">
-              <h3>등록 매물</h3>
-              {properties.map((property) => (
-                <div className="admin-list-item" key={property.id}>
-                  <strong>{property.title}</strong>
-                  <span>{property.deposit} / {property.rent}</span>
-                  <div>
-                    <button onClick={() => startEdit(property)}>수정</button>
-                    <button onClick={() => deleteProperty(property.id)}>삭제</button>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
-      </div>
-    </div>
-  );
-}
-
-function PhotoUploader({ photos, onUpload, onRemove, onMove }) {
-  const [dragging, setDragging] = useState(false);
-
-  function handleDrop(e) {
-    e.preventDefault();
-    setDragging(false);
-    onUpload(e.dataTransfer.files);
-  }
-
-  const boxStyle = {
-    border: `2px dashed ${dragging ? '#1d4ed8' : '#cbd5e1'}`,
-    borderRadius: '16px',
-    padding: '18px',
-    background: dragging ? '#eff6ff' : '#f8fafc',
-    textAlign: 'center',
-    cursor: 'pointer'
-  };
-
-  const previewStyle = {
-    display: 'grid',
-    gridTemplateColumns: 'repeat(auto-fill, minmax(120px, 1fr))',
-    gap: '10px',
-    marginTop: '12px'
-  };
-
-  return (
-    <section className="field">
-      <span>매물 사진 업로드</span>
-      <div
-        style={boxStyle}
-        onDragOver={(e) => {
-          e.preventDefault();
-          setDragging(true);
-        }}
-        onDragLeave={() => setDragging(false)}
-        onDrop={handleDrop}
-      >
-        <strong>사진을 여기에 드래그하거나 아래 버튼으로 선택하세요.</strong>
-        <p className="muted">여러 장을 한 번에 올릴 수 있습니다. 첫 번째 사진이 대표사진으로 사용됩니다.</p>
-        <input
-          type="file"
-          accept="image/*"
-          multiple
-          onChange={(e) => {
-            onUpload(e.target.files);
-            e.target.value = '';
-          }}
-        />
-      </div>
-
-      {photos.length > 0 && (
-        <div style={previewStyle}>
-          {photos.map((src, index) => (
-            <div key={`${src}-${index}`} className="upload-preview-item">
-              <img src={src} alt={`업로드 사진 ${index + 1}`} style={{ width: '100%', height: '90px', objectFit: 'cover', borderRadius: '12px' }} />
-              <small>{index + 1}번 사진</small>
-              <div style={{ display: 'flex', gap: '4px', flexWrap: 'wrap', marginTop: '4px' }}>
-                <button type="button" onClick={() => onMove(index, -1)} disabled={index === 0}>앞</button>
-                <button type="button" onClick={() => onMove(index, 1)} disabled={index === photos.length - 1}>뒤</button>
-                <button type="button" onClick={() => onRemove(index)}>삭제</button>
-              </div>
-            </div>
-          ))}
-        </div>
-      )}
-    </section>
-  );
-}
-
-function Field({ label, value, onChange }) {
-  return (
-    <label className="field">
-      <span>{label}</span>
-      <input value={value || ''} onChange={(e) => onChange(e.target.value)} />
-    </label>
-  );
-}
-
-function TextArea({ label, value, onChange, rows = 3 }) {
-  return (
-    <label className="field">
-      <span>{label}</span>
-      <textarea rows={rows} value={value || ''} onChange={(e) => onChange(e.target.value)} />
-    </label>
-  );
-}
-
-function FloatingButtons({ onAdmin }) {
-  return (
-    <div className="floating-buttons">
-      <a href={`tel:${OFFICE.phone}`}>전화</a>
-      <a href={`sms:${OFFICE.phone}`}>문자</a>
-      <button onClick={onAdmin}>🔒 관리자</button>
-    </div>
-  );
-}
-
-function Footer() {
-  return (
-    <footer id="request" className="site-footer">
-      <div>
-        <h2>매물 접수와 상담 문의</h2>
-        <p>원룸·투룸 임대, 다가구·원룸건물 매매, 수익형 부동산 투자 상담을 도와드립니다.</p>
-      </div>
-      <div className="footer-info">
-        <p>{OFFICE.name}</p>
-        <p>{OFFICE.address}</p>
-        <p>대표공인중개사 {OFFICE.broker} · 등록번호 {OFFICE.regNo}</p>
-        <p>{OFFICE.phone} / {OFFICE.tel}</p>
-      </div>
-    </footer>
-  );
-}
-
-createRoot(document.getElementById('root')).render(<App />);
