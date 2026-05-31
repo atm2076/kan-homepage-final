@@ -479,6 +479,7 @@ function AdminModal({ isAdmin, setIsAdmin, onClose, properties, reload }) {
   const [editingId, setEditingId] = useState(null);
   const [status, setStatus] = useState('');
   const adminPassword = import.meta.env.VITE_ADMIN_PASSWORD || '3883';
+  const photoUrls = linesToArray(form.photosText);
 
   function login(e) {
     e.preventDefault();
@@ -504,6 +505,78 @@ function AdminModal({ isAdmin, setIsAdmin, onClose, properties, reload }) {
     setEditingId(null);
     setForm(emptyForm);
     setStatus('새 매물 등록 상태입니다.');
+  }
+
+  async function uploadPhotoFiles(fileList) {
+    const files = Array.from(fileList || []).filter((file) => file.type.startsWith('image/'));
+
+    if (!files.length) {
+      setStatus('업로드할 사진 파일이 없습니다. JPG, PNG 같은 이미지 파일을 선택하세요.');
+      return;
+    }
+
+    if (!isSupabaseReady) {
+      setStatus('Supabase 연결 전에는 사진 업로드가 되지 않습니다.');
+      return;
+    }
+
+    setStatus(`사진 ${files.length}장을 업로드 중입니다. 잠시 기다려주세요.`);
+
+    const uploadedUrls = [];
+
+    for (const [index, file] of files.entries()) {
+      const rawExt = file.name.split('.').pop() || 'jpg';
+      const ext = rawExt.toLowerCase().replace(/[^a-z0-9]/g, '') || 'jpg';
+      const uniqueId =
+        typeof crypto !== 'undefined' && crypto.randomUUID
+          ? crypto.randomUUID()
+          : `${Date.now()}-${Math.random().toString(36).slice(2)}`;
+      const filePath = `properties/${uniqueId}-${index}.${ext}`;
+
+      const { error: uploadError } = await supabase.storage
+        .from('property-images')
+        .upload(filePath, file, {
+          cacheControl: '3600',
+          upsert: false,
+          contentType: file.type || 'image/jpeg'
+        });
+
+      if (uploadError) {
+        setStatus(`사진 업로드 실패: ${uploadError.message}`);
+        return;
+      }
+
+      const { data } = supabase.storage.from('property-images').getPublicUrl(filePath);
+      if (data?.publicUrl) uploadedUrls.push(data.publicUrl);
+    }
+
+    setForm((prev) => {
+      const before = linesToArray(prev.photosText);
+      return {
+        ...prev,
+        photosText: [...before, ...uploadedUrls].join('\n')
+      };
+    });
+
+    setStatus(`사진 ${uploadedUrls.length}장 업로드 완료. 매물 등록/수정 저장을 눌러야 홈페이지에 최종 반영됩니다.`);
+  }
+
+  function removePhoto(index) {
+    setForm((prev) => {
+      const next = linesToArray(prev.photosText);
+      next.splice(index, 1);
+      return { ...prev, photosText: next.join('\n') };
+    });
+  }
+
+  function movePhoto(index, direction) {
+    setForm((prev) => {
+      const next = linesToArray(prev.photosText);
+      const target = index + direction;
+      if (target < 0 || target >= next.length) return prev;
+      [next[index], next[target]] = [next[target], next[index]];
+      return { ...prev, photosText: next.join('\n') };
+    });
   }
 
   async function saveProperty(e) {
@@ -605,7 +678,21 @@ function AdminModal({ isAdmin, setIsAdmin, onClose, properties, reload }) {
               </div>
               <TextArea label="요약" value={form.summary} onChange={(v) => updateField('summary', v)} />
               <TextArea label="상세설명" value={form.description} onChange={(v) => updateField('description', v)} />
-              <TextArea label="사진 URL — 한 줄에 1개씩" value={form.photosText} onChange={(v) => updateField('photosText', v)} rows={5} />
+              <PhotoUploader
+                photos={photoUrls}
+                onUpload={uploadPhotoFiles}
+                onRemove={removePhoto}
+                onMove={movePhoto}
+              />
+              <details className="manual-url-box">
+                <summary>사진 주소 직접 확인/수정</summary>
+                <TextArea
+                  label="업로드된 사진 URL — 한 줄에 1개씩"
+                  value={form.photosText}
+                  onChange={(v) => updateField('photosText', v)}
+                  rows={4}
+                />
+              </details>
               <div className="two-cols">
                 <Field label="지도 이미지 URL" value={form.map_image} onChange={(v) => updateField('map_image', v)} />
                 <Field label="지도 링크" value={form.map_link} onChange={(v) => updateField('map_link', v)} />
@@ -638,6 +725,75 @@ function AdminModal({ isAdmin, setIsAdmin, onClose, properties, reload }) {
         )}
       </div>
     </div>
+  );
+}
+
+function PhotoUploader({ photos, onUpload, onRemove, onMove }) {
+  const [dragging, setDragging] = useState(false);
+
+  function handleDrop(e) {
+    e.preventDefault();
+    setDragging(false);
+    onUpload(e.dataTransfer.files);
+  }
+
+  const boxStyle = {
+    border: `2px dashed ${dragging ? '#1d4ed8' : '#cbd5e1'}`,
+    borderRadius: '16px',
+    padding: '18px',
+    background: dragging ? '#eff6ff' : '#f8fafc',
+    textAlign: 'center',
+    cursor: 'pointer'
+  };
+
+  const previewStyle = {
+    display: 'grid',
+    gridTemplateColumns: 'repeat(auto-fill, minmax(120px, 1fr))',
+    gap: '10px',
+    marginTop: '12px'
+  };
+
+  return (
+    <section className="field">
+      <span>매물 사진 업로드</span>
+      <div
+        style={boxStyle}
+        onDragOver={(e) => {
+          e.preventDefault();
+          setDragging(true);
+        }}
+        onDragLeave={() => setDragging(false)}
+        onDrop={handleDrop}
+      >
+        <strong>사진을 여기에 드래그하거나 아래 버튼으로 선택하세요.</strong>
+        <p className="muted">여러 장을 한 번에 올릴 수 있습니다. 첫 번째 사진이 대표사진으로 사용됩니다.</p>
+        <input
+          type="file"
+          accept="image/*"
+          multiple
+          onChange={(e) => {
+            onUpload(e.target.files);
+            e.target.value = '';
+          }}
+        />
+      </div>
+
+      {photos.length > 0 && (
+        <div style={previewStyle}>
+          {photos.map((src, index) => (
+            <div key={`${src}-${index}`} className="upload-preview-item">
+              <img src={src} alt={`업로드 사진 ${index + 1}`} style={{ width: '100%', height: '90px', objectFit: 'cover', borderRadius: '12px' }} />
+              <small>{index + 1}번 사진</small>
+              <div style={{ display: 'flex', gap: '4px', flexWrap: 'wrap', marginTop: '4px' }}>
+                <button type="button" onClick={() => onMove(index, -1)} disabled={index === 0}>앞</button>
+                <button type="button" onClick={() => onMove(index, 1)} disabled={index === photos.length - 1}>뒤</button>
+                <button type="button" onClick={() => onRemove(index)}>삭제</button>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+    </section>
   );
 }
 
