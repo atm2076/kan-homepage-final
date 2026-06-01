@@ -410,7 +410,7 @@ function Header({ showAdminAccess, onAdmin }) {
     <header className="site-header">
       <div className="top-contact">
         <a href={`tel:${OFFICE.phone}`}>☎ {OFFICE.phone}</a>
-        <span>{OFFICE.name}</span>
+        
       </div>
       <div className="brand-row">
         <a className="brand" href="#top" aria-label="칸공인중개사 홈">
