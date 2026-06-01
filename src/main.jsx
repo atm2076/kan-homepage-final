@@ -706,6 +706,30 @@ function PropertyDetail({ property, allProperties = [], onSelect }) {
           )}
 
           <section id="detail-related" className="content-card">
+            <section className="detail-map-section">
+  <div className="detail-map-head">
+    <div>
+      <p className="section-eyebrow">LOCATION</p>
+      <h2>매물 위치 안내</h2>
+      <p>정확한 위치는 상담 시 안내드리며, 생활권과 주변 환경을 함께 확인하실 수 있습니다.</p>
+    </div>
+
+    <a
+      className="map-link-button"
+      href={`https://map.naver.com/p/search/${encodeURIComponent(selectedProperty?.address || OFFICE.address)}`}
+      target="_blank"
+      rel="noreferrer"
+    >
+      네이버지도 열기
+    </a>
+  </div>
+
+  <div className="map-preview-box">
+    <div className="map-pin">📍</div>
+    <strong>{selectedProperty?.dong || selectedProperty?.area || '구미시 매물 위치'}</strong>
+    <span>{selectedProperty?.address || '정확한 주소는 상담 시 안내드립니다.'}</span>
+  </div>
+</section>
             <h2>구미시의 다른 매물</h2>
             <div className="related-grid">
               {related.map((item) => (
