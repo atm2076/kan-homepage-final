@@ -716,7 +716,7 @@ function PropertyDetail({ property, allProperties = [], onSelect }) {
 
     <a
       className="map-link-button"
-      href={`https://map.naver.com/p/search/${encodeURIComponent(selectedProperty?.address || OFFICE.address)}`}
+      href={`https://map.naver.com/p/search/${encodeURIComponent(property?.address || OFFICE.address)}`}
       target="_blank"
       rel="noreferrer"
     >
@@ -726,8 +726,8 @@ function PropertyDetail({ property, allProperties = [], onSelect }) {
 
   <div className="map-preview-box">
     <div className="map-pin">📍</div>
-    <strong>{selectedProperty?.dong || selectedProperty?.area || '구미시 매물 위치'}</strong>
-    <span>{selectedProperty?.address || '정확한 주소는 상담 시 안내드립니다.'}</span>
+    <strong>{property?.dong || property?.area || '구미시 매물 위치'}</strong>
+<span>{property?.address || '정확한 주소는 상담 시 안내드립니다.'}</span>
   </div>
 </section>
             <h2>구미시의 다른 매물</h2>
