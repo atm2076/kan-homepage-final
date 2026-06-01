@@ -451,24 +451,27 @@ function Hero({ keyword, setKeyword }) {
           <a className="secondary-btn" href={`sms:${OFFICE.phone}`}>문자문의</a>
         </div>
       </div>
-   <div className="hero-region-card">
-  <strong>구미·칠곡 매물 안내</strong>
+   <div className="hero-map-card">
+  <strong>구미·칠곡 매물 지도</strong>
+  <p>지역을 누르면 해당 매물만 바로 볼 수 있습니다.</p>
 
-  <button type="button" onClick={() => setKeyword("구미")}>
-    구미 전지역
-  </button>
+  <div className="mini-map">
+    <button type="button" className="map-pin pin-gumi" onClick={() => setKeyword("구미")}>
+      구미 전지역
+    </button>
 
-  <button type="button" onClick={() => setKeyword("원룸 미니투룸 투룸 쓰리룸 월세")}>
-    원룸·미니투룸·투룸·쓰리룸
-  </button>
+    <button type="button" className="map-pin pin-room" onClick={() => setKeyword("원룸 미니투룸 투룸 쓰리룸 월세")}>
+      원룸·투룸
+    </button>
 
-  <button type="button" onClick={() => setKeyword("수익형 다가구 원룸건물 매매")}>
-    수익형 부동산
-  </button>
+    <button type="button" className="map-pin pin-invest" onClick={() => setKeyword("수익형 다가구 원룸건물 매매")}>
+      수익형
+    </button>
 
-  <button type="button" onClick={() => setKeyword("칠곡 북삼 석적 중리")}>
-    칠곡·북삼·석적
-  </button>
+    <button type="button" className="map-pin pin-chilgok" onClick={() => setKeyword("칠곡 북삼 석적 중리")}>
+      칠곡·북삼·석적
+    </button>
+  </div>
 </div>
     </section>
   );
