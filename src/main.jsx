@@ -417,7 +417,7 @@ function Header({ showAdminAccess, onAdmin }) {
           <div className="logo-mark">KAN</div>
           <div>
             <strong>{OFFICE.name}</strong>
-            <span>구미 원룸·투룸·다가구매매 전문</span>
+            <span>구미 원룸 · 투룸 · 다가구 · 수익형 부동산 전문</span>
           </div>
         </a>
         <nav>
