@@ -346,7 +346,7 @@ function App() {
 />
         <section className="section-head" id="properties">
           <div>
-            <p className="eyebrow">KAN PROPERTY PLATFORM</p>
+            <p className="eyebrow">KhAN PROPERTY PLATFORM</p>
             <h2>구미 원룸·투룸·다가구 매물</h2>
             <p className="muted">사진, 가격, 위치, 입주조건을 확인하고 바로 전화·문자 상담할 수 있습니다.</p>
           </div>
