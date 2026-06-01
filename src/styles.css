@@ -1846,3 +1846,83 @@ img {
   letter-spacing: -0.3px;
   line-height: 1;
 }
+/* ===== 상단 브랜드 한 줄 정리 ===== */
+
+.brand-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 24px;
+  padding: 12px 24px;
+  background: #fffaf4;
+  border-bottom: 1px solid rgba(122, 75, 38, 0.14);
+}
+
+.brand {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  text-decoration: none;
+  flex-shrink: 0;
+}
+
+.logo-mark {
+  width: 54px;
+  height: 54px;
+  border-radius: 15px;
+  background: linear-gradient(135deg, #5a3518 0%, #9b622f 100%);
+  color: #ffffff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 17px;
+  font-weight: 900;
+  letter-spacing: -0.6px;
+  box-shadow: 0 6px 14px rgba(43, 23, 11, 0.18);
+  flex-shrink: 0;
+}
+
+.brand > div:last-child {
+  display: flex;
+  align-items: baseline;
+  gap: 14px;
+  white-space: nowrap;
+}
+
+.brand strong {
+  font-size: 22px;
+  font-weight: 900;
+  color: #21160f;
+  letter-spacing: -0.8px;
+  line-height: 1;
+}
+
+.brand span {
+  font-size: 15px;
+  font-weight: 500;
+  color: #8f8175;
+  letter-spacing: -0.3px;
+  line-height: 1;
+}
+
+.brand-row nav {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-left: auto;
+  white-space: nowrap;
+}
+
+.brand-row nav a {
+  height: 42px;
+  padding: 0 18px;
+  border-radius: 999px;
+  border: 1px solid rgba(122, 75, 38, 0.22);
+  color: #6f421f;
+  background: #fffaf5;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 800;
+  text-decoration: none;
+}
