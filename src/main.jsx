@@ -344,7 +344,7 @@ function Hero({ keyword, setKeyword }) {
     <section className="hero" id="top">
       <div className="hero-overlay" />
       <div className="hero-content">
-        <p className="hero-badge">구미 인동 · 인의동 · 진평동 · 구평동 · 옥계동 · 석적</p>
+        <p className="hero-badge">구미 원룸 · 투룸 · 다가구 · 수익형 부동산 전문</p>
         <h1>구미 원룸·투룸 월세부터<br />다가구·원룸건물 매매까지</h1>
         <p>
           현장에서 확인한 실사진 매물만 정리합니다. 가격, 관리비, 입주조건을 빠르게 보고 바로 상담하세요.
