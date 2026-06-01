@@ -407,28 +407,29 @@ function App() {
 
 function Header({ showAdminAccess, onAdmin }) {
   return (
-    <header className="site-header">
-      <div className="top-contact">
-        <a href={`tel:${OFFICE.phone}`}>☎ {OFFICE.phone}</a>
-        
+   <header className="site-header">
+  <div className="top-contact">
+    <a className="top-phone" href={`tel:${OFFICE.phone}`}>
+      ☎ {OFFICE.phone}
+    </a>
+
+    <a className="brand top-brand" href="#top" aria-label="칸공인중개사 홈">
+      <div className="logo-mark">KHAN</div>
+      <div className="brand-text-line">
+        <strong>{OFFICE.name}</strong>
+        <span>구미 원룸 · 투룸 · 다가구 · 수익형 부동산 전문</span>
       </div>
-      <div className="brand-row">
-        <a className="brand" href="#top" aria-label="칸공인중개사 홈">
-          <div className="logo-mark">KHAN</div>
-          <div>
-            <strong>{OFFICE.name}</strong>
-            <span>구미 원룸 · 투룸 · 다가구 · 수익형 부동산 전문</span>
-          </div>
-        </a>
-        <nav>
-          <a href="#properties">원룸/투룸</a>
-          <a href="#property-detail">매물상세</a>
-          <a href={OFFICE.blog} target="_blank" rel="noreferrer">블로그</a>
-          <a href="#request">매물의뢰</a>
-          {showAdminAccess && <button type="button" onClick={onAdmin}>관리자</button>}
-        </nav>
-      </div>
-    </header>
+    </a>
+
+    <nav className="top-nav">
+      <a href="#properties">원룸/투룸</a>
+      <a href="#property-detail">매물상세</a>
+      <a href={OFFICE.blog} target="_blank" rel="noreferrer">블로그</a>
+      <a href="#request">매물의뢰</a>
+      {showAdminAccess && <button type="button" onClick={onAdmin}>관리자</button>}
+    </nav>
+  </div>
+</header>
   );
 }
 
