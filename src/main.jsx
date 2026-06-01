@@ -13,6 +13,34 @@ const OFFICE = {
   blog: 'https://blog.naver.com/atm750/224293919179'
 };
 
+const defaultFilters = {
+  trade: '전체',
+  room: '전체',
+  approval: '전체',
+  floor: '전체',
+  extra: '전체'
+};
+
+function getYear(value) {
+  const match = String(value || '').match(/(19|20)\d{2}/);
+  return match ? Number(match[0]) : null;
+}
+
+function matchApprovalYear(value, filter) {
+  if (filter === '전체') return true;
+
+  const year = getYear(value);
+  if (!year) return true;
+
+  const age = new Date().getFullYear() - year;
+
+  if (filter === '5년 이내') return age <= 5;
+  if (filter === '10년 이내') return age <= 10;
+  if (filter === '15년 이내') return age <= 15;
+  if (filter === '15년 이상') return age >= 15;
+
+  return true;
+}
 const emptyForm = {
   title: '',
   category: '원룸 월세',
@@ -181,6 +209,7 @@ function App() {
   const [error, setError] = useState('');
   const [keyword, setKeyword] = useState('');
   const [category, setCategory] = useState('전체');
+  const [filters, setFilters] = useState(defaultFilters);
   const [adminOpen, setAdminOpen] = useState(false);
   const [isAdmin, setIsAdmin] = useState(false);
   const showAdminAccess = typeof window !== 'undefined' && new URLSearchParams(window.location.search).get('admin') === '1';
@@ -226,15 +255,75 @@ function App() {
   }, [properties]);
 
   const filtered = useMemo(() => {
-    const q = keyword.trim().toLowerCase();
-    return properties.filter((item) => {
-      const matchCategory = category === '전체' || item.category === category;
-      const text = [item.title, item.address, item.summary, item.category, item.deposit, item.rent, item.maintenance_fee]
-        .join(' ')
-        .toLowerCase();
-      return matchCategory && (!q || text.includes(q));
-    });
-  }, [properties, keyword, category]);
+  const q = keyword.trim().toLowerCase();
+
+  return properties.filter((item) => {
+    const matchCategory = category === '전체' || item.category === category;
+
+    const text = [
+      item.title,
+      item.address,
+      item.summary,
+      item.description,
+      item.category,
+      item.trade_type,
+      item.deposit,
+      item.rent,
+      item.maintenance_fee,
+      item.area,
+      item.floor_info,
+      item.direction,
+      item.parking,
+      item.move_in,
+      item.approval_date,
+      item.room_bath,
+      item.structure,
+      ...(item.convenience || []),
+      ...(item.safety || []),
+      ...(item.education || [])
+    ]
+      .join(' ')
+      .toLowerCase();
+
+    const matchKeyword = !q || text.includes(q);
+
+    const matchTrade =
+      filters.trade === '전체' ||
+      text.includes(filters.trade.toLowerCase());
+
+    const matchRoom =
+      filters.room === '전체' ||
+      text.includes(filters.room.toLowerCase());
+
+    const matchApproval = matchApprovalYear(item.approval_date, filters.approval);
+
+    const floorText = String(item.floor_info || '').toLowerCase();
+
+    const matchFloor =
+      filters.floor === '전체' ||
+      (filters.floor === '1층' && floorText.includes('1층')) ||
+      (filters.floor === '2층이상' && /[2-9]층|[1-9][0-9]층/.test(floorText)) ||
+      (filters.floor === '반지하' && text.includes('반지하')) ||
+      (filters.floor === '옥탑' && text.includes('옥탑'));
+
+    const matchExtra =
+      filters.extra === '전체' ||
+      (filters.extra === '관리비 포함' && String(item.maintenance_fee || '').includes('포함')) ||
+      (filters.extra === '주차 가능' && text.includes('주차')) ||
+      (filters.extra === '엘리베이터' && text.includes('엘리베이터')) ||
+      (filters.extra === '복층' && text.includes('복층'));
+
+    return (
+      matchCategory &&
+      matchKeyword &&
+      matchTrade &&
+      matchRoom &&
+      matchApproval &&
+      matchFloor &&
+      matchExtra
+    );
+  });
+}, [properties, keyword, category, filters]);
 
   function selectProperty(property) {
     setSelected(property);
@@ -250,7 +339,11 @@ function App() {
         {!isSupabaseReady && <SetupNotice />}
         {error && <ErrorNotice message={error} />}
         <CategoryStrip categories={categories} category={category} setCategory={setCategory} />
-
+<FilterBar
+  filters={filters}
+  setFilters={setFilters}
+  onReset={() => setFilters(defaultFilters)}
+/>
         <section className="section-head" id="properties">
           <div>
             <p className="eyebrow">KAN PROPERTY PLATFORM</p>
@@ -392,7 +485,61 @@ function CategoryStrip({ categories, category, setCategory }) {
     </section>
   );
 }
+function FilterBar({ filters, setFilters, onReset }) {
+  const update = (key, value) => {
+    setFilters((prev) => ({
+      ...prev,
+      [key]: value
+    }));
+  };
 
+  return (
+    <div className="filter-strip">
+      <select value={filters.trade} onChange={(e) => update('trade', e.target.value)}>
+        <option value="전체">월세/전세</option>
+        <option value="월세">월세</option>
+        <option value="전세">전세</option>
+        <option value="매매">매매</option>
+      </select>
+
+      <select value={filters.room} onChange={(e) => update('room', e.target.value)}>
+        <option value="전체">방크기</option>
+        <option value="원룸">원룸</option>
+        <option value="미니투룸">미니투룸</option>
+        <option value="투룸">투룸</option>
+        <option value="쓰리룸">쓰리룸</option>
+      </select>
+
+      <select value={filters.approval} onChange={(e) => update('approval', e.target.value)}>
+        <option value="전체">사용승인일</option>
+        <option value="5년 이내">5년 이내</option>
+        <option value="10년 이내">10년 이내</option>
+        <option value="15년 이내">15년 이내</option>
+        <option value="15년 이상">15년 이상</option>
+      </select>
+
+      <select value={filters.floor} onChange={(e) => update('floor', e.target.value)}>
+        <option value="전체">층수</option>
+        <option value="1층">1층</option>
+        <option value="2층이상">2층이상</option>
+        <option value="반지하">반지하</option>
+        <option value="옥탑">옥탑</option>
+      </select>
+
+      <select value={filters.extra} onChange={(e) => update('extra', e.target.value)}>
+        <option value="전체">추가필터</option>
+        <option value="관리비 포함">관리비 포함</option>
+        <option value="주차 가능">주차 가능</option>
+        <option value="엘리베이터">엘리베이터</option>
+        <option value="복층">복층</option>
+      </select>
+
+      <button type="button" onClick={onReset} className="reset-filter-btn">
+        초기화
+      </button>
+    </div>
+  );
+}
 function SetupNotice() {
   return (
     <div className="notice warning">
