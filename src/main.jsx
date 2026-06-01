@@ -800,11 +800,22 @@ function PropertyDetail({ property, allProperties = [], onSelect }) {
             <span>{property.trade_type}</span>
           </div>
           <h1>{property.title}</h1>
-          <div className="big-price">
-            <span>보증금 {property.deposit || '-'}</span>
-            <strong>월세/가격 {property.rent || '-'}</strong>
-            {property.maintenance_fee && <em>관리비 {property.maintenance_fee}</em>}
-          </div>
+         <div className="big-price">
+  {(property.category?.includes('매매') || property.trade_type === '매매') ? (
+    <>
+      <span>매매가 {property.sale_price || property.deposit || '-'}</span>
+      <strong>총월세 {property.total_monthly_rent || property.rent || '-'}</strong>
+      {property.takeover_price && <em>실인수가 {property.takeover_price}</em>}
+      {property.net_monthly_income && <em>월순수익 {property.net_monthly_income}</em>}
+    </>
+  ) : (
+    <>
+      <span>보증금 {property.deposit || '-'}</span>
+      <strong>월세 {property.rent || '-'}</strong>
+      {property.maintenance_fee && <em>관리비 {property.maintenance_fee}</em>}
+    </>
+  )}
+</div>
           <p className="side-address">📍 {property.address || '위치 계약 전 확인'}</p>
           <div className="side-facts">
             <span>🏠 {property.category || '-'}</span>
