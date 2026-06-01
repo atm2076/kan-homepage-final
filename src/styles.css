@@ -1682,3 +1682,110 @@ img {
     font-size: 14px;
   }
 }
+/* === Hero 오른쪽 클릭형 지도 카드 위치 수정 === */
+
+.hero {
+  position: relative !important;
+}
+
+.hero-map-card {
+  position: absolute !important;
+  right: clamp(32px, 9vw, 230px) !important;
+  top: 50% !important;
+  transform: translateY(-38%) !important;
+  z-index: 5 !important;
+
+  width: 330px !important;
+  padding: 20px !important;
+  border-radius: 28px !important;
+  background: rgba(255, 250, 241, 0.92) !important;
+  backdrop-filter: blur(10px) !important;
+  box-shadow: 0 18px 45px rgba(0, 0, 0, 0.18) !important;
+}
+
+.hero-map-card strong {
+  display: block !important;
+  color: var(--brown) !important;
+  font-size: 20px !important;
+  font-weight: 900 !important;
+  margin-bottom: 6px !important;
+}
+
+.hero-map-card p {
+  color: var(--muted) !important;
+  font-size: 13px !important;
+  font-weight: 700 !important;
+  margin: 0 0 14px !important;
+}
+
+.mini-map {
+  position: relative !important;
+  height: 210px !important;
+  border-radius: 22px !important;
+  overflow: hidden !important;
+  background:
+    radial-gradient(circle at 28% 38%, rgba(120, 160, 120, 0.28), transparent 24%),
+    radial-gradient(circle at 70% 28%, rgba(120, 160, 120, 0.22), transparent 28%),
+    linear-gradient(135deg, #eef3e8 0%, #f8f1e6 48%, #e9f1f4 100%) !important;
+  border: 1px solid rgba(111, 63, 31, 0.12) !important;
+}
+
+.mini-map::before {
+  content: "" !important;
+  position: absolute !important;
+  inset: 0 !important;
+  background:
+    linear-gradient(120deg, transparent 28%, rgba(111, 63, 31, 0.16) 29%, transparent 31%),
+    linear-gradient(35deg, transparent 48%, rgba(60, 120, 180, 0.18) 49%, transparent 52%),
+    linear-gradient(80deg, transparent 58%, rgba(111, 63, 31, 0.13) 59%, transparent 61%) !important;
+}
+
+.map-pin {
+  position: absolute !important;
+  border: 0 !important;
+  border-radius: 999px !important;
+  padding: 9px 13px !important;
+  background: var(--brown) !important;
+  color: #fff !important;
+  font-size: 13px !important;
+  font-weight: 900 !important;
+  cursor: pointer !important;
+  box-shadow: 0 10px 22px rgba(0, 0, 0, 0.18) !important;
+  white-space: nowrap !important;
+}
+
+.map-pin:hover {
+  transform: translateY(-2px) !important;
+  background: #4f2d16 !important;
+}
+
+.pin-gumi {
+  left: 28px !important;
+  top: 28px !important;
+}
+
+.pin-room {
+  right: 24px !important;
+  top: 74px !important;
+}
+
+.pin-invest {
+  left: 34px !important;
+  bottom: 44px !important;
+}
+
+.pin-chilgok {
+  right: 20px !important;
+  bottom: 22px !important;
+}
+
+@media (max-width: 900px) {
+  .hero-map-card {
+    position: relative !important;
+    right: auto !important;
+    top: auto !important;
+    transform: none !important;
+    width: calc(100% - 48px) !important;
+    margin: 20px auto 0 !important;
+  }
+}
