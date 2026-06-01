@@ -1161,9 +1161,3 @@ function Footer() {
 }
 
 createRoot(document.getElementById('root')).render(<App />);
-.hero-lead {
-  max-width: 720px !important;
-  line-height: 1.6 !important;
-  word-break: keep-all !important;
-  white-space: normal !important;
-}
