@@ -56,13 +56,13 @@ const emptyForm = {
   sale_price: '',          // 매매가격
   loan_amount: '',         // 융자금
   interest_rate: '',       // 금리
-  total_deposit: '',       // 보증금 총액
-  takeover_price: '',      // 인수가격
+  investment_amount: '',       // 보증금 총액
+  investment_amount: '',      // 인수가격
   total_monthly_rent: '',  // 총월세
   monthly_interest: '',    // 월 융자이자
-  net_monthly_income: '',  // 월 순수익
+  net_profit: '',  // 월 순수익
   annual_net_income: '',   // 연 순수익
-  yield_rate: '',          // 수익률
+  return_rate: '',          // 수익률
 
   // 매매용 건물 정보
   total_units: '',         // 총 세대수
@@ -200,6 +200,14 @@ function formToPayload(form) {
     deposit: form.deposit.trim(),
     rent: form.rent.trim(),
     maintenance_fee: form.maintenance_fee.trim(),
+        sale_price: (form.sale_price || '').trim(),
+    loan_amount: (form.loan_amount || '').trim(),
+    : (form. || '').trim(),
+    investment_amount: (form.investment_amount || '').trim(),
+    total_monthly_rent: (form.total_monthly_rent || '').trim(),
+    monthly_interest: (form.monthly_interest || '').trim(),
+    net_profit: (form.net_profit || '').trim(),
+    return_rate: (form.return_rate || '').trim(),
     area: form.area.trim(),
     floor_info: form.floor_info.trim(),
     direction: form.direction.trim(),
@@ -645,12 +653,12 @@ const infoRows = isSaleProperty
 
       ['매매가', property.sale_price || property.deposit || '계약 전 확인'],
       ['융자금', property.loan_amount || '계약 전 확인'],
-      ['보증금 총액', property.total_deposit || '계약 전 확인'],
-      ['실인수가', property.takeover_price || '계약 전 확인'],
+      ['보증금 총액', property. || '계약 전 확인'],
+      ['실인수가', property.investment_amount || '계약 전 확인'],
       ['총월세', property.total_monthly_rent || property.rent || '계약 전 확인'],
       ['월이자', property.monthly_interest || '계약 전 확인'],
-      ['월순수익', property.net_monthly_income || '계약 전 확인'],
-      ['수익률', property.yield_rate || '계약 전 확인'],
+      ['월순수익', property.net_profit || '계약 전 확인'],
+      ['수익률', property.return_rate || '계약 전 확인'],
 
       ['면적', property.area || '계약 전 확인'],
       ['대지면적', property.land_area || '계약 전 확인'],
@@ -829,8 +837,8 @@ const infoRows = isSaleProperty
     <>
       <span>매매가 {property.sale_price || property.deposit || '-'}</span>
       <strong>총월세 {property.total_monthly_rent || property.rent || '-'}</strong>
-      {property.takeover_price && <em>실인수가 {property.takeover_price}</em>}
-      {property.net_monthly_income && <em>월순수익 {property.net_monthly_income}</em>}
+      {property.investment_amount && <em>실인수가 {property.investment_amount}</em>}
+      {property.net_profit && <em>월순수익 {property.net_profit}</em>}
     </>
   ) : (
     <>
@@ -1099,15 +1107,15 @@ function AdminModal({ isAdmin, setIsAdmin, onClose, properties, reload }) {
     </div>
 
     <div className="three-cols">
-      <Field label="보증금 총액" value={form.total_deposit || ''} onChange={(v) => updateField('total_deposit', v)} placeholder="8000만원" />
-      <Field label="인수가격" value={form.takeover_price || ''} onChange={(v) => updateField('takeover_price', v)} placeholder="9000만원" />
+      <Field label="보증금 총액" value={form.investment_amount || ''} onChange={(v) => updateField('investment_amount', v)} placeholder="8000만원" />
+      <Field label="인수가격" value={form.investment_amount || ''} onChange={(v) => updateField('investment_amount', v)} placeholder="9000만원" />
       <Field label="총월세" value={form.total_monthly_rent || ''} onChange={(v) => updateField('total_monthly_rent', v)} placeholder="430만원" />
     </div>
 
     <div className="three-cols">
       <Field label="융자이자" value={form.monthly_interest || ''} onChange={(v) => updateField('monthly_interest', v)} placeholder="90만원" />
-      <Field label="월 순수익" value={form.net_monthly_income || ''} onChange={(v) => updateField('net_monthly_income', v)} placeholder="340만원" />
-      <Field label="수익률" value={form.yield_rate || ''} onChange={(v) => updateField('yield_rate', v)} placeholder="45.3%" />
+      <Field label="월 순수익" value={form.net_profit || ''} onChange={(v) => updateField('net_profit', v)} placeholder="340만원" />
+      <Field label="수익률" value={form.return_rate || ''} onChange={(v) => updateField('return_rate', v)} placeholder="45.3%" />
     </div>
   </div>
 ) : (
