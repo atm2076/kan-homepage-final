@@ -754,7 +754,7 @@ function PropertyDetail({ property, allProperties = [], onSelect }) {
             <a className="secondary-btn" href={`sms:${OFFICE.phone}?body=${inquiryBody}`}>문자문의</a>
           </div>
           <div className="office-mini-card">
-            <div className="agent-avatar">KAN</div>
+            <div className="agent-avatar">KhAN</div>
             <div>
               <strong>{OFFICE.name}</strong>
               <p>대표 {OFFICE.broker}</p>
