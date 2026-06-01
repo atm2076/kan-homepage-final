@@ -635,24 +635,48 @@ function PropertyDetail({ property, allProperties = [], onSelect }) {
   const inquiryBody = encodeURIComponent(buildInquiryMessage(property));
   const related = allProperties.filter((item) => item.id !== property.id).slice(0, 4);
   const hasMap = Boolean(property.map_image || property.map_link);
+const isSaleProperty = property.category?.includes('매매') || property.trade_type === '매매';
 
-  const infoRows = [
-    ['소재지', property.address || '계약 전 확인'],
-    ['거래유형', property.trade_type || '계약 전 확인'],
-    ['매물종류', property.category || '계약 전 확인'],
-    ['보증금', property.deposit || '계약 전 확인'],
-    ['월세/매매가', property.rent || '계약 전 확인'],
-    ['관리비', property.maintenance_fee || '계약 전 확인'],
-    ['면적', property.area || '계약 전 확인'],
-    ['층수', property.floor_info || '계약 전 확인'],
-    ['방/욕실', property.room_bath || '계약 전 확인'],
-    ['방향', property.direction || '계약 전 확인'],
-    ['주차', property.parking || '계약 전 확인'],
-    ['입주가능일', property.move_in || '계약 전 확인'],
-    ['사용승인일', property.approval_date || '계약 전 확인'],
-    ['구조', property.structure || '계약 전 확인']
-  ];
+const infoRows = isSaleProperty
+  ? [
+      ['소재지', property.address || '계약 전 확인'],
+      ['거래유형', property.trade_type || '매매'],
+      ['매물종류', property.category || '계약 전 확인'],
 
+      ['매매가', property.sale_price || property.deposit || '계약 전 확인'],
+      ['융자금', property.loan_amount || '계약 전 확인'],
+      ['보증금 총액', property.total_deposit || '계약 전 확인'],
+      ['실인수가', property.takeover_price || '계약 전 확인'],
+      ['총월세', property.total_monthly_rent || property.rent || '계약 전 확인'],
+      ['월이자', property.monthly_interest || '계약 전 확인'],
+      ['월순수익', property.net_monthly_income || '계약 전 확인'],
+      ['수익률', property.yield_rate || '계약 전 확인'],
+
+      ['면적', property.area || '계약 전 확인'],
+      ['대지면적', property.land_area || '계약 전 확인'],
+      ['연면적', property.building_area || '계약 전 확인'],
+      ['총층', property.floor_info || '계약 전 확인'],
+      ['세대현황', property.room_bath || '계약 전 확인'],
+      ['주차', property.parking || '계약 전 확인'],
+      ['사용승인일', property.approval_date || '계약 전 확인'],
+      ['구조', property.structure || '계약 전 확인'],
+    ]
+  : [
+      ['소재지', property.address || '계약 전 확인'],
+      ['거래유형', property.trade_type || '계약 전 확인'],
+      ['매물종류', property.category || '계약 전 확인'],
+      ['보증금', property.deposit || '계약 전 확인'],
+      ['월세', property.rent || '계약 전 확인'],
+      ['관리비', property.maintenance_fee || '계약 전 확인'],
+      ['면적', property.area || '계약 전 확인'],
+      ['층수', property.floor_info || '계약 전 확인'],
+      ['방/욕실', property.room_bath || '계약 전 확인'],
+      ['방향', property.direction || '계약 전 확인'],
+      ['주차', property.parking || '계약 전 확인'],
+      ['입주가능일', property.move_in || '계약 전 확인'],
+      ['사용승인일', property.approval_date || '계약 전 확인'],
+      ['구조', property.structure || '계약 전 확인'],
+    ];
   return (
     <section id="property-detail" className="detail-platform">
       <nav className="detail-tabs">
