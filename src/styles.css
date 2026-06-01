@@ -1611,3 +1611,74 @@ img {
 .hero-region-card button:nth-of-type(2) {
   grid-column: 1 / -1 !important;
 }
+/* === 다방식 독립 2차 필터 바 === */
+
+.filter-strip {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  overflow-x: auto;
+
+  background: rgba(255, 255, 255, 0.9);
+  border: 1px solid var(--line);
+  border-radius: 18px;
+  box-shadow: 0 14px 34px rgba(71, 45, 24, 0.08);
+
+  padding: 14px;
+  margin: 16px 0 34px;
+}
+
+.filter-strip::before {
+  content: "상세 조건";
+  flex: 0 0 auto;
+  font-weight: 900;
+  color: var(--brown);
+  margin-right: 6px;
+}
+
+.filter-strip select,
+.reset-filter-btn {
+  flex: 0 0 auto;
+  height: 44px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: #fff;
+  color: var(--text);
+  padding: 0 15px;
+  font-weight: 900;
+  outline: none;
+}
+
+.filter-strip select {
+  min-width: 128px;
+}
+
+.reset-filter-btn {
+  min-width: 74px;
+  color: var(--brown);
+  cursor: pointer;
+}
+
+.filter-strip select:focus,
+.reset-filter-btn:hover {
+  border-color: var(--brown);
+  box-shadow: 0 0 0 3px rgba(111, 63, 31, 0.08);
+}
+
+@media (max-width: 760px) {
+  .filter-strip {
+    margin: 12px 0 24px;
+    padding: 12px;
+  }
+
+  .filter-strip::before {
+    display: none;
+  }
+
+  .filter-strip select,
+  .reset-filter-btn {
+    height: 42px;
+    padding: 0 12px;
+    font-size: 14px;
+  }
+}
