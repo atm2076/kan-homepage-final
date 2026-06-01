@@ -439,9 +439,9 @@ function Hero({ keyword, setKeyword }) {
       <div className="hero-content">
         <p className="hero-badge">구미 원룸 · 투룸 · 다가구 · 수익형 부동산 전문</p>
         <h1>구미 원룸·투룸 월세부터<br />다가구·원룸건물 매매까지</h1>
-        <p>
-          현장에서 확인한 실사진 매물만 정리합니다. 가격, 관리비, 입주조건을 빠르게 보고 바로 상담하세요.
-        </p>
+        <p className="hero-lead">
+  실사진 매물만 선별해 가격·관리비·입주조건까지 빠르게 확인하세요.
+</p>
         <div className="hero-search">
           <input value={keyword} onChange={(e) => setKeyword(e.target.value)} placeholder="지역·가격·매물명 검색" />
           <a href="#properties">매물검색</a>
@@ -1161,3 +1161,9 @@ function Footer() {
 }
 
 createRoot(document.getElementById('root')).render(<App />);
+.hero-lead {
+  max-width: 720px !important;
+  line-height: 1.6 !important;
+  word-break: keep-all !important;
+  white-space: normal !important;
+}
