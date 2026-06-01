@@ -358,14 +358,25 @@ function Hero({ keyword, setKeyword }) {
           <a className="secondary-btn" href={`sms:${OFFICE.phone}`}>문자문의</a>
         </div>
       </div>
-      <div className="hero-region-card">
-        <strong>구미 전문 생활권</strong>
-        <span>인의동</span>
-        <span>진평동</span>
-        <span>구평동</span>
-        <span>옥계동</span>
-        <span>석적·중리</span>
-      </div>
+   <div className="hero-region-card">
+  <strong>구미·칠곡 매물 안내</strong>
+
+  <button type="button" onClick={() => setKeyword("구미")}>
+    구미 전지역
+  </button>
+
+  <button type="button" onClick={() => setKeyword("원룸 미니투룸 투룸 쓰리룸 월세")}>
+    원룸·미니투룸·투룸·쓰리룸
+  </button>
+
+  <button type="button" onClick={() => setKeyword("수익형 다가구 원룸건물 매매")}>
+    수익형 부동산
+  </button>
+
+  <button type="button" onClick={() => setKeyword("칠곡 북삼 석적 중리")}>
+    칠곡·북삼·석적
+  </button>
+</div>
     </section>
   );
 }
