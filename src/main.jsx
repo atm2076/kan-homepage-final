@@ -724,11 +724,14 @@ function PropertyDetail({ property, allProperties = [], onSelect }) {
     </a>
   </div>
 
-  <div className="map-preview-box">
-    <div className="map-pin">📍</div>
-    <strong>{property?.dong || property?.area || '구미시 매물 위치'}</strong>
-<span>{property?.address || '정확한 주소는 상담 시 안내드립니다.'}</span>
-  </div>
+  <div className="map-preview-box real-map-box">
+  <iframe
+    title="매물 위치 지도"
+    src={`https://maps.google.com/maps?q=${encodeURIComponent(property?.address || OFFICE.address)}&output=embed`}
+    loading="lazy"
+    referrerPolicy="no-referrer-when-downgrade"
+  />
+</div>
 </section>
             <h2>구미시의 다른 매물</h2>
             <div className="related-grid">
