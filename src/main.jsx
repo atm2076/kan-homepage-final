@@ -812,7 +812,7 @@ function PropertyDetail({ property, allProperties = [], onSelect }) {
     <>
       <span>보증금 {property.deposit || '-'}</span>
       <strong>월세 {property.rent || '-'}</strong>
-      {property.maintenance_fee && <em>관리비 {property.maintenance_fee}</em>}
+   {property.maintenance_fee && <em>{property.maintenance_fee}</em>}
     </>
   )}
 </div>
