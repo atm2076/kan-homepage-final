@@ -1789,3 +1789,9 @@ img {
     margin: 20px auto 0 !important;
   }
 }
+.hero-lead {
+  max-width: 720px !important;
+  line-height: 1.6 !important;
+  word-break: keep-all !important;
+  white-space: normal !important;
+}
