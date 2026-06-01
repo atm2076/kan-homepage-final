@@ -414,7 +414,7 @@ function Header({ showAdminAccess, onAdmin }) {
       </div>
       <div className="brand-row">
         <a className="brand" href="#top" aria-label="칸공인중개사 홈">
-          <div className="logo-mark">KAN</div>
+          <div className="logo-mark">KHAN</div>
           <div>
             <strong>{OFFICE.name}</strong>
             <span>구미 원룸 · 투룸 · 다가구 · 수익형 부동산 전문</span>
