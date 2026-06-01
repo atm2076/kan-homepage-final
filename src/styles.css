@@ -1926,3 +1926,99 @@ img {
   font-weight: 800;
   text-decoration: none;
 }
+/* ===== 상단 1층: 전화번호 + 브랜드 + 메뉴 한 줄 정리 ===== */
+
+.site-header {
+  background: #fffaf4;
+  border-bottom: 1px solid rgba(122, 75, 38, 0.14);
+}
+
+.top-contact {
+  display: flex;
+  align-items: center;
+  gap: 28px;
+  padding: 12px 24px;
+  width: 100%;
+}
+
+.top-phone {
+  font-size: 22px;
+  font-weight: 900;
+  color: #6f421f;
+  text-decoration: none;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.top-brand {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  text-decoration: none;
+  flex: 1;
+  min-width: 0;
+}
+
+.logo-mark {
+  width: 50px;
+  height: 50px;
+  border-radius: 14px;
+  background: linear-gradient(135deg, #5a3518 0%, #9b622f 100%);
+  color: #ffffff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 16px;
+  font-weight: 900;
+  letter-spacing: -0.6px;
+  flex-shrink: 0;
+  box-shadow: 0 6px 14px rgba(43, 23, 11, 0.18);
+}
+
+.brand-text-line {
+  display: flex;
+  align-items: baseline;
+  gap: 14px;
+  white-space: nowrap;
+}
+
+.brand-text-line strong {
+  font-size: 22px;
+  font-weight: 900;
+  color: #21160f;
+  letter-spacing: -0.8px;
+  line-height: 1;
+}
+
+.brand-text-line span {
+  font-size: 15px;
+  font-weight: 500;
+  color: #8f8175;
+  letter-spacing: -0.3px;
+  line-height: 1;
+}
+
+.top-nav {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.top-nav a,
+.top-nav button {
+  height: 40px;
+  padding: 0 17px;
+  border-radius: 999px;
+  border: 1px solid rgba(122, 75, 38, 0.22);
+  background: #fffaf5;
+  color: #6f421f;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 15px;
+  font-weight: 800;
+  text-decoration: none;
+  cursor: pointer;
+}
