@@ -46,10 +46,37 @@ const emptyForm = {
   category: '원룸 월세',
   trade_type: '월세',
   address: '',
+
+  // 임대용
   deposit: '',
   rent: '',
   maintenance_fee: '',
+
+  // 매매용 핵심 금액
+  sale_price: '',          // 매매가격
+  loan_amount: '',         // 융자금
+  interest_rate: '',       // 금리
+  total_deposit: '',       // 보증금 총액
+  takeover_price: '',      // 인수가격
+  total_monthly_rent: '',  // 총월세
+  monthly_interest: '',    // 월 융자이자
+  net_monthly_income: '',  // 월 순수익
+  annual_net_income: '',   // 연 순수익
+  yield_rate: '',          // 수익률
+
+  // 매매용 건물 정보
+  total_units: '',         // 총 세대수
+  rented_units: '',        // 임대중 세대수
+  vacant_units: '',        // 공실 수
+  room_count: '',          // 원룸 수
+  mini_two_count: '',      // 미니투룸 수
+  two_room_count: '',      // 투룸 수
+  owner_unit: '',          // 주인세대 여부
+
+  // 공통 정보
   area: '',
+  land_area: '',           // 대지면적
+  building_area: '',       // 연면적
   floor_info: '',
   direction: '',
   parking: '',
@@ -57,8 +84,16 @@ const emptyForm = {
   approval_date: '',
   room_bath: '',
   structure: '',
+  elevator: '',            // 엘리베이터 여부
+  remodeling: '',          // 리모델링 여부
+  roof_waterproof: '',     // 옥상방수 여부
+  building_condition: '',  // 건물 관리상태
+
   summary: '',
   description: '',
+  investment_point: '',    // 투자 포인트
+  risk_note: '',           // 참고/주의사항
+
   photosText: '',
   map_image: '',
   map_link: '',
@@ -1018,11 +1053,35 @@ function AdminModal({ isAdmin, setIsAdmin, onClose, properties, reload }) {
                   <SelectField label="거래형태" value={form.trade_type} onChange={(v) => updateField('trade_type', v)} options={['월세', '전세', '매매', '반전세', '단기임대']} />
                 </div>
                 <Field label="주소" value={form.address} onChange={(v) => updateField('address', v)} placeholder="경상북도 구미시 진평동 1052-1" />
-                <div className="three-cols">
-                  <Field label="보증금" value={form.deposit} onChange={(v) => updateField('deposit', v)} placeholder="300만원" />
-                  <Field label="월세/매매가" value={form.rent} onChange={(v) => updateField('rent', v)} placeholder="35만원" />
-                  <Field label="관리비" value={form.maintenance_fee} onChange={(v) => updateField('maintenance_fee', v)} placeholder="관리비포함" />
-                </div>
+               {(form.category?.includes('매매') || form.trade_type === '매매') ? (
+  <div className="admin-sale-box">
+    <h4>매매 수익 정보</h4>
+
+    <div className="three-cols">
+      <Field label="매매가격" value={form.sale_price || ''} onChange={(v) => updateField('sale_price', v)} placeholder="35000만원" />
+      <Field label="융자금" value={form.loan_amount || ''} onChange={(v) => updateField('loan_amount', v)} placeholder="18000만원" />
+      <Field label="금리" value={form.interest_rate || ''} onChange={(v) => updateField('interest_rate', v)} placeholder="6%" />
+    </div>
+
+    <div className="three-cols">
+      <Field label="보증금 총액" value={form.total_deposit || ''} onChange={(v) => updateField('total_deposit', v)} placeholder="8000만원" />
+      <Field label="인수가격" value={form.takeover_price || ''} onChange={(v) => updateField('takeover_price', v)} placeholder="9000만원" />
+      <Field label="총월세" value={form.total_monthly_rent || ''} onChange={(v) => updateField('total_monthly_rent', v)} placeholder="430만원" />
+    </div>
+
+    <div className="three-cols">
+      <Field label="융자이자" value={form.monthly_interest || ''} onChange={(v) => updateField('monthly_interest', v)} placeholder="90만원" />
+      <Field label="월 순수익" value={form.net_monthly_income || ''} onChange={(v) => updateField('net_monthly_income', v)} placeholder="340만원" />
+      <Field label="수익률" value={form.yield_rate || ''} onChange={(v) => updateField('yield_rate', v)} placeholder="45.3%" />
+    </div>
+  </div>
+) : (
+  <div className="three-cols">
+    <Field label="보증금" value={form.deposit} onChange={(v) => updateField('deposit', v)} placeholder="300만원" />
+    <Field label="월세" value={form.rent} onChange={(v) => updateField('rent', v)} placeholder="35만원" />
+    <Field label="관리비" value={form.maintenance_fee} onChange={(v) => updateField('maintenance_fee', v)} placeholder="관리비포함" />
+  </div>
+)}
                 <TextArea label="짧은 설명" value={form.summary} onChange={(v) => updateField('summary', v)} rows={3} placeholder="위치, 장점, 입주조건을 짧게 입력" />
               </section>
 
@@ -1047,12 +1106,56 @@ function AdminModal({ isAdmin, setIsAdmin, onClose, properties, reload }) {
                   <Field label="주차" value={form.parking} onChange={(v) => updateField('parking', v)} placeholder="8대" />
                 </div>
                 <div className="three-cols">
-                  <Field label="입주" value={form.move_in} onChange={(v) => updateField('move_in', v)} placeholder="즉시" />
-                  <Field label="사용승인일" value={form.approval_date} onChange={(v) => updateField('approval_date', v)} placeholder="2007년 10월 25일" />
-                  <Field label="구조" value={form.structure} onChange={(v) => updateField('structure', v)} placeholder="분리형 원룸" />
-                </div>
-                <TextArea label="상세설명" value={form.description} onChange={(v) => updateField('description', v)} rows={4} />
-                <div className="two-cols">
+  <Field label="입주" value={form.move_in} onChange={(v) => updateField('move_in', v)} placeholder="즉시" />
+  <Field label="사용승인일" value={form.approval_date} onChange={(v) => updateField('approval_date', v)} placeholder="2007년 10월 25일" />
+  <Field label="구조" value={form.structure} onChange={(v) => updateField('structure', v)} placeholder="철근콘크리트구조" />
+</div>
+
+{(form.category?.includes('매매') || form.trade_type === '매매') && (
+  <div className="admin-sale-box">
+    <h4>매매 건물 정보</h4>
+    <div className="three-cols">
+      <Field label="총 세대수" value={form.total_units || ''} onChange={(v) => updateField('total_units', v)} placeholder="19세대" />
+      <Field label="임대중 세대수" value={form.rented_units || ''} onChange={(v) => updateField('rented_units', v)} placeholder="18세대" />
+      <Field label="공실 수" value={form.vacant_units || ''} onChange={(v) => updateField('vacant_units', v)} placeholder="1세대" />
+    </div>
+
+    <div className="three-cols">
+      <Field label="대지면적" value={form.land_area || ''} onChange={(v) => updateField('land_area', v)} placeholder="281㎡" />
+      <Field label="연면적" value={form.building_area || ''} onChange={(v) => updateField('building_area', v)} placeholder="450㎡" />
+      <Field label="엘리베이터" value={form.elevator || ''} onChange={(v) => updateField('elevator', v)} placeholder="없음" />
+    </div>
+
+    <div className="three-cols">
+      <Field label="리모델링" value={form.remodeling || ''} onChange={(v) => updateField('remodeling', v)} placeholder="전체 리모델링" />
+      <Field label="옥상방수" value={form.roof_waterproof || ''} onChange={(v) => updateField('roof_waterproof', v)} placeholder="완료" />
+      <Field label="건물관리상태" value={form.building_condition || ''} onChange={(v) => updateField('building_condition', v)} placeholder="양호" />
+    </div>
+<TextArea
+  label="투자 포인트"
+  value={form.investment_point || ''}
+  onChange={(v) => updateField('investment_point', v)}
+  rows={3}
+  placeholder="임대수요, 위치, 수익성, 리모델링 상태 등"
+/>
+
+<TextArea
+  label="참고/주의사항"
+  value={form.risk_note || ''}
+  onChange={(v) => updateField('risk_note', v)}
+  rows={3}
+  placeholder="융자, 공실, 수리 필요사항 등"
+/>
+</div>
+)}
+
+<TextArea
+  label="상세설명"
+  value={form.description}
+  onChange={(v) => updateField('description', v)}
+  rows={4}
+/>
+                    <div className="two-cols">
                   <Field label="지도 이미지 URL" value={form.map_image} onChange={(v) => updateField('map_image', v)} />
                   <Field label="지도 링크" value={form.map_link} onChange={(v) => updateField('map_link', v)} />
                 </div>
