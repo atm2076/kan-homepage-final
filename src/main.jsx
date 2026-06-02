@@ -695,16 +695,87 @@ function Hero({ keyword, setKeyword }) {
       구미 전지역
     </button>
 
-    <button type="button" className="map-pin pin-room" onClick={() => setKeyword("원룸 미니투룸 투룸 쓰리룸 월세")}>
-      원룸·투룸
+   <div className="hero-map-card map-dashboard-card">
+  <div className="map-card-head">
+    <div className="map-card-icon">⌖</div>
+    <div>
+      <strong>구미·칠곡 매물 지도</strong>
+      <p>원하는 지역과 매물 유형을 빠르게 선택해보세요.</p>
+    </div>
+  </div>
+
+  <div className="map-control-row">
+    <div className="map-search-box">
+      <span>⌕</span>
+      <input
+        value={keyword}
+        onChange={(e) => setKeyword(e.target.value)}
+        placeholder="지역명, 매물명, 동/읍/면 검색"
+      />
+    </div>
+    <button type="button" onClick={() => setKeyword(keyword.trim())}>
+      검색
+    </button>
+  </div>
+
+  <div className="map-visual-box">
+    <div className="map-road road-a"></div>
+    <div className="map-road road-b"></div>
+    <div className="map-river"></div>
+
+    <span className="map-label label-gumi">구미시청</span>
+    <span className="map-label label-station">구미역</span>
+    <span className="map-label label-river">낙동강</span>
+    <span className="map-label label-buksam">북삼·석적</span>
+
+    <button
+      type="button"
+      className="map-marker marker-gumi"
+      onClick={() => setKeyword('구미')}
+    >
+      구미
     </button>
 
-    <button type="button" className="map-pin pin-invest" onClick={() => setKeyword("수익형 다가구 원룸건물 매매")}>
+    <button
+      type="button"
+      className="map-marker marker-room"
+      onClick={() => setKeyword('원룸')}
+    >
+      원룸
+    </button>
+
+    <button
+      type="button"
+      className="map-marker marker-income"
+      onClick={() => setKeyword('수익형')}
+    >
       수익형
     </button>
 
-    <button type="button" className="map-pin pin-chilgok" onClick={() => setKeyword("칠곡 북삼 석적 중리")}>
-      칠곡·북삼·석적
+    <button
+      type="button"
+      className="map-marker marker-buksam"
+      onClick={() => setKeyword('북삼')}
+    >
+      북삼
+    </button>
+  </div>
+
+  <div className="map-filter-buttons">
+    <button type="button" onClick={() => setKeyword('구미')}>
+      구미 전지역
+    </button>
+
+    <button type="button" onClick={() => setKeyword('원룸')}>
+      원룸·투룸
+    </button>
+
+    <button type="button" onClick={() => setKeyword('수익형')}>
+      수익형 부동산
+    </button>
+
+    <button type="button" onClick={() => setKeyword('북삼')}>
+      북삼·석적
     </button>
   </div>
 </div>
