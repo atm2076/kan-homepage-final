@@ -810,25 +810,33 @@ function PropertyListItem({ property, active, onClick }) {
       {(() => {
   const isSale = property.category?.includes('매매') || property.trade_type === '매매';
 
-  const formatMoney = (value) => {
-    if (!value) return '-';
-    const raw = String(value).trim();
+ const formatMoney = (value) => {
+  if (!value) return '-';
 
-    if (raw.includes('억') || raw.includes('만원') || raw.includes('원')) {
-      return raw;
-    }
+  const raw = String(value).trim();
 
-    const num = Number(raw.replaceAll(',', ''));
-    if (Number.isNaN(num)) return raw;
+  if (raw.includes('억')) {
+    return raw;
+  }
 
-    if (num >= 10000) {
-      const eok = Math.floor(num / 10000);
-      const man = num % 10000;
-      return man ? `${eok}억 ${man.toLocaleString()}만원` : `${eok}억원`;
-    }
+  const cleaned = raw
+    .replaceAll(',', '')
+    .replaceAll('만원', '')
+    .replaceAll('원', '')
+    .replaceAll('약', '')
+    .trim();
 
-    return `${num.toLocaleString()}만원`;
-  };
+  const num = Number(cleaned);
+  if (Number.isNaN(num)) return raw;
+
+  if (num >= 10000) {
+    const eok = Math.floor(num / 10000);
+    const man = num % 10000;
+    return man ? `${eok}억 ${man.toLocaleString()}만원` : `${eok}억원`;
+  }
+
+  return `${num.toLocaleString()}만원`;
+};
 
   const investment =
     property.investment_price ||
