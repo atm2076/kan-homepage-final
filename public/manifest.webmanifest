@@ -1,0 +1,41 @@
+{
+  "name": "칸공인중개사사무소",
+  "short_name": "칸공인중개사",
+  "description": "구미 원룸·투룸·다가구매매·수익형 부동산 매물 안내",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#f7efe6",
+  "theme_color": "#7c3f1d",
+  "orientation": "portrait-primary",
+  "lang": "ko-KR",
+  "categories": ["business", "real-estate"],
+  "icons": [
+    {
+      "src": "/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "매물 보기",
+      "short_name": "매물",
+      "url": "/",
+      "description": "칸공인중개사 매물 목록 보기"
+    },
+    {
+      "name": "관리자",
+      "short_name": "관리자",
+      "url": "/?admin=1",
+      "description": "칸공인중개사 관리자 접속"
+    }
+  ]
+}
