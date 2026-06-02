@@ -2573,3 +2573,235 @@ img {
     overflow: visible !important;
   }
 }
+/* =========================================
+   모바일 매물카드 / 전화문자버튼 / 필터 최종 보정
+   2026-06-03
+========================================= */
+
+@media (max-width: 768px) {
+
+  /* 전체 모바일 가로 깨짐 방지 */
+  body {
+    overflow-x: hidden !important;
+  }
+
+  /* 매물 목록 전체 */
+  .property-grid,
+  .property-list,
+  .listing-grid,
+  .listing-list,
+  .cards,
+  .card-list {
+    display: grid !important;
+    grid-template-columns: 1fr !important;
+    gap: 18px !important;
+    width: 100% !important;
+    padding: 0 14px !important;
+  }
+
+  /* 매물 카드 높이 자동 정리 */
+  .property-card,
+  .listing-card,
+  .card,
+  .room-card,
+  .sale-card {
+    position: relative !important;
+    display: flex !important;
+    flex-direction: column !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    height: auto !important;
+    min-height: auto !important;
+    overflow: hidden !important;
+    padding-bottom: 14px !important;
+  }
+
+  /* 카드 안 이미지 비율 통일 */
+  .property-card img,
+  .listing-card img,
+  .card img,
+  .room-card img,
+  .sale-card img {
+    width: 100% !important;
+    height: 220px !important;
+    object-fit: cover !important;
+    display: block !important;
+    flex-shrink: 0 !important;
+  }
+
+  /* 카드 안 내용 영역 */
+  .property-card-content,
+  .listing-card-content,
+  .card-content,
+  .card-body,
+  .property-info,
+  .listing-info {
+    position: relative !important;
+    width: 100% !important;
+    height: auto !important;
+    min-height: auto !important;
+    padding: 14px !important;
+    overflow: visible !important;
+  }
+
+  /* 전화 / 문자 버튼이 카드 위를 덮지 않도록 고정 해제 */
+  .property-actions,
+  .listing-actions,
+  .card-actions,
+  .contact-actions,
+  .button-row,
+  .btn-row,
+  .call-row,
+  .action-row {
+    position: relative !important;
+    left: auto !important;
+    right: auto !important;
+    top: auto !important;
+    bottom: auto !important;
+    transform: none !important;
+    z-index: 1 !important;
+
+    display: grid !important;
+    grid-template-columns: 1fr 1fr !important;
+    gap: 8px !important;
+    width: 100% !important;
+    margin-top: 12px !important;
+    padding: 0 14px !important;
+  }
+
+  /* 전화 / 문자 버튼 자체 */
+  .call-btn,
+  .sms-btn,
+  .phone-btn,
+  .message-btn,
+  .contact-btn,
+  .consult-btn,
+  a[href^="tel:"],
+  a[href^="sms:"] {
+    position: relative !important;
+    left: auto !important;
+    right: auto !important;
+    top: auto !important;
+    bottom: auto !important;
+    transform: none !important;
+
+    width: 100% !important;
+    min-width: 0 !important;
+    height: 46px !important;
+    min-height: 46px !important;
+    padding: 0 10px !important;
+
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+
+    white-space: nowrap !important;
+    font-size: 15px !important;
+    line-height: 1.2 !important;
+    z-index: 1 !important;
+  }
+
+  /* 혹시 하단 고정 상담바가 있으면 카드 가림 방지 */
+  .fixed-contact,
+  .floating-contact,
+  .bottom-contact,
+  .mobile-contact,
+  .mobile-contact-bar,
+  .sticky-contact,
+  .sticky-buttons {
+    position: fixed !important;
+    left: 12px !important;
+    right: 12px !important;
+    bottom: 12px !important;
+    width: auto !important;
+    max-width: calc(100% - 24px) !important;
+    z-index: 50 !important;
+  }
+
+  /* 하단 고정 버튼이 있을 때 마지막 카드가 가려지지 않도록 여백 확보 */
+  .property-section,
+  .listing-section,
+  .main-section,
+  main {
+    padding-bottom: 90px !important;
+  }
+
+  /* 1차 카테고리 버튼 모바일 정리 */
+  .category-row,
+  .category-tabs,
+  .category-buttons,
+  .main-category,
+  .tab-row {
+    display: grid !important;
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+    gap: 8px !important;
+    width: 100% !important;
+    padding: 12px 14px !important;
+    overflow: visible !important;
+  }
+
+  .category-row button,
+  .category-tabs button,
+  .category-buttons button,
+  .main-category button,
+  .tab-row button {
+    width: 100% !important;
+    min-width: 0 !important;
+    height: auto !important;
+    min-height: 42px !important;
+    padding: 10px 8px !important;
+    font-size: 14px !important;
+    line-height: 1.25 !important;
+    white-space: normal !important;
+    word-break: keep-all !important;
+  }
+
+  /* 2차 필터 바 모바일 정리 */
+  .filter-bar,
+  .sub-filter-bar,
+  .filter-row,
+  .detail-filter,
+  .option-filter {
+    display: grid !important;
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+    gap: 8px !important;
+    width: calc(100% - 28px) !important;
+    margin: 10px 14px 18px !important;
+    padding: 12px !important;
+    overflow: visible !important;
+  }
+
+  .filter-bar button,
+  .sub-filter-bar button,
+  .filter-row button,
+  .detail-filter button,
+  .option-filter button {
+    width: 100% !important;
+    min-width: 0 !important;
+    height: auto !important;
+    min-height: 40px !important;
+    padding: 9px 8px !important;
+    font-size: 13px !important;
+    line-height: 1.25 !important;
+    white-space: normal !important;
+  }
+
+  /* 긴 제목 / 주소 / 설명이 카드 밖으로 나가지 않게 */
+  .property-card h3,
+  .listing-card h3,
+  .card h3,
+  .property-title,
+  .listing-title,
+  .card-title,
+  .property-address,
+  .listing-address,
+  .card-address,
+  .property-desc,
+  .listing-desc,
+  .card-desc {
+    max-width: 100% !important;
+    overflow-wrap: anywhere !important;
+    word-break: keep-all !important;
+    line-height: 1.35 !important;
+  }
+}
