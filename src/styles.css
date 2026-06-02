@@ -3595,3 +3595,209 @@ button[type="submit"]:hover {
   color: #FFFFFF !important;
   border-color: var(--brand-main) !important;
 }
+/* =========================================
+   칸공인중개사 홈페이지 색상 최종 통일
+   브라운 계열 전체 → 네이비 계열
+========================================= */
+
+:root {
+  --brown: #1F3A5F !important;
+  --brown-dark: #162B47 !important;
+  --gold: #1F3A5F !important;
+  --orange: #1F3A5F !important;
+
+  --brand-main: #1F3A5F !important;
+  --brand-main-dark: #162B47 !important;
+  --brand-line: #D9E3EE !important;
+  --brand-soft: #F4F7FB !important;
+}
+
+/* 주요 버튼 전체 */
+button,
+.primary-btn,
+.secondary-btn,
+.search-btn,
+.call-btn,
+.phone-btn,
+.sms-btn,
+.message-btn,
+.contact-btn,
+.consult-btn,
+.hero-search button,
+button[type="submit"],
+a[href^="tel:"],
+a[href^="sms:"] {
+  border-radius: 999px !important;
+}
+
+/* 전화, 매물검색, 주요 CTA */
+.primary-btn,
+.search-btn,
+.hero-search button,
+.call-btn,
+.phone-btn,
+.contact-btn,
+.consult-btn,
+button[type="submit"],
+a[href^="tel:"] {
+  background: #1F3A5F !important;
+  color: #FFFFFF !important;
+  border: 1px solid #1F3A5F !important;
+  box-shadow: none !important;
+}
+
+/* 문자 버튼도 네이비로 통일 */
+.secondary-btn,
+.sms-btn,
+.message-btn,
+a[href^="sms:"] {
+  background: #1F3A5F !important;
+  color: #FFFFFF !important;
+  border: 1px solid #1F3A5F !important;
+  box-shadow: none !important;
+}
+
+/* 오른쪽 떠 있는 전화/문자 버튼 */
+.floating-contact,
+.floating-actions,
+.sticky-actions,
+.mobile-actions,
+.bottom-actions,
+.fixed-contact,
+.mobile-contact-bar {
+  background: transparent !important;
+}
+
+.floating-contact a,
+.floating-actions a,
+.sticky-actions a,
+.mobile-actions a,
+.bottom-actions a,
+.fixed-contact a,
+.mobile-contact-bar a {
+  background: #1F3A5F !important;
+  color: #FFFFFF !important;
+  border: 1px solid #1F3A5F !important;
+}
+
+/* 지도 원형 버튼 */
+.map-pin,
+.pin-gumi,
+.hero-map-card button,
+.mini-map button,
+.map-card button,
+.location-card button {
+  background: #1F3A5F !important;
+  color: #FFFFFF !important;
+  border: 1px solid #1F3A5F !important;
+}
+
+/* 상단 메뉴 버튼 */
+.header nav a,
+.header nav button,
+.site-header nav a,
+.site-header nav button,
+.top-nav a,
+.top-nav button,
+.nav button,
+.nav a {
+  background: #FFFFFF !important;
+  color: #1F3A5F !important;
+  border: 1px solid #D9E3EE !important;
+}
+
+/* 상단 메뉴 hover */
+.header nav a:hover,
+.header nav button:hover,
+.site-header nav a:hover,
+.site-header nav button:hover,
+.top-nav a:hover,
+.top-nav button:hover,
+.nav button:hover,
+.nav a:hover {
+  background: #F4F7FB !important;
+  color: #162B47 !important;
+  border-color: #1F3A5F !important;
+}
+
+/* 카테고리 버튼 */
+.category-row button,
+.category-tabs button,
+.category-buttons button,
+.main-category button,
+.tab-row button {
+  background: #FFFFFF !important;
+  color: #1F3A5F !important;
+  border: 1px solid #D9E3EE !important;
+}
+
+/* 카테고리 활성 버튼 */
+.category-row button.active,
+.category-tabs button.active,
+.category-buttons button.active,
+.main-category button.active,
+.tab-row button.active,
+.category-row button[aria-selected="true"],
+.category-tabs button[aria-selected="true"] {
+  background: #1F3A5F !important;
+  color: #FFFFFF !important;
+  border-color: #1F3A5F !important;
+}
+
+/* 필터 버튼 / 셀렉트 */
+.filter-bar button,
+.sub-filter-bar button,
+.filter-row button,
+.detail-filter button,
+.option-filter button,
+.filter-panel button,
+.filter-bar select,
+.sub-filter-bar select,
+.filter-row select,
+.detail-filter select,
+.option-filter select,
+.filter-panel select {
+  color: #1F3A5F !important;
+  border: 1px solid #D9E3EE !important;
+}
+
+/* KHAN 로고 원형 배경까지 네이비로 통일 */
+.logo,
+.logo-mark,
+.logo-badge,
+.brand-logo,
+.khan-logo,
+.logo-circle {
+  background: #1F3A5F !important;
+  color: #FFFFFF !important;
+}
+
+/* 추천 뱃지 */
+.badge.recommend,
+.recommend,
+.featured,
+.tag-recommend,
+.list-thumb span {
+  background: #1F3A5F !important;
+  color: #FFFFFF !important;
+}
+
+/* hover 전체 */
+.primary-btn:hover,
+.secondary-btn:hover,
+.search-btn:hover,
+.call-btn:hover,
+.phone-btn:hover,
+.sms-btn:hover,
+.message-btn:hover,
+.hero-search button:hover,
+button[type="submit"]:hover,
+a[href^="tel:"]:hover,
+a[href^="sms:"]:hover,
+.map-pin:hover,
+.hero-map-card button:hover,
+.mini-map button:hover {
+  background: #162B47 !important;
+  border-color: #162B47 !important;
+  color: #FFFFFF !important;
+}
