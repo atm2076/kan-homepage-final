@@ -807,11 +807,65 @@ function PropertyListItem({ property, active, onClick }) {
       <div className="list-info">
         <p>{property.category} · {shortAddress(property.address)}</p>
         <h3>{property.title}</h3>
-        {(property.category?.includes('매매') || property.trade_type === '매매') ? (
-          <div className="list-price"><b>매매가 {property.sale_price || '-'}</b> <em>총월세 {property.total_monthly_rent || '-'}</em></div>
-        ) : (
-          <div className="list-price"><b>{property.deposit || '-'}</b> / <b>{property.rent || '-'}</b> <em>{property.maintenance_fee || ''}</em></div>
-        )}
+      {(() => {
+  const isSale = property.category?.includes('매매') || property.trade_type === '매매';
+
+  const formatMoney = (value) => {
+    if (!value) return '-';
+    const raw = String(value).trim();
+
+    if (raw.includes('억') || raw.includes('만원') || raw.includes('원')) {
+      return raw;
+    }
+
+    const num = Number(raw.replaceAll(',', ''));
+    if (Number.isNaN(num)) return raw;
+
+    if (num >= 10000) {
+      const eok = Math.floor(num / 10000);
+      const man = num % 10000;
+      return man ? `${eok}억 ${man.toLocaleString()}만원` : `${eok}억원`;
+    }
+
+    return `${num.toLocaleString()}만원`;
+  };
+
+  const investment =
+    property.investment_price ||
+    property.investment_amount ||
+    property.acquisition_price ||
+    property.takeover_price ||
+    property.takeover_amount ||
+    property.real_investment ||
+    property.actual_investment ||
+    property.purchase_fund ||
+    property.invest_price ||
+    property.required_cash ||
+    property.takeover_amount_text;
+
+  const netIncome =
+    property.monthly_net_income ||
+    property.net_monthly_income ||
+    property.net_profit ||
+    property.monthly_profit ||
+    property.net_income ||
+    property.monthly_surplus ||
+    property.net_monthly_profit;
+
+  return isSale ? (
+    <div className="list-price">
+      <b>실투자금 {formatMoney(investment)}</b>
+      <em>월순수익 {formatMoney(netIncome)}</em>
+      <em>인수금 기준 · 매매가 {formatMoney(property.sale_price)}</em>
+      <em>월세수입 {formatMoney(property.total_monthly_rent)}</em>
+    </div>
+  ) : (
+    <div className="list-price">
+      <b>{property.deposit || '-'}</b> / <b>{property.rent || '-'}</b>
+      <em>{property.maintenance_fee || '-'}</em>
+    </div>
+  );
+})()}
         <div className="mini-facts">
           <span>{property.area || '면적 확인'}</span>
           <span>{property.room_bath || '방/욕실 확인'}</span>
