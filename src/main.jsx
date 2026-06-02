@@ -56,13 +56,13 @@ const emptyForm = {
   sale_price: '',          // 매매가격
   loan_amount: '',         // 융자금
   interest_rate: '',       // 금리
-  investment_amount: '',       // 보증금 총액
-  investment_amount: '',      // 인수가격
+  total_deposit: '',       // 보증금 총액
+  acquisition_price: '',   // 인수가격 / 실인수가
   total_monthly_rent: '',  // 총월세
   monthly_interest: '',    // 월 융자이자
-  net_profit: '',  // 월 순수익
+  net_profit: '',          // 월 순수익
   annual_net_income: '',   // 연 순수익
-  return_rate: '',          // 수익률
+  return_rate: '',         // 수익률
 
   // 매매용 건물 정보
   total_units: '',         // 총 세대수
@@ -180,6 +180,159 @@ function arrayToLines(value) {
   return Array.isArray(value) ? value.join('\n') : '';
 }
 
+function normalizeBulkKey(key) {
+  return String(key || '')
+    .replace(/[\s_\-\/·.()]/g, '')
+    .toLowerCase();
+}
+
+function cleanBulkValue(value) {
+  return String(value || '')
+    .replace(/^[-•▶▷*]+\s*/g, '')
+    .trim();
+}
+
+function parseBulkText(text) {
+  const keyMap = {
+    제목: 'title',
+    매물명: 'title',
+    물건명: 'title',
+    카테고리: 'category',
+    매물종류: 'category',
+    거래형태: 'trade_type',
+    거래유형: 'trade_type',
+    주소: 'address',
+    소재지: 'address',
+    보증금: 'deposit',
+    월세: 'rent',
+    관리비: 'maintenance_fee',
+    매매가: 'sale_price',
+    매매가격: 'sale_price',
+    매도가: 'sale_price',
+    융자: 'loan_amount',
+    융자금: 'loan_amount',
+    대출: 'loan_amount',
+    대출금: 'loan_amount',
+    금리: 'interest_rate',
+    보증금총액: 'total_deposit',
+    총보증금: 'total_deposit',
+    임대보증금: 'total_deposit',
+    인수가: 'acquisition_price',
+    인수가격: 'acquisition_price',
+    실인수가: 'acquisition_price',
+    실투자금: 'acquisition_price',
+    투자금: 'acquisition_price',
+    총월세: 'total_monthly_rent',
+    월세수입: 'total_monthly_rent',
+    월임대료: 'total_monthly_rent',
+    월이자: 'monthly_interest',
+    융자이자: 'monthly_interest',
+    은행이자: 'monthly_interest',
+    월순수익: 'net_profit',
+    순수익: 'net_profit',
+    월수익: 'net_profit',
+    연순수익: 'annual_net_income',
+    수익률: 'return_rate',
+    총세대수: 'total_units',
+    세대수: 'total_units',
+    총가구수: 'total_units',
+    임대중세대수: 'rented_units',
+    임대중: 'rented_units',
+    공실수: 'vacant_units',
+    공실: 'vacant_units',
+    원룸수: 'room_count',
+    원룸: 'room_count',
+    미니투룸수: 'mini_two_count',
+    미투수: 'mini_two_count',
+    투룸수: 'two_room_count',
+    투룸: 'two_room_count',
+    주인세대: 'owner_unit',
+    면적: 'area',
+    전용면적: 'area',
+    대지면적: 'land_area',
+    대지: 'land_area',
+    연면적: 'building_area',
+    건물면적: 'building_area',
+    층수: 'floor_info',
+    총층: 'floor_info',
+    방향: 'direction',
+    방욕실: 'room_bath',
+    방화장실: 'room_bath',
+    세대현황: 'room_bath',
+    구성: 'room_bath',
+    주차: 'parking',
+    입주: 'move_in',
+    입주가능일: 'move_in',
+    사용승인일: 'approval_date',
+    준공일: 'approval_date',
+    구조: 'structure',
+    엘리베이터: 'elevator',
+    승강기: 'elevator',
+    리모델링: 'remodeling',
+    옥상방수: 'roof_waterproof',
+    건물관리상태: 'building_condition',
+    짧은설명: 'summary',
+    요약: 'summary',
+    한줄설명: 'summary',
+    상세설명: 'description',
+    설명: 'description',
+    투자포인트: 'investment_point',
+    참고주의사항: 'risk_note',
+    주의사항: 'risk_note',
+    참고사항: 'risk_note',
+    지도이미지url: 'map_image',
+    지도이미지: 'map_image',
+    지도링크: 'map_link',
+    지도url: 'map_link',
+    옵션편의: 'convenienceText',
+    옵션: 'convenienceText',
+    편의: 'convenienceText',
+    안전시설: 'safetyText',
+    생활권: 'educationText',
+    주변시설: 'educationText'
+  };
+
+  const next = {};
+  const lines = String(text || '').split(/\r?\n/);
+  let currentLongField = '';
+
+  for (const rawLine of lines) {
+    const line = rawLine.trim();
+    if (!line) continue;
+
+    const match = line.match(/^([^:=：]{1,30})\s*[:=：]\s*(.*)$/);
+    if (match) {
+      const key = normalizeBulkKey(match[1]);
+      const field = keyMap[key];
+      const value = cleanBulkValue(match[2]);
+
+      if (field) {
+        if (['description', 'investment_point', 'risk_note', 'convenienceText', 'safetyText', 'educationText'].includes(field)) {
+          next[field] = next[field] ? `${next[field]}\n${value}` : value;
+          currentLongField = field;
+        } else {
+          next[field] = value;
+          currentLongField = '';
+        }
+      }
+      continue;
+    }
+
+    if (currentLongField) {
+      next[currentLongField] = next[currentLongField]
+        ? `${next[currentLongField]}\n${cleanBulkValue(line)}`
+        : cleanBulkValue(line);
+    }
+  }
+
+  if (next.sale_price || next.acquisition_price || next.total_monthly_rent || next.net_profit) {
+    next.trade_type = next.trade_type || '매매';
+    next.category = next.category || '원룸건물매매';
+  }
+
+  return next;
+}
+
 function propertyToForm(property) {
   return {
     ...emptyForm,
@@ -197,37 +350,59 @@ function formToPayload(form) {
     category: form.category.trim(),
     trade_type: form.trade_type.trim(),
     address: form.address.trim(),
-    deposit: form.deposit.trim(),
-    rent: form.rent.trim(),
-    maintenance_fee: form.maintenance_fee.trim(),
-        sale_price: (form.sale_price || '').trim(),
+
+    deposit: (form.deposit || '').trim(),
+    rent: (form.rent || '').trim(),
+    maintenance_fee: (form.maintenance_fee || '').trim(),
+
+    sale_price: (form.sale_price || '').trim(),
     loan_amount: (form.loan_amount || '').trim(),
-    : (form. || '').trim(),
-    investment_amount: (form.investment_amount || '').trim(),
+    interest_rate: (form.interest_rate || '').trim(),
+    total_deposit: (form.total_deposit || '').trim(),
+    acquisition_price: (form.acquisition_price || '').trim(),
     total_monthly_rent: (form.total_monthly_rent || '').trim(),
     monthly_interest: (form.monthly_interest || '').trim(),
     net_profit: (form.net_profit || '').trim(),
+    annual_net_income: (form.annual_net_income || '').trim(),
     return_rate: (form.return_rate || '').trim(),
-    area: form.area.trim(),
-    floor_info: form.floor_info.trim(),
-    direction: form.direction.trim(),
-    parking: form.parking.trim(),
-    move_in: form.move_in.trim(),
-    approval_date: form.approval_date.trim(),
-    room_bath: form.room_bath.trim(),
-    structure: form.structure.trim(),
-    summary: form.summary.trim(),
-    description: form.description.trim(),
+
+    total_units: (form.total_units || '').trim(),
+    rented_units: (form.rented_units || '').trim(),
+    vacant_units: (form.vacant_units || '').trim(),
+    room_count: (form.room_count || '').trim(),
+    mini_two_count: (form.mini_two_count || '').trim(),
+    two_room_count: (form.two_room_count || '').trim(),
+    owner_unit: (form.owner_unit || '').trim(),
+
+    area: (form.area || '').trim(),
+    land_area: (form.land_area || '').trim(),
+    building_area: (form.building_area || '').trim(),
+    floor_info: (form.floor_info || '').trim(),
+    direction: (form.direction || '').trim(),
+    parking: (form.parking || '').trim(),
+    move_in: (form.move_in || '').trim(),
+    approval_date: (form.approval_date || '').trim(),
+    room_bath: (form.room_bath || '').trim(),
+    structure: (form.structure || '').trim(),
+    elevator: (form.elevator || '').trim(),
+    remodeling: (form.remodeling || '').trim(),
+    roof_waterproof: (form.roof_waterproof || '').trim(),
+    building_condition: (form.building_condition || '').trim(),
+
+    summary: (form.summary || '').trim(),
+    description: (form.description || '').trim(),
+    investment_point: (form.investment_point || '').trim(),
+    risk_note: (form.risk_note || '').trim(),
+
     photos: linesToArray(form.photosText),
-    map_image: form.map_image.trim(),
-    map_link: form.map_link.trim(),
+    map_image: (form.map_image || '').trim(),
+    map_link: (form.map_link || '').trim(),
     convenience: linesToArray(form.convenienceText),
     safety: linesToArray(form.safetyText),
     education: linesToArray(form.educationText),
     is_featured: Boolean(form.is_featured)
   };
 }
-
 function formatMoneyPair(property) {
   const deposit = property?.deposit || '-';
   const rent = property?.rent || '-';
@@ -321,6 +496,22 @@ function App() {
       item.approval_date,
       item.room_bath,
       item.structure,
+      item.sale_price,
+      item.loan_amount,
+      item.interest_rate,
+      item.total_deposit,
+      item.acquisition_price,
+      item.total_monthly_rent,
+      item.monthly_interest,
+      item.net_profit,
+      item.return_rate,
+      item.total_units,
+      item.rented_units,
+      item.vacant_units,
+      item.land_area,
+      item.building_area,
+      item.investment_point,
+      item.risk_note,
       ...(item.convenience || []),
       ...(item.safety || []),
       ...(item.education || [])
@@ -616,7 +807,11 @@ function PropertyListItem({ property, active, onClick }) {
       <div className="list-info">
         <p>{property.category} · {shortAddress(property.address)}</p>
         <h3>{property.title}</h3>
-        <div className="list-price"><b>{property.deposit || '-'}</b> / <b>{property.rent || '-'}</b> <em>{property.maintenance_fee || ''}</em></div>
+        {(property.category?.includes('매매') || property.trade_type === '매매') ? (
+          <div className="list-price"><b>매매가 {property.sale_price || '-'}</b> <em>총월세 {property.total_monthly_rent || '-'}</em></div>
+        ) : (
+          <div className="list-price"><b>{property.deposit || '-'}</b> / <b>{property.rent || '-'}</b> <em>{property.maintenance_fee || ''}</em></div>
+        )}
         <div className="mini-facts">
           <span>{property.area || '면적 확인'}</span>
           <span>{property.room_bath || '방/욕실 확인'}</span>
@@ -653,8 +848,8 @@ const infoRows = isSaleProperty
 
       ['매매가', property.sale_price || property.deposit || '계약 전 확인'],
       ['융자금', property.loan_amount || '계약 전 확인'],
-      ['보증금 총액', property. || '계약 전 확인'],
-      ['실인수가', property.investment_amount || '계약 전 확인'],
+      ['보증금 총액', property.total_deposit || '계약 전 확인'],
+      ['실인수가', property.acquisition_price || '계약 전 확인'],
       ['총월세', property.total_monthly_rent || property.rent || '계약 전 확인'],
       ['월이자', property.monthly_interest || '계약 전 확인'],
       ['월순수익', property.net_profit || '계약 전 확인'],
@@ -665,6 +860,9 @@ const infoRows = isSaleProperty
       ['연면적', property.building_area || '계약 전 확인'],
       ['총층', property.floor_info || '계약 전 확인'],
       ['세대현황', property.room_bath || '계약 전 확인'],
+      ['총 세대수', property.total_units || '계약 전 확인'],
+      ['임대중 세대수', property.rented_units || '계약 전 확인'],
+      ['공실 수', property.vacant_units || '계약 전 확인'],
       ['주차', property.parking || '계약 전 확인'],
       ['사용승인일', property.approval_date || '계약 전 확인'],
       ['구조', property.structure || '계약 전 확인'],
@@ -739,6 +937,22 @@ const infoRows = isSaleProperty
             <h2>매물 설명</h2>
             <p className="lead-text">{property.summary || '가격, 위치, 입주조건을 확인 후 안내드리는 매물입니다.'}</p>
             <p>{property.description || '사진과 조건을 확인하시고 전화 또는 문자로 문의주시면 현장 상황과 입주 가능 여부를 바로 안내드리겠습니다.'}</p>
+            {(property.investment_point || property.risk_note) && (
+              <div className="check-points">
+                {property.investment_point && (
+                  <>
+                    <strong>투자 포인트</strong>
+                    <p>{property.investment_point}</p>
+                  </>
+                )}
+                {property.risk_note && (
+                  <>
+                    <strong>참고/주의사항</strong>
+                    <p>{property.risk_note}</p>
+                  </>
+                )}
+              </div>
+            )}
             <div className="check-points">
               <strong>Check Point</strong>
               <ul>
@@ -807,7 +1021,7 @@ const infoRows = isSaleProperty
                   <img src={item.photos?.[0] || 'https://images.unsplash.com/photo-1564013799919-ab600027ffc6?auto=format&fit=crop&w=800&q=80'} alt={item.title} />
                   <span>{shortAddress(item.address)}</span>
                   <strong>{item.title}</strong>
-                  <em>{item.deposit || '-'} / {item.rent || '-'}</em>
+                  <em>{(item.category?.includes('매매') || item.trade_type === '매매') ? `매매가 ${item.sale_price || '-'}` : `${item.deposit || '-'} / ${item.rent || '-'}`}</em>
                 </button>
               ))}
               {!related.length && <p className="muted">등록된 다른 매물이 없습니다.</p>}
@@ -837,7 +1051,7 @@ const infoRows = isSaleProperty
     <>
       <span>매매가 {property.sale_price || property.deposit || '-'}</span>
       <strong>총월세 {property.total_monthly_rent || property.rent || '-'}</strong>
-      {property.investment_amount && <em>실인수가 {property.investment_amount}</em>}
+      {property.acquisition_price && <em>실인수가 {property.acquisition_price}</em>}
       {property.net_profit && <em>월순수익 {property.net_profit}</em>}
     </>
   ) : (
@@ -916,6 +1130,7 @@ function optionIcon(label) {
 function AdminModal({ isAdmin, setIsAdmin, onClose, properties, reload }) {
   const [password, setPassword] = useState('');
   const [form, setForm] = useState(emptyForm);
+  const [bulkText, setBulkText] = useState('');
   const [editingId, setEditingId] = useState(null);
   const [status, setStatus] = useState('');
   const adminPassword = import.meta.env.VITE_ADMIN_PASSWORD || '3883';
@@ -935,6 +1150,18 @@ function AdminModal({ isAdmin, setIsAdmin, onClose, properties, reload }) {
     setForm((prev) => ({ ...prev, [name]: value }));
   }
 
+  function applyBulkInput() {
+    const parsed = parseBulkText(bulkText);
+
+    if (!Object.keys(parsed).length) {
+      setStatus('일괄입력 자료를 읽지 못했습니다. 예: 매매가: 91000 형식으로 넣어주세요.');
+      return;
+    }
+
+    setForm((prev) => ({ ...prev, ...parsed }));
+    setStatus(`일괄입력 ${Object.keys(parsed).length}개 항목을 자동 채웠습니다. 사진 확인 후 저장을 누르세요.`);
+  }
+
   function startEdit(property) {
     setEditingId(property.id);
     setForm(propertyToForm(property));
@@ -944,6 +1171,7 @@ function AdminModal({ isAdmin, setIsAdmin, onClose, properties, reload }) {
   function resetForm() {
     setEditingId(null);
     setForm(emptyForm);
+    setBulkText('');
     setStatus('새 매물 등록 상태입니다.');
   }
 
@@ -1089,6 +1317,28 @@ function AdminModal({ isAdmin, setIsAdmin, onClose, properties, reload }) {
               </div>
 
               <section className="admin-section-block priority-block">
+                <h4>0. 매물자료 일괄입력</h4>
+                <TextArea
+                  label="자료를 통째로 붙여넣기"
+                  value={bulkText}
+                  onChange={setBulkText}
+                  rows={8}
+                  placeholder={`예:
+매물명: 아르고
+주소: 경상북도 구미시 인의동 990-9
+매매가: 91000
+융자금: 41000
+보증금총액: 42200
+인수가격: 7800
+총월세: 498
+월순수익: 327
+수익률: 50.3`}
+                />
+                <button type="button" className="primary-btn" onClick={applyBulkInput}>일괄입력 자동 채우기</button>
+                <p className="muted">사진은 위/아래 사진등록에서 올리고, 매물자료는 이 칸에 통째로 붙여넣은 뒤 자동 채우기를 누르면 됩니다.</p>
+              </section>
+
+              <section className="admin-section-block priority-block">
                 <h4>1. 기본정보</h4>
                 <Field label="제목" value={form.title} onChange={(v) => updateField('title', v)} placeholder="예: 진평초등 앞 리모델링 원룸임대" />
                 <div className="two-cols">
@@ -1101,21 +1351,21 @@ function AdminModal({ isAdmin, setIsAdmin, onClose, properties, reload }) {
     <h4>매매 수익 정보</h4>
 
     <div className="three-cols">
-      <Field label="매매가격" value={form.sale_price || ''} onChange={(v) => updateField('sale_price', v)} placeholder="35000만원" />
-      <Field label="융자금" value={form.loan_amount || ''} onChange={(v) => updateField('loan_amount', v)} placeholder="18000만원" />
-      <Field label="금리" value={form.interest_rate || ''} onChange={(v) => updateField('interest_rate', v)} placeholder="6%" />
+      <Field label="매매가격" value={form.sale_price || ''} onChange={(v) => updateField('sale_price', v)} placeholder="91000만원" />
+      <Field label="융자금" value={form.loan_amount || ''} onChange={(v) => updateField('loan_amount', v)} placeholder="41000만원" />
+      <Field label="금리" value={form.interest_rate || ''} onChange={(v) => updateField('interest_rate', v)} placeholder="5%" />
     </div>
 
     <div className="three-cols">
-      <Field label="보증금 총액" value={form.investment_amount || ''} onChange={(v) => updateField('investment_amount', v)} placeholder="8000만원" />
-      <Field label="인수가격" value={form.investment_amount || ''} onChange={(v) => updateField('investment_amount', v)} placeholder="9000만원" />
-      <Field label="총월세" value={form.total_monthly_rent || ''} onChange={(v) => updateField('total_monthly_rent', v)} placeholder="430만원" />
+      <Field label="보증금 총액" value={form.total_deposit || ''} onChange={(v) => updateField('total_deposit', v)} placeholder="42200만원" />
+      <Field label="인수가격" value={form.acquisition_price || ''} onChange={(v) => updateField('acquisition_price', v)} placeholder="7800만원" />
+      <Field label="총월세" value={form.total_monthly_rent || ''} onChange={(v) => updateField('total_monthly_rent', v)} placeholder="498만원" />
     </div>
 
     <div className="three-cols">
-      <Field label="융자이자" value={form.monthly_interest || ''} onChange={(v) => updateField('monthly_interest', v)} placeholder="90만원" />
-      <Field label="월 순수익" value={form.net_profit || ''} onChange={(v) => updateField('net_profit', v)} placeholder="340만원" />
-      <Field label="수익률" value={form.return_rate || ''} onChange={(v) => updateField('return_rate', v)} placeholder="45.3%" />
+      <Field label="융자이자" value={form.monthly_interest || ''} onChange={(v) => updateField('monthly_interest', v)} placeholder="171만원" />
+      <Field label="월 순수익" value={form.net_profit || ''} onChange={(v) => updateField('net_profit', v)} placeholder="327만원" />
+      <Field label="수익률" value={form.return_rate || ''} onChange={(v) => updateField('return_rate', v)} placeholder="50.3%" />
     </div>
   </div>
 ) : (
@@ -1220,7 +1470,7 @@ function AdminModal({ isAdmin, setIsAdmin, onClose, properties, reload }) {
               {properties.map((property) => (
                 <div className="admin-list-item" key={property.id}>
                   <strong>{property.title}</strong>
-                  <span>{property.deposit} / {property.rent}</span>
+                  <span>{(property.category?.includes('매매') || property.trade_type === '매매') ? `매매가 ${property.sale_price || '-'} / 총월세 ${property.total_monthly_rent || '-'}` : `${property.deposit || '-'} / ${property.rent || '-'}`}</span>
                   <div>
                     <button onClick={() => startEdit(property)}>수정</button>
                     <button onClick={() => deleteProperty(property.id)}>삭제</button>
