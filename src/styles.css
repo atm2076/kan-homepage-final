@@ -2394,3 +2394,31 @@ img {
     font-size: 14px !important;
   }
 }
+
+@media (max-width: 768px) {
+  .floating-buttons {
+    position: fixed !important;
+    left: 14px !important;
+    right: 14px !important;
+    bottom: 18px !important;
+    z-index: 9999 !important;
+    display: flex !important;
+    gap: 10px !important;
+  }
+
+  .floating-buttons a,
+  .floating-buttons button {
+    flex: 1 !important;
+    height: 54px !important;
+    padding: 0 !important;
+    border-radius: 999px !important;
+    font-size: 17px !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+  }
+
+  body {
+    padding-bottom: 90px !important;
+  }
+}
