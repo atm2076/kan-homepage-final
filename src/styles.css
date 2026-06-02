@@ -3136,3 +3136,108 @@ img {
     white-space: normal !important;
   }
 }
+/* =========================================
+   실제 매물 리스트 카드 모바일 보정
+   property-list-item / list-thumb / list-info
+========================================= */
+
+@media (max-width: 768px) {
+  .property-list {
+    display: flex !important;
+    flex-direction: column !important;
+    gap: 14px !important;
+    width: 100% !important;
+    padding: 0 10px !important;
+    overflow: visible !important;
+  }
+
+  .property-list-item {
+    display: grid !important;
+    grid-template-columns: 116px minmax(0, 1fr) !important;
+    align-items: start !important;
+    gap: 10px !important;
+
+    width: 100% !important;
+    max-width: 100% !important;
+    height: auto !important;
+    min-height: auto !important;
+
+    padding: 10px !important;
+    overflow: visible !important;
+    text-align: left !important;
+    border-radius: 18px !important;
+  }
+
+  .property-list-item .list-thumb {
+    width: 116px !important;
+    height: 116px !important;
+    min-height: 116px !important;
+    max-height: 116px !important;
+
+    align-self: start !important;
+    flex: none !important;
+    overflow: hidden !important;
+    border-radius: 14px !important;
+    position: relative !important;
+  }
+
+  .property-list-item .list-thumb img {
+    width: 100% !important;
+    height: 100% !important;
+    object-fit: cover !important;
+    display: block !important;
+  }
+
+  .property-list-item .list-thumb span {
+    position: absolute !important;
+    top: 8px !important;
+    left: 8px !important;
+    z-index: 2 !important;
+  }
+
+  .property-list-item .list-info {
+    width: 100% !important;
+    min-width: 0 !important;
+    max-width: 100% !important;
+    height: auto !important;
+    min-height: auto !important;
+    overflow: visible !important;
+    padding: 0 !important;
+  }
+
+  .property-list-item .list-info p,
+  .property-list-item .list-info h3,
+  .property-list-item .list-info strong,
+  .property-list-item .list-info span,
+  .property-list-item .list-info div {
+    max-width: 100% !important;
+    white-space: normal !important;
+    overflow: visible !important;
+    text-overflow: unset !important;
+    word-break: keep-all !important;
+    overflow-wrap: anywhere !important;
+    line-height: 1.35 !important;
+  }
+
+  .property-list-item .list-info h3 {
+    font-size: 15px !important;
+    line-height: 1.35 !important;
+    margin: 2px 0 6px !important;
+  }
+
+  .property-list-item .list-info p {
+    font-size: 12px !important;
+    line-height: 1.35 !important;
+    margin: 2px 0 !important;
+  }
+
+  .property-list-item .list-info strong {
+    font-size: 15px !important;
+    line-height: 1.35 !important;
+  }
+
+  .property-list-item button,
+  .property-list-item a {
+    max-width: 100% !important;
+  }
+}
