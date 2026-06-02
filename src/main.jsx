@@ -878,7 +878,6 @@ function PropertyListItem({ property, active, onClick }) {
       : '관리비 확인'}
   </em>
 </div>
-    </div>
   );
 })()}
         <div className="mini-facts">
