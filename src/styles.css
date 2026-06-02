@@ -3801,3 +3801,91 @@ a[href^="sms:"]:hover,
   border-color: #162B47 !important;
   color: #FFFFFF !important;
 }
+/* =========================================
+   상세페이지 매물정보 영역 네이비 통일
+========================================= */
+
+/* 상세 카드 */
+.detail-card,
+.property-detail,
+.detail-panel,
+.selected-panel {
+  border: 1px solid #D9E3EE !important;
+  box-shadow: 0 12px 28px rgba(31, 58, 95, 0.08) !important;
+}
+
+/* 매물 정보 제목 밑 라인 */
+.detail-card h2,
+.property-detail h2,
+.detail-panel h2,
+.selected-panel h2 {
+  color: #111827 !important;
+  border-bottom: 2px solid #1F3A5F !important;
+}
+
+/* 실사진 직접 확인 매물 뱃지 */
+.detail-card .badge,
+.property-detail .badge,
+.detail-panel .badge,
+.selected-panel .badge,
+.detail-card .pill,
+.property-detail .pill,
+.detail-panel .pill,
+.selected-panel .pill {
+  background: #F4F7FB !important;
+  color: #1F3A5F !important;
+  border: 1px solid #D9E3EE !important;
+}
+
+/* 매물정보 표 */
+.detail-card table,
+.property-detail table,
+.detail-panel table,
+.selected-panel table,
+.info-table,
+.property-table {
+  border-color: #D9E3EE !important;
+}
+
+/* 표 왼쪽 제목칸 */
+.detail-card th,
+.property-detail th,
+.detail-panel th,
+.selected-panel th,
+.info-table th,
+.property-table th {
+  background: #F4F7FB !important;
+  color: #1F3A5F !important;
+  border-color: #D9E3EE !important;
+  font-weight: 800 !important;
+}
+
+/* 표 오른쪽 내용칸 */
+.detail-card td,
+.property-detail td,
+.detail-panel td,
+.selected-panel td,
+.info-table td,
+.property-table td {
+  background: #FFFFFF !important;
+  color: #111827 !important;
+  border-color: #D9E3EE !important;
+}
+
+/* 사진 썸네일 선택 테두리 */
+.thumbnail.active,
+.thumb.active,
+.detail-thumb.active,
+.photo-thumb.active,
+.gallery-thumb.active {
+  border: 3px solid #1F3A5F !important;
+}
+
+/* 일반 썸네일 */
+.thumbnail,
+.thumb,
+.detail-thumb,
+.photo-thumb,
+.gallery-thumb {
+  border: 1px solid #D9E3EE !important;
+}
