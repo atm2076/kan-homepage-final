@@ -3889,3 +3889,100 @@ a[href^="sms:"]:hover,
 .gallery-thumb {
   border: 1px solid #D9E3EE !important;
 }
+/* =========================================
+   매물카드 타원형 테두리 제거 + 사진칸 정리
+   property-list-item 최종 보정
+========================================= */
+
+/* 매물카드 전체: 알약형 금지 */
+.property-list-item,
+button.property-list-item,
+.property-list-item.active,
+.property-list-item:focus,
+.property-list-item:hover {
+  border-radius: 18px !important;
+  border: 1px solid #D9E3EE !important;
+  outline: none !important;
+  background: #FFFFFF !important;
+  box-shadow: 0 8px 22px rgba(31, 58, 95, 0.08) !important;
+  overflow: hidden !important;
+  color: inherit !important;
+  text-align: left !important;
+}
+
+/* 선택된 카드도 큰 타원형 금지 */
+.property-list-item.active {
+  border: 2px solid #1F3A5F !important;
+  border-radius: 18px !important;
+}
+
+/* 데스크톱 매물카드 배치 */
+@media (min-width: 769px) {
+  .property-list-item,
+  button.property-list-item {
+    display: grid !important;
+    grid-template-columns: 150px minmax(0, 1fr) !important;
+    gap: 12px !important;
+    align-items: start !important;
+    width: 100% !important;
+    height: auto !important;
+    min-height: 170px !important;
+    padding: 12px !important;
+  }
+
+  .property-list-item .list-thumb {
+    width: 150px !important;
+    height: 150px !important;
+    min-height: 150px !important;
+    max-height: 150px !important;
+    border-radius: 14px !important;
+    overflow: hidden !important;
+    background: #F4F7FB !important;
+  }
+
+  .property-list-item .list-thumb img {
+    width: 100% !important;
+    height: 100% !important;
+    object-fit: cover !important;
+    display: block !important;
+    border-radius: 14px !important;
+  }
+}
+
+/* 모바일 매물카드 유지 */
+@media (max-width: 768px) {
+  .property-list-item,
+  button.property-list-item {
+    border-radius: 18px !important;
+    border: 1px solid #D9E3EE !important;
+    overflow: hidden !important;
+  }
+
+  .property-list-item.active {
+    border: 2px solid #1F3A5F !important;
+    border-radius: 18px !important;
+  }
+
+  .property-list-item .list-thumb {
+    width: 116px !important;
+    height: 116px !important;
+    min-height: 116px !important;
+    max-height: 116px !important;
+    border-radius: 14px !important;
+    overflow: hidden !important;
+  }
+
+  .property-list-item .list-thumb img {
+    width: 100% !important;
+    height: 100% !important;
+    object-fit: cover !important;
+    border-radius: 14px !important;
+  }
+}
+
+/* 추천 뱃지만 알약형 허용 */
+.property-list-item .list-thumb span {
+  border-radius: 999px !important;
+  background: #1F3A5F !important;
+  color: #FFFFFF !important;
+}
