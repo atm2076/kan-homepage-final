@@ -3517,3 +3517,81 @@ img {
     margin-bottom: 16px !important;
   }
 }
+/* =========================================
+   버튼 색상 현대적으로 변경
+   브라운 → 네이비 톤
+========================================= */
+
+:root {
+  --brand-main: #1F3A5F;
+  --brand-main-dark: #162B47;
+  --brand-line: #D9E3EE;
+  --brand-soft: #F4F7FB;
+  --brand-text: #FFFFFF;
+}
+
+/* 메인 버튼: 매물검색 / 전화 */
+.primary-btn,
+.call-btn,
+.phone-btn,
+.search-btn,
+.hero-search button,
+button[type="submit"] {
+  background: var(--brand-main) !important;
+  color: var(--brand-text) !important;
+  border: 1px solid var(--brand-main) !important;
+  box-shadow: none !important;
+}
+
+/* 보조 버튼: 문자 */
+.secondary-btn,
+.sms-btn,
+.message-btn {
+  background: #FFFFFF !important;
+  color: var(--brand-main) !important;
+  border: 1px solid var(--brand-line) !important;
+  box-shadow: none !important;
+}
+
+/* 호버 */
+.primary-btn:hover,
+.call-btn:hover,
+.phone-btn:hover,
+.search-btn:hover,
+.hero-search button:hover,
+button[type="submit"]:hover {
+  background: var(--brand-main-dark) !important;
+  border-color: var(--brand-main-dark) !important;
+}
+
+.secondary-btn:hover,
+.sms-btn:hover,
+.message-btn:hover {
+  background: var(--brand-soft) !important;
+  color: var(--brand-main-dark) !important;
+  border-color: var(--brand-main) !important;
+}
+
+/* 카테고리 버튼 */
+.category-row button,
+.category-tabs button,
+.category-buttons button,
+.main-category button,
+.tab-row button {
+  background: #FFFFFF !important;
+  color: var(--brand-main) !important;
+  border: 1px solid var(--brand-line) !important;
+}
+
+/* 활성 카테고리 */
+.category-row button.active,
+.category-tabs button.active,
+.category-buttons button.active,
+.main-category button.active,
+.tab-row button.active,
+.category-row button[aria-selected="true"],
+.category-tabs button[aria-selected="true"] {
+  background: var(--brand-main) !important;
+  color: #FFFFFF !important;
+  border-color: var(--brand-main) !important;
+}
