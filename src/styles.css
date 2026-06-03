@@ -5144,3 +5144,60 @@ button.property-list-item,
     margin-bottom: 0 !important;
   }
 }
+/* =========================================================
+   최종 수정: PC 매물카드 가림 방지 + 모바일 하단 전화/문자 정리
+   ========================================================= */
+
+/* PC 화면에서는 오른쪽 전화/문자 플로팅 버튼 숨김
+   - 이유: 매물 카드 가격/내용을 가림
+   - PC에는 상단 전화번호, 검색영역 버튼, 매물문의 버튼이 있으므로 충분함 */
+@media (min-width: 1025px) {
+  .floating-buttons {
+    display: none !important;
+  }
+
+  body {
+    padding-bottom: 0 !important;
+  }
+}
+
+/* 태블릿/모바일에서는 하단 고정 버튼으로 사용 */
+@media (max-width: 1024px) {
+  .floating-buttons {
+    position: fixed !important;
+    left: 12px !important;
+    right: 12px !important;
+    bottom: 12px !important;
+    width: auto !important;
+    max-width: none !important;
+    display: grid !important;
+    grid-template-columns: 1fr 1fr !important;
+    gap: 10px !important;
+    z-index: 99999 !important;
+    padding: 0 !important;
+    transform: none !important;
+  }
+
+  .floating-buttons a,
+  .floating-buttons button {
+    width: 100% !important;
+    height: 54px !important;
+    min-width: 0 !important;
+    padding: 0 12px !important;
+    border-radius: 18px !important;
+    background: #173A5F !important;
+    color: #ffffff !important;
+    border: 1px solid #173A5F !important;
+    font-size: 16px !important;
+    font-weight: 900 !important;
+    line-height: 1 !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    box-shadow: 0 10px 24px rgba(15, 42, 77, 0.22) !important;
+  }
+
+  body {
+    padding-bottom: 88px !important;
+  }
+}
