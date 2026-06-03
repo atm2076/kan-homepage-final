@@ -5360,3 +5360,62 @@ button.property-list-item,
   margin-top: 3px !important;
   white-space: normal !important;
 }
+
+/* =========================================================
+   모바일 전체 매물 카드 간소화
+   - 사진 + 상부 설명 + 제목 + 핵심가격만 노출
+   - 매매: 투자금 / 월순수익까지만
+   - 임대: 보증금 / 월세 / 관리비까지만
+   ========================================================= */
+
+@media (max-width: 700px) {
+  /* 매매 카드의 매매가/총월세 줄 숨김 */
+  .property-list-item .sale-sub-price {
+    display: none !important;
+  }
+
+  /* 모바일 전체 매물 카드 하단 조건칩 숨김 */
+  .property-list-item .property-tags,
+  .property-list-item .property-badges,
+  .property-list-item .property-chips,
+  .property-list-item .chip-row,
+  .property-list-item .tag-row,
+  .property-list-item .info-tags,
+  .property-list-item .info-chips,
+  .property-list-item .feature-tags,
+  .property-list-item .feature-chips,
+  .property-list-item .badge-row,
+  .property-list-item .meta-chips {
+    display: none !important;
+  }
+
+  /* 혹시 칩이 span 형태로 직접 들어간 경우 대비 */
+  .property-list-item .chip,
+  .property-list-item .pill,
+  .property-list-item .tag,
+  .property-list-item .badge:not(.recommend-badge) {
+    display: none !important;
+  }
+
+  /* 모바일 카드 높이 자동 정리 */
+  .property-list-item {
+    min-height: 132px !important;
+    align-items: start !important;
+  }
+
+  .property-list-item img {
+    width: 116px !important;
+    height: 116px !important;
+  }
+
+  .property-list-item h3 {
+    margin-bottom: 7px !important;
+    -webkit-line-clamp: 2 !important;
+  }
+
+  .property-list-item .sale-main-price {
+    margin-top: 4px !important;
+    font-size: 16px !important;
+    line-height: 1.35 !important;
+  }
+}
