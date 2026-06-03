@@ -4226,3 +4226,157 @@ button.property-list-item,
     font-size: 12px !important;
   }
 }
+/* ============================= */
+/* 모바일 최종 보정 1차 */
+/* 지도 겹침 / 하단버튼 / 추천매물 카드 수정 */
+/* ============================= */
+
+@media (max-width: 768px) {
+
+  body {
+    padding-bottom: 90px !important;
+    overflow-x: hidden !important;
+  }
+
+  /* 상단 검색 버튼 세로 정리 */
+  .hero .search-box,
+  .hero-search,
+  .search-area {
+    width: 100% !important;
+    max-width: 100% !important;
+  }
+
+  .hero .search-box button,
+  .hero-search button,
+  .search-area button {
+    width: 100% !important;
+    margin-top: 8px !important;
+    border-radius: 14px !important;
+  }
+
+  /* 구미·칠곡 매물 지도 카드 */
+  .hero-map-card {
+    width: calc(100% - 28px) !important;
+    max-width: 100% !important;
+    margin: 18px auto 0 !important;
+    padding: 20px !important;
+    border-radius: 24px !important;
+    overflow: hidden !important;
+  }
+
+  .hero-map-card h3 {
+    font-size: 22px !important;
+    line-height: 1.35 !important;
+    margin-bottom: 8px !important;
+  }
+
+  .hero-map-card p {
+    font-size: 15px !important;
+    line-height: 1.55 !important;
+  }
+
+  /* 지도 안 동그라미 버튼 겹침 방지 */
+  .hero-map-card button,
+  .hero-map-card a,
+  .hero-map-card [role="button"] {
+    position: relative !important;
+    top: auto !important;
+    left: auto !important;
+    right: auto !important;
+    bottom: auto !important;
+    transform: none !important;
+    width: 100% !important;
+    min-height: 46px !important;
+    border-radius: 14px !important;
+    margin: 6px 0 !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    font-size: 14px !important;
+    white-space: nowrap !important;
+  }
+
+  /* 상세 조건 필터 모바일 정리 */
+  .filter-bar,
+  .sub-filter-bar,
+  .detail-filter-bar {
+    width: calc(100% - 20px) !important;
+    margin: 14px auto !important;
+    padding: 10px !important;
+    display: grid !important;
+    grid-template-columns: 1fr 1fr !important;
+    gap: 8px !important;
+    overflow: visible !important;
+  }
+
+  .filter-bar select,
+  .filter-bar button,
+  .sub-filter-bar select,
+  .sub-filter-bar button,
+  .detail-filter-bar select,
+  .detail-filter-bar button {
+    width: 100% !important;
+    min-width: 0 !important;
+    height: 42px !important;
+    font-size: 14px !important;
+  }
+
+  /* 하단 전화/문자 버튼이 내용 가리는 문제 보정 */
+  .floating-buttons,
+  .bottom-contact,
+  .fixed-contact,
+  .mobile-contact {
+    position: fixed !important;
+    left: 10px !important;
+    right: 10px !important;
+    bottom: 10px !important;
+    width: auto !important;
+    display: grid !important;
+    grid-template-columns: 1fr 1fr !important;
+    gap: 10px !important;
+    z-index: 9999 !important;
+  }
+
+  .floating-buttons button,
+  .floating-buttons a,
+  .bottom-contact button,
+  .bottom-contact a,
+  .fixed-contact button,
+  .fixed-contact a,
+  .mobile-contact button,
+  .mobile-contact a {
+    width: 100% !important;
+    height: 52px !important;
+    border-radius: 18px !important;
+    font-size: 16px !important;
+    font-weight: 800 !important;
+  }
+
+  /* 구미시의 다른 매물 카드가 동그랗게 보이는 문제 */
+  .related-card,
+  .recommend-card,
+  .other-property-card,
+  .similar-card {
+    border-radius: 18px !important;
+    overflow: hidden !important;
+    width: 100% !important;
+  }
+
+  .related-card img,
+  .recommend-card img,
+  .other-property-card img,
+  .similar-card img {
+    border-radius: 14px !important;
+    width: 100% !important;
+    height: 180px !important;
+    object-fit: cover !important;
+  }
+
+  /* 상세 페이지 표가 하단 버튼에 가리지 않게 */
+  .property-detail,
+  .detail-section,
+  .property-info,
+  .property-table {
+    padding-bottom: 80px !important;
+  }
+}
