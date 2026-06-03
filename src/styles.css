@@ -4380,3 +4380,202 @@ button.property-list-item,
     padding-bottom: 80px !important;
   }
 }
+/* ============================= */
+/* 모바일 보정 2차 - 실제 화면 기준 */
+/* ============================= */
+
+@media (max-width: 768px) {
+
+  /* 모바일 전체 여백 */
+  body {
+    overflow-x: hidden !important;
+    padding-bottom: 95px !important;
+  }
+
+  /* 상단 지도 카드 크기 안정화 */
+  .hero-map-card {
+    width: calc(100% - 36px) !important;
+    margin: 18px auto 24px !important;
+    padding: 22px 18px !important;
+    border-radius: 26px !important;
+    overflow: hidden !important;
+  }
+
+  /* 지도 그림 영역 */
+  .hero-map-card .map-visual,
+  .hero-map-card .map-box,
+  .hero-map-card .map-area,
+  .hero-map-card .mini-map,
+  .hero-map-card > div:last-child {
+    position: relative !important;
+    width: 100% !important;
+    min-height: 210px !important;
+    height: auto !important;
+    overflow: hidden !important;
+    border-radius: 18px !important;
+  }
+
+  /* 지도 안 원형 버튼 겹침 방지 */
+  .hero-map-card .map-pin,
+  .hero-map-card .map-dot,
+  .hero-map-card .map-chip,
+  .hero-map-card .area-dot,
+  .hero-map-card .region-dot,
+  .hero-map-card .location-dot {
+    position: static !important;
+    transform: none !important;
+    width: auto !important;
+    min-width: 96px !important;
+    height: 44px !important;
+    min-height: 44px !important;
+    border-radius: 14px !important;
+    margin: 6px !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    font-size: 13px !important;
+    line-height: 1.2 !important;
+    white-space: nowrap !important;
+  }
+
+  /* 지도 안에 class가 다를 경우까지 강제 보정 */
+  .hero-map-card [class*="pin"],
+  .hero-map-card [class*="dot"],
+  .hero-map-card [class*="chip"],
+  .hero-map-card [class*="region"] {
+    position: static !important;
+    transform: none !important;
+    border-radius: 14px !important;
+    margin: 6px !important;
+    min-height: 42px !important;
+  }
+
+  /* 카테고리 버튼 줄: 가로 스크롤 유지 */
+  .category-bar {
+    width: 100% !important;
+    display: flex !important;
+    flex-wrap: nowrap !important;
+    overflow-x: auto !important;
+    gap: 10px !important;
+    padding: 12px 14px 14px !important;
+    scrollbar-width: thin !important;
+  }
+
+  .category-bar button {
+    flex: 0 0 auto !important;
+    min-width: max-content !important;
+    padding: 12px 18px !important;
+    white-space: nowrap !important;
+  }
+
+  /* 상세조건 필터: 2칸 배치 */
+  .filter-bar,
+  .sub-filter-bar,
+  .detail-filter-bar,
+  .property-filter,
+  .search-filter {
+    width: calc(100% - 24px) !important;
+    margin: 12px auto 22px !important;
+    padding: 12px !important;
+    display: grid !important;
+    grid-template-columns: 1fr 1fr !important;
+    gap: 10px !important;
+    overflow: visible !important;
+    border-radius: 18px !important;
+  }
+
+  .filter-bar select,
+  .filter-bar button,
+  .sub-filter-bar select,
+  .sub-filter-bar button,
+  .detail-filter-bar select,
+  .detail-filter-bar button,
+  .property-filter select,
+  .property-filter button,
+  .search-filter select,
+  .search-filter button {
+    width: 100% !important;
+    min-width: 0 !important;
+    height: 44px !important;
+    font-size: 14px !important;
+    border-radius: 12px !important;
+  }
+
+  /* 매물 상세 정보 표 잘림 방지 */
+  .property-info,
+  .property-detail,
+  .detail-section,
+  .info-table,
+  .property-table {
+    width: 100% !important;
+    overflow-x: auto !important;
+    padding-bottom: 90px !important;
+  }
+
+  .property-info table,
+  .property-detail table,
+  .info-table table,
+  .property-table table {
+    width: 100% !important;
+    min-width: 0 !important;
+    table-layout: fixed !important;
+  }
+
+  /* 구미시의 다른 매물 카드 원형 깨짐 수정 */
+  .related-card,
+  .recommend-card,
+  .similar-card,
+  .other-property-card,
+  .related-list .card,
+  .recommend-list .card,
+  .similar-list .card {
+    width: 100% !important;
+    border-radius: 20px !important;
+    overflow: hidden !important;
+    clip-path: none !important;
+  }
+
+  .related-card img,
+  .recommend-card img,
+  .similar-card img,
+  .other-property-card img,
+  .related-list .card img,
+  .recommend-list .card img,
+  .similar-list .card img {
+    width: 100% !important;
+    height: 190px !important;
+    object-fit: cover !important;
+    border-radius: 16px !important;
+    clip-path: none !important;
+  }
+
+  /* 하단 전화/문자 버튼 */
+  .floating-buttons,
+  .bottom-contact,
+  .fixed-contact,
+  .mobile-contact {
+    position: fixed !important;
+    left: 12px !important;
+    right: 12px !important;
+    bottom: 12px !important;
+    width: auto !important;
+    display: grid !important;
+    grid-template-columns: 1fr 1fr !important;
+    gap: 10px !important;
+    z-index: 99999 !important;
+  }
+
+  .floating-buttons a,
+  .floating-buttons button,
+  .bottom-contact a,
+  .bottom-contact button,
+  .fixed-contact a,
+  .fixed-contact button,
+  .mobile-contact a,
+  .mobile-contact button {
+    height: 52px !important;
+    border-radius: 18px !important;
+    font-size: 16px !important;
+    font-weight: 800 !important;
+  }
+}
