@@ -667,25 +667,7 @@ function Header({ showAdminAccess, onAdmin }) {
   );
 }
 
-function Hero({ keyword, setKeyword }) {
-  return (
-    <section className="hero" id="top">
-      <div className="hero-overlay" />
-      <div className="hero-content">
-        <p className="hero-badge">구미 원룸 · 투룸 · 다가구 · 수익형 부동산 전문</p>
-        <h1>구미 원룸·투룸 월세부터<br />다가구·원룸건물 매매까지</h1>
-        <p className="hero-lead">
-  실사진 매물만 선별해 가격·관리비·입주조건까지 빠르게 확인하세요.
-</p>
-        <div className="hero-search">
-          <input value={keyword} onChange={(e) => setKeyword(e.target.value)} placeholder="지역·가격·매물명 검색" />
-          <a href="#properties">매물검색</a>
-        </div>
-        <div className="hero-actions">
-          <a className="primary-btn" href={`tel:${OFFICE.phone}`}>전화상담 {OFFICE.phone}</a>
-          <a className="secondary-btn" href={`sms:${OFFICE.phone}`}>문자문의</a>
-        </div>
-      </div>
+
 function Hero({ keyword, setKeyword }) {
   return (
     <section className="hero" id="top">
