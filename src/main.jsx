@@ -419,7 +419,62 @@ function shortAddress(address) {
   if (!address) return '위치 계약 전 확인';
   return address.replace('경상북도 ', '').replace('구미시 ', '구미 ');
 }
+function formatAmount(value) {
+  if (!value) return '-';
 
+  const raw = String(value).trim();
+
+  if (raw.includes('억') || raw.includes('만원')) {
+    return raw;
+  }
+
+  const cleaned = raw
+    .replaceAll(',', '')
+    .replaceAll('원', '')
+    .replaceAll('약', '')
+    .trim();
+
+  const num = Number(cleaned);
+
+  if (Number.isNaN(num)) return raw;
+
+  if (num >= 10000) {
+    const eok = Math.floor(num / 10000);
+    const man = num % 10000;
+
+    if (man === 0) return `${eok}억원`;
+    return `${eok}억 ${man.toLocaleString()}만원`;
+  }
+
+  return `${num.toLocaleString()}만원`;
+}
+
+function getSaleDisplay(property) {
+  return {
+    investment:
+      property.acquisition_price ||
+      property.takeover_price ||
+      property.investment_price ||
+      property.investment_amount ||
+      property.real_investment ||
+      property.actual_investment ||
+      property.required_cash ||
+      '',
+    totalRent:
+      property.total_monthly_rent ||
+      property.rent ||
+      '',
+    salePrice:
+      property.sale_price ||
+      property.deposit ||
+      '',
+    netProfit:
+      property.net_profit ||
+      property.monthly_profit ||
+      property.net_income ||
+      ''
+  };
+}
 function App() {
   const [properties, setProperties] = useState(sampleProperties);
   const [selected, setSelected] = useState(sampleProperties[0]);
