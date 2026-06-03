@@ -920,10 +920,18 @@ function PropertyListItem({ property, active, onClick }) {
 
         {isSale ? (
           <div className="list-price">
-            {investment && <b>실투자금 {formatMoney(investment)}</b>}
-            {netIncome && <em>월순수익 {formatMoney(netIncome)}</em>}
-            {property.sale_price && <em>인수금 기준 · 매매가 {formatMoney(property.sale_price)}</em>}
-            {property.total_monthly_rent && <em>월세수입 {formatMoney(property.total_monthly_rent)}</em>}
+           {(() => {
+  const saleDisplay = getSaleDisplay(property);
+
+  return (
+    <>
+      <b>투자금 {formatAmount(saleDisplay.investment)}</b>
+      <em>총월세 {formatAmount(saleDisplay.totalRent)}</em>
+      <em>매매가 {formatAmount(saleDisplay.salePrice)}</em>
+      <em>월순수익 {formatAmount(saleDisplay.netProfit)}</em>
+    </>
+  );
+})()}
           </div>
         ) : (
           <div className="list-price">
