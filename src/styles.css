@@ -5784,3 +5784,82 @@ button.property-list-item,
     margin-bottom: 14px !important;
   }
 }
+
+/* =========================================================
+   PC 첫 화면 레이아웃 조정
+   - 구미·칠곡 매물 지도 카드를 오른쪽/상단으로 이동
+   - 왼쪽 검색창 폭 축소
+   - PC에서만 적용, 모바일은 기존 구조 유지
+   ========================================================= */
+
+@media (min-width: 1025px) {
+  .hero-inner,
+  .hero-content-wrap,
+  .hero-layout {
+    display: grid !important;
+    grid-template-columns: minmax(0, 1.18fr) 480px !important;
+    align-items: start !important;
+    gap: 42px !important;
+  }
+
+  .hero-copy,
+  .hero-left,
+  .hero-text {
+    max-width: 760px !important;
+    padding-top: 28px !important;
+  }
+
+  .hero h1 {
+    max-width: 720px !important;
+  }
+
+  .hero p {
+    max-width: 720px !important;
+  }
+
+  /* 왼쪽 매물 검색창 폭 줄이기 */
+  .hero-search,
+  .search-box,
+  .main-search {
+    max-width: 720px !important;
+    width: 88% !important;
+  }
+
+  /* 오른쪽 구미·칠곡 매물 지도 카드 위치 조정 */
+  .hero-map-card,
+  .map-card,
+  .area-map-card {
+    width: 480px !important;
+    max-width: 480px !important;
+    justify-self: end !important;
+    align-self: start !important;
+    margin-top: -16px !important;
+    margin-right: 10px !important;
+  }
+}
+
+/* 노트북처럼 화면이 조금 좁은 PC에서는 지도카드 살짝 축소 */
+@media (min-width: 1025px) and (max-width: 1280px) {
+  .hero-inner,
+  .hero-content-wrap,
+  .hero-layout {
+    grid-template-columns: minmax(0, 1fr) 430px !important;
+    gap: 28px !important;
+  }
+
+  .hero-search,
+  .search-box,
+  .main-search {
+    max-width: 640px !important;
+    width: 84% !important;
+  }
+
+  .hero-map-card,
+  .map-card,
+  .area-map-card {
+    width: 430px !important;
+    max-width: 430px !important;
+    margin-top: -10px !important;
+    margin-right: 0 !important;
+  }
+}
