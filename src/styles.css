@@ -5762,3 +5762,25 @@ button.property-list-item,
     padding-bottom: 64px !important;
   }
 }
+
+/* =========================================================
+   상세페이지 오른쪽 요약카드 대표사진
+   ========================================================= */
+
+.sticky-contact-card .sticky-card-photo {
+  width: 100% !important;
+  height: 210px !important;
+  object-fit: cover !important;
+  border-radius: 18px !important;
+  margin-bottom: 16px !important;
+  display: block !important;
+  border: 1px solid #eadfce !important;
+}
+
+@media (max-width: 700px) {
+  .sticky-contact-card .sticky-card-photo {
+    height: 190px !important;
+    border-radius: 16px !important;
+    margin-bottom: 14px !important;
+  }
+}
