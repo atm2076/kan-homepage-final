@@ -5726,3 +5726,39 @@ button.property-list-item,
     display: none !important;
   }
 }
+/* =========================================================
+   모바일 하단 전화/문자 버튼 최종 조정
+   - 버튼 높이 축소
+   - 카드 가림 최소화
+   - 터치 가능한 크기는 유지
+   ========================================================= */
+
+@media (max-width: 700px) {
+  .floating-buttons {
+    position: fixed !important;
+    left: 12px !important;
+    right: 12px !important;
+    bottom: 8px !important;
+    width: auto !important;
+    display: grid !important;
+    grid-template-columns: 1fr 1fr !important;
+    gap: 8px !important;
+    padding: 0 !important;
+    z-index: 99999 !important;
+  }
+
+  .floating-buttons a,
+  .floating-buttons button {
+    height: 44px !important;
+    min-height: 44px !important;
+    border-radius: 14px !important;
+    font-size: 14.5px !important;
+    font-weight: 900 !important;
+    padding: 0 8px !important;
+    line-height: 1 !important;
+  }
+
+  body {
+    padding-bottom: 64px !important;
+  }
+}
