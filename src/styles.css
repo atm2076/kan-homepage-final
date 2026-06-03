@@ -5003,3 +5003,44 @@ button.property-list-item,
     word-break: keep-all !important;
   }
 }
+/* PC 화면 - 지도 카드 상하 여백 줄이기 */
+@media (min-width: 769px) {
+  .hero-map-card {
+    min-height: auto !important;
+    height: auto !important;
+    padding: 26px 30px 24px !important;
+  }
+
+  .hero-map-card h2,
+  .hero-map-card h3,
+  .hero-map-card .map-title {
+    margin-top: 0 !important;
+    margin-bottom: 8px !important;
+  }
+
+  .hero-map-card p,
+  .hero-map-card .map-desc {
+    margin-bottom: 14px !important;
+  }
+
+  .hero-map-visual {
+    height: 285px !important;
+    min-height: 285px !important;
+  }
+
+  .hero-map-card .map-filter-buttons {
+    margin-top: 14px !important;
+    margin-bottom: 0 !important;
+  }
+
+  .hero-map-card .map-filter-buttons button {
+    padding: 12px 10px !important;
+  }
+
+  .hero,
+  .hero-section,
+  .hero-content {
+    padding-bottom: 24px !important;
+    margin-bottom: 0 !important;
+  }
+}
