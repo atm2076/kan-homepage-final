@@ -579,9 +579,10 @@ const matchCategory =
 
     const matchKeyword = !q || text.includes(q);
 
-    const matchTrade =
-      filters.trade === '전체' ||
-      text.includes(filters.trade.toLowerCase());
+   const tradeValue = String(item.trade_type || '').trim();
+
+const matchTrade =
+  filters.trade === '전체' || tradeValue === filters.trade;
 
     const matchRoom =
       filters.room === '전체' ||
@@ -1547,8 +1548,9 @@ function AdminModal({ isAdmin, setIsAdmin, onClose, properties, reload }) {
                 <h4>1. 기본정보</h4>
                 <Field label="제목" value={form.title} onChange={(v) => updateField('title', v)} placeholder="예: 진평초등 앞 리모델링 원룸임대" />
                 <div className="two-cols">
-                  <SelectField label="매물종류" value={form.category} onChange={(v) => updateField('category', v)} options={['원룸 월세', '미니투룸 월세', '투룸 월세', '다가구매매', '원룸건물매매', '상가/사무실']} />
-                  <SelectField label="거래형태" value={form.trade_type} onChange={(v) => updateField('trade_type', v)} options={['월세', '전세', '매매', '반전세', '단기임대']} />
+                
+                 <SelectField label="매물종류" value={form.category} onChange={(v) => updateField('category', v)} options={['원룸', '미니투룸', '투룸', '다가구 매매', '상가·사무실']} />
+<SelectField label="거래형태" value={form.trade_type} onChange={(v) => updateField('trade_type', v)} options={['월세', '반전세', '전세', '매매', '단기임대']} />
                 </div>
                 <Field label="주소" value={form.address} onChange={(v) => updateField('address', v)} placeholder="경상북도 구미시 진평동 1052-1" />
                {(form.category?.includes('매매') || form.trade_type === '매매') ? (
