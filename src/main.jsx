@@ -530,7 +530,11 @@ return fixed;
   const q = keyword.trim().toLowerCase();
 
   return properties.filter((item) => {
-    const matchCategory = category === '전체' || item.category === category;
+   const normalizeCategory = (value = '') =>
+  String(value).replace(/\s+/g, '').replace(/·/g, '/');
+
+const matchCategory =
+  category === '전체' || normalizeCategory(item.category) === normalizeCategory(category);
 
     const text = [
       item.title,
