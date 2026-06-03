@@ -4706,3 +4706,51 @@ button.property-list-item,
     height: 190px !important;
   }
 }
+/* ============================= */
+/* 상세 사진 썸네일 스크롤바 숨김 */
+/* ============================= */
+
+.thumb-row {
+  overflow-x: auto !important;
+  overflow-y: hidden !important;
+  scrollbar-width: none !important;
+  -ms-overflow-style: none !important;
+}
+
+.thumb-row::-webkit-scrollbar {
+  display: none !important;
+}
+
+.thumb-row button {
+  flex: 0 0 auto !important;
+}
+
+@media (max-width: 768px) {
+  .thumb-row {
+    display: flex !important;
+    gap: 10px !important;
+    padding: 12px 12px 16px !important;
+    overflow-x: auto !important;
+    overflow-y: hidden !important;
+    scrollbar-width: none !important;
+    -ms-overflow-style: none !important;
+  }
+
+  .thumb-row::-webkit-scrollbar {
+    display: none !important;
+  }
+
+  .thumb-row button {
+    flex: 0 0 74px !important;
+    width: 74px !important;
+    height: 74px !important;
+    border-radius: 50% !important;
+  }
+
+  .thumb-row button img {
+    width: 100% !important;
+    height: 100% !important;
+    object-fit: cover !important;
+    border-radius: 50% !important;
+  }
+}
