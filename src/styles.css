@@ -5201,3 +5201,136 @@ button.property-list-item,
     padding-bottom: 88px !important;
   }
 }
+/* =========================================================
+   최종 수정 2차: 매물 카드 가독성 개선
+   - PC: 직방/다방식 카드 느낌 강화
+   - 가격, 투자금, 월세 정보가 먼저 보이도록 정리
+   ========================================================= */
+
+/* PC 매물 카드 정리 */
+@media (min-width: 1025px) {
+  .property-list {
+    display: grid !important;
+    grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+    gap: 16px !important;
+    align-items: stretch !important;
+  }
+
+  .property-list-item {
+    min-height: 214px !important;
+    padding: 14px !important;
+    border-radius: 20px !important;
+    border: 1px solid #dbe6f2 !important;
+    background: #ffffff !important;
+    box-shadow: 0 8px 24px rgba(15, 42, 77, 0.06) !important;
+    display: grid !important;
+    grid-template-columns: 150px minmax(0, 1fr) !important;
+    gap: 14px !important;
+    align-items: start !important;
+    cursor: pointer !important;
+    overflow: hidden !important;
+  }
+
+  .property-list-item:hover {
+    border-color: #173A5F !important;
+    box-shadow: 0 14px 34px rgba(15, 42, 77, 0.12) !important;
+    transform: translateY(-2px) !important;
+  }
+
+  .property-list-item img {
+    width: 150px !important;
+    height: 150px !important;
+    object-fit: cover !important;
+    border-radius: 14px !important;
+  }
+
+  .property-list-item h3 {
+    margin: 4px 0 10px !important;
+    font-size: 17px !important;
+    line-height: 1.35 !important;
+    font-weight: 900 !important;
+    color: #101828 !important;
+    letter-spacing: -0.4px !important;
+    display: -webkit-box !important;
+    -webkit-line-clamp: 3 !important;
+    -webkit-box-orient: vertical !important;
+    overflow: hidden !important;
+  }
+
+  .property-list-item p {
+    margin: 4px 0 !important;
+    line-height: 1.45 !important;
+  }
+
+  .property-list-item strong {
+    color: #0F3A66 !important;
+    font-size: 17px !important;
+    font-weight: 950 !important;
+  }
+
+  .property-list-item span {
+    line-height: 1.35 !important;
+  }
+
+  .property-list-item small {
+    color: #7a6b5d !important;
+    font-size: 12px !important;
+    font-weight: 800 !important;
+  }
+}
+
+/* 태블릿 */
+@media (max-width: 1024px) and (min-width: 701px) {
+  .property-list {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+    gap: 14px !important;
+  }
+
+  .property-list-item {
+    grid-template-columns: 140px minmax(0, 1fr) !important;
+    min-height: 196px !important;
+    padding: 13px !important;
+  }
+
+  .property-list-item img {
+    width: 140px !important;
+    height: 140px !important;
+    object-fit: cover !important;
+    border-radius: 14px !important;
+  }
+}
+
+/* 모바일 */
+@media (max-width: 700px) {
+  .property-list {
+    display: grid !important;
+    grid-template-columns: 1fr !important;
+    gap: 12px !important;
+  }
+
+  .property-list-item {
+    display: grid !important;
+    grid-template-columns: 118px minmax(0, 1fr) !important;
+    gap: 12px !important;
+    min-height: 168px !important;
+    padding: 12px !important;
+    border-radius: 18px !important;
+  }
+
+  .property-list-item img {
+    width: 118px !important;
+    height: 118px !important;
+    object-fit: cover !important;
+    border-radius: 13px !important;
+  }
+
+  .property-list-item h3 {
+    font-size: 15.5px !important;
+    line-height: 1.35 !important;
+    -webkit-line-clamp: 3 !important;
+  }
+
+  .property-list-item strong {
+    font-size: 16px !important;
+  }
+}
