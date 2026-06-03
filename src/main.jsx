@@ -1297,6 +1297,14 @@ const infoRows = isSaleProperty
         </article>
 
         <aside className="sticky-contact-card">
+          <img
+  className="sticky-card-photo"
+  src={
+    property.photos?.[0] ||
+    'https://images.unsplash.com/photo-1564013799919-ab600027ffc6?auto=format&fit=crop&w=900&q=80'
+  }
+  alt={property.title || '매물 대표사진'}
+/>
           <div className="badge-line">
             {property.is_featured && <span>추천</span>}
             <span>{property.category}</span>
