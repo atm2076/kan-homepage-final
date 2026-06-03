@@ -5625,3 +5625,104 @@ button.property-list-item,
     padding-bottom: 68px !important;
   }
 }
+
+/* =========================================================
+   모바일 매물카드 텍스트 겹침 방지
+   - 사진 + 텍스트 영역 균형 정리
+   - 제목 2줄 제한
+   - 가격 줄 가독성 유지
+   - 하단 조건칩 숨김
+   ========================================================= */
+
+@media (max-width: 700px) {
+  .property-list {
+    gap: 11px !important;
+  }
+
+  .property-list-item {
+    display: grid !important;
+    grid-template-columns: 112px minmax(0, 1fr) !important;
+    gap: 10px !important;
+    padding: 10px !important;
+    min-height: 126px !important;
+    border-radius: 17px !important;
+    align-items: start !important;
+    overflow: hidden !important;
+  }
+
+  .property-list-item .list-thumb {
+    width: 112px !important;
+    height: 112px !important;
+    border-radius: 13px !important;
+    overflow: hidden !important;
+  }
+
+  .property-list-item .list-thumb img {
+    width: 112px !important;
+    height: 112px !important;
+    object-fit: cover !important;
+    border-radius: 13px !important;
+  }
+
+  .property-list-item .mobile-card-text {
+    min-width: 0 !important;
+    overflow: hidden !important;
+    display: flex !important;
+    flex-direction: column !important;
+    gap: 4px !important;
+  }
+
+  .property-list-item .mobile-card-text p {
+    margin: 0 !important;
+    font-size: 11.5px !important;
+    line-height: 1.25 !important;
+    font-weight: 800 !important;
+    color: #7a6b5d !important;
+    white-space: nowrap !important;
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
+  }
+
+  .property-list-item .mobile-card-text h3 {
+    margin: 0 !important;
+    font-size: 15px !important;
+    line-height: 1.32 !important;
+    font-weight: 900 !important;
+    letter-spacing: -0.4px !important;
+    color: #111827 !important;
+    display: -webkit-box !important;
+    -webkit-line-clamp: 2 !important;
+    -webkit-box-orient: vertical !important;
+    overflow: hidden !important;
+  }
+
+  .property-list-item .mobile-card-text .list-price {
+    margin-top: 2px !important;
+    line-height: 1.3 !important;
+  }
+
+  .property-list-item .mobile-card-text .list-price b,
+  .property-list-item .mobile-card-text .sale-main-price {
+    display: block !important;
+    font-size: 15.5px !important;
+    line-height: 1.35 !important;
+    font-weight: 950 !important;
+    color: #0F3A66 !important;
+  }
+
+  .property-list-item .mobile-card-text .list-price em {
+    display: block !important;
+    margin-top: 1px !important;
+    font-size: 12px !important;
+    line-height: 1.25 !important;
+    font-style: normal !important;
+    font-weight: 800 !important;
+    color: #7a6b5d !important;
+  }
+
+  .property-list-item .sale-sub-price,
+  .property-list-item .mobile-card-extra-info,
+  .property-list-item .mini-facts.mobile-card-extra-info {
+    display: none !important;
+  }
+}
