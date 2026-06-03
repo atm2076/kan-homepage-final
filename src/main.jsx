@@ -522,9 +522,8 @@ function App() {
   }, []);
 
   const categories = useMemo(() => {
-    const fixed = ['전체', '원룸 월세', '미니투룸 월세', '투룸 월세', '다가구매매', '원룸건물매매', '상가/사무실'];
-    const fromData = properties.map((item) => item.category).filter(Boolean);
-    return [...new Set([...fixed, ...fromData])];
+   const fixed = ['전체', '원룸', '미니투룸', '투룸', '다가구매매', '상가/사무실'];
+return fixed;
   }, [properties]);
 
   const filtered = useMemo(() => {
