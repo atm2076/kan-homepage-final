@@ -985,7 +985,7 @@ function PropertyListItem({ property, active, onClick }) {
         {property.is_featured && <span>추천</span>}
       </div>
 
-      <div className="list-info">
+     <div className="list-info mobile-card-text">
         <p>{property.category} · {shortAddress(property.address)}</p>
         <h3>{property.title}</h3>
 
