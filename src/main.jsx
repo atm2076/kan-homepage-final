@@ -598,12 +598,19 @@ const matchCategory =
       (filters.floor === '반지하' && text.includes('반지하')) ||
       (filters.floor === '옥탑' && text.includes('옥탑'));
 
-    const matchExtra =
-      filters.extra === '전체' ||
-      (filters.extra === '관리비 포함' && String(item.maintenance_fee || '').includes('포함')) ||
-      (filters.extra === '주차 가능' && text.includes('주차')) ||
-      (filters.extra === '엘리베이터' && text.includes('엘리베이터')) ||
-      (filters.extra === '복층' && text.includes('복층'));
+   const compactText = String(text).replace(/\s+/g, '');
+
+const matchExtra =
+  filters.extra === '전체' ||
+  (filters.extra === '관리비 포함' &&
+    (String(item.maintenance_fee || '').includes('포함') || compactText.includes('관리비포함'))) ||
+  (filters.extra === '즉시입주' &&
+    (String(item.move_in || '').includes('즉시') || compactText.includes('즉시입주'))) ||
+  (filters.extra === '리모델링' && compactText.includes('리모델링')) ||
+  (filters.extra === '풀옵션' && compactText.includes('풀옵션')) ||
+  (filters.extra === '주차 가능' && compactText.includes('주차')) ||
+  (filters.extra === '엘리베이터' && compactText.includes('엘리베이터')) ||
+  (filters.extra === '복층' && compactText.includes('복층'));
 
     return (
       matchCategory &&
