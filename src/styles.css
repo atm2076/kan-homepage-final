@@ -6242,3 +6242,127 @@ button.property-list-item,
     z-index: 5 !important;
   }
 }
+/* =========================================================
+   PC hero 지도카드 복구 + 오른쪽 상단 고정
+   - 사라진 구미·칠곡 매물 지도 카드 다시 표시
+   - 왼쪽 검색창과 겹치지 않게 2열 고정
+   ========================================================= */
+
+@media (min-width: 1025px) {
+  .hero {
+    min-height: 620px !important;
+    height: 620px !important;
+    padding: 54px 64px 36px !important;
+    overflow: hidden !important;
+  }
+
+  .hero-inner,
+  .hero-content-wrap,
+  .hero-layout {
+    width: 100% !important;
+    max-width: 1360px !important;
+    height: 100% !important;
+    margin: 0 auto !important;
+    display: grid !important;
+    grid-template-columns: minmax(0, 620px) 500px !important;
+    gap: 40px !important;
+    align-items: start !important;
+  }
+
+  .hero-copy,
+  .hero-left,
+  .hero-text {
+    width: 100% !important;
+    max-width: 620px !important;
+    min-width: 0 !important;
+    padding-top: 8px !important;
+    grid-column: 1 !important;
+  }
+
+  .hero h1 {
+    max-width: 620px !important;
+    font-size: 58px !important;
+    line-height: 1.06 !important;
+    letter-spacing: -2.8px !important;
+    margin: 24px 0 18px !important;
+    word-break: keep-all !important;
+  }
+
+  .hero p {
+    max-width: 620px !important;
+    font-size: 16px !important;
+    line-height: 1.48 !important;
+    margin-bottom: 22px !important;
+  }
+
+  .hero-search,
+  .search-box,
+  .main-search {
+    width: 100% !important;
+    max-width: 570px !important;
+    min-width: 0 !important;
+  }
+
+  .hero-map-card,
+  .map-card,
+  .area-map-card {
+    display: block !important;
+    visibility: visible !important;
+    opacity: 1 !important;
+    width: 500px !important;
+    max-width: 500px !important;
+    min-height: 430px !important;
+    grid-column: 2 !important;
+    justify-self: end !important;
+    align-self: start !important;
+    margin-top: 0 !important;
+    margin-right: 0 !important;
+    position: relative !important;
+    right: auto !important;
+    top: auto !important;
+    transform: none !important;
+    z-index: 10 !important;
+  }
+}
+
+/* 노트북 폭 보정 */
+@media (min-width: 1025px) and (max-width: 1380px) {
+  .hero {
+    height: 600px !important;
+    min-height: 600px !important;
+    padding: 50px 52px 34px !important;
+  }
+
+  .hero-inner,
+  .hero-content-wrap,
+  .hero-layout {
+    max-width: 1260px !important;
+    grid-template-columns: minmax(0, 590px) 470px !important;
+    gap: 34px !important;
+  }
+
+  .hero-copy,
+  .hero-left,
+  .hero-text {
+    max-width: 590px !important;
+  }
+
+  .hero h1 {
+    max-width: 590px !important;
+    font-size: 54px !important;
+  }
+
+  .hero-search,
+  .search-box,
+  .main-search {
+    max-width: 540px !important;
+  }
+
+  .hero-map-card,
+  .map-card,
+  .area-map-card {
+    width: 470px !important;
+    max-width: 470px !important;
+    min-height: 410px !important;
+  }
+}
