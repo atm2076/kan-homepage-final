@@ -849,6 +849,7 @@ function FilterBar({ filters, setFilters, onReset }) {
   <option value="반전세">반전세</option>
   <option value="전세">전세</option>
   <option value="매매">매매</option>
+       <option value="매매">매매</option>
 </select>
 
       <select value={filters.room} onChange={(e) => update('room', e.target.value)}>
