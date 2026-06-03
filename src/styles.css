@@ -5419,3 +5419,22 @@ button.property-list-item,
     line-height: 1.35 !important;
   }
 }
+/* =========================================================
+   모바일 전체 매물 카드 하단 조건칩 숨김
+   - PC는 그대로 유지
+   - 모바일은 사진 + 상부설명 + 제목 + 핵심가격만 표시
+   ========================================================= */
+
+@media (max-width: 700px) {
+  .mobile-card-extra-info {
+    display: none !important;
+  }
+
+  .property-list-item {
+    min-height: 132px !important;
+  }
+
+  .property-list-item .sale-sub-price {
+    display: none !important;
+  }
+}
