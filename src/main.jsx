@@ -1227,14 +1227,60 @@ const infoRows = isSaleProperty
 </section>
             <h2>구미시의 다른 매물</h2>
             <div className="related-grid">
-              {related.map((item) => (
-                <button key={item.id} className="related-card" onClick={() => onSelect(item)}>
-                  <img src={item.photos?.[0] || 'https://images.unsplash.com/photo-1564013799919-ab600027ffc6?auto=format&fit=crop&w=800&q=80'} alt={item.title} />
-                  <span>{shortAddress(item.address)}</span>
-                  <strong>{item.title}</strong>
-                  <em>{(item.category?.includes('매매') || item.trade_type === '매매') ? `매매가 ${item.sale_price || '-'}` : `${item.deposit || '-'} / ${item.rent || '-'}`}</em>
-                </button>
-              ))}
+             {related.map((item) => {
+  const relatedSale =
+    item.category?.includes('매매') || item.trade_type === '매매';
+
+  const saleDisplay = getSaleDisplay(item);
+
+  const relatedPhoto =
+    item.photos?.[0] ||
+    'https://images.unsplash.com/photo-1564013799919-ab600027ffc6?auto=format&fit=crop&w=800&q=80';
+
+  const maintenanceText =
+    item.maintenance_fee && String(item.maintenance_fee).includes('포함')
+      ? '관리비 포함'
+      : item.maintenance_fee
+      ? `관리비 ${item.maintenance_fee}`
+      : '';
+
+  return (
+    <button
+      key={item.id}
+      className="related-card related-simple-card"
+      onClick={() => onSelect(item)}
+    >
+      <img src={relatedPhoto} alt={item.title || '추천 매물'} />
+
+      <div className="related-simple-info">
+        <span className="related-simple-meta">
+          {item.category || item.trade_type || '매물'} · {shortAddress(item.address)}
+        </span>
+
+        <strong className="related-simple-title">
+          {item.title}
+        </strong>
+
+        {relatedSale ? (
+          <em className="related-simple-price">
+            투자금 {formatAmount(saleDisplay.investment)} · 월순수익 {formatAmount(saleDisplay.netProfit)}
+          </em>
+        ) : (
+          <>
+            <em className="related-simple-price">
+              보증금 {formatAmount(item.deposit)} / 월세 {formatAmount(item.rent)}
+            </em>
+            {maintenanceText && (
+              <span className="related-simple-maintenance">
+                {maintenanceText}
+              </span>
+            )}
+          </>
+        )}
+      </div>
+    </button>
+  );
+})}
               {!related.length && <p className="muted">등록된 다른 매물이 없습니다.</p>}
             </div>
           </section>
