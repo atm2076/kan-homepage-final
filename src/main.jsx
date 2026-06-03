@@ -728,11 +728,11 @@ function Hero({ keyword, setKeyword }) {
       <div className="hero-overlay" />
 
       <div className="hero-content">
-        <p className="hero-badge">구미 원룸 · 투룸 · 다가구 · 수익형 부동산 전문</p>
-        <h1>구미 원룸·투룸 월세부터<br />다가구·원룸건물 매매까지</h1>
-        <p className="hero-lead">
-          실사진 매물만 선별해 가격·관리비·입주조건까지 빠르게 확인하세요.
-        </p>
+       <p className="hero-badge">구미 임대 3,000여 개 · 매매/수익형 150여 개 상담 가능</p>
+<h1>구미 방 찾을 때,<br />칸에서 먼저 확인하세요</h1>
+<p className="hero-lead">
+  원룸·미니투룸·투룸 월세부터 다가구 매매·수익형 부동산까지 조건별로 빠르게 안내합니다.
+</p>
 
         <div className="hero-search">
           <input
