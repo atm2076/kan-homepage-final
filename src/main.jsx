@@ -866,48 +866,48 @@ function ErrorNotice({ message }) {
     </div>
   );
 }
-
 function PropertyListItem({ property, active, onClick }) {
-  const cover = property.photos?.[0] || 'https://images.unsplash.com/photo-1564013799919-ab600027ffc6?auto=format&fit=crop&w=1200&q=80';
-  return (
-    <button className={`property-list-item ${active ? 'active' : ''}`} onClick={onClick}>
-      <div className="list-thumb">
-        <img src={cover} alt={property.title} />
-        {property.is_featured && <span>추천</span>}
-      </div>
-      <div className="list-info">
-        <p>{property.category} · {shortAddress(property.address)}</p>
-        <h3>{property.title}</h3>
-      {(() => {
-  const isSale = property.category?.includes('매매') || property.trade_type === '매매';
+  const cover =
+    property.photos?.[0] ||
+    'https://images.unsplash.com/photo-1564013799919-ab600027ffc6?auto=format&fit=crop&w=1200&q=80';
 
- const formatMoney = (value) => {
-  if (!value) return '-';
+  const isSale =
+    property.category?.includes('매매') ||
+    property.trade_type === '매매';
 
-  const raw = String(value).trim();
+  const formatMoney = (value) => {
+    if (!value) return '-';
 
-  if (raw.includes('억')) {
-    return raw;
-  }
+    const raw = String(value).trim();
 
-  const cleaned = raw
-    .replaceAll(',', '')
-    .replaceAll('만원', '')
-    .replaceAll('원', '')
-    .replaceAll('약', '')
-    .trim();
+    if (raw.includes('억')) {
+      return raw;
+    }
 
-  const num = Number(cleaned);
-  if (Number.isNaN(num)) return raw;
+    const cleaned = raw
+      .replaceAll(',', '')
+      .replaceAll('만원', '')
+      .replaceAll('원', '')
+      .replaceAll('약', '')
+      .trim();
 
-  if (num >= 10000) {
-    const eok = Math.floor(num / 10000);
-    const man = num % 10000;
-    return man ? `${eok}억 ${man.toLocaleString()}만원` : `${eok}억원`;
-  }
+    const num = Number(cleaned);
 
-  return `${num.toLocaleString()}만원`;
-};
+    if (Number.isNaN(num)) return raw;
+
+    if (num >= 10000) {
+      const eok = Math.floor(num / 10000);
+      const man = num % 10000;
+
+      if (man === 0) {
+        return `${eok}억원`;
+      }
+
+      return `${eok}억 ${man.toLocaleString()}만원`;
+    }
+
+    return `${num.toLocaleString()}만원`;
+  };
 
   const investment =
     property.investment_price ||
@@ -931,26 +931,42 @@ function PropertyListItem({ property, active, onClick }) {
     property.monthly_surplus ||
     property.net_monthly_profit;
 
-  return isSale ? (
-    <div className="list-price">
-      <b>실투자금 {formatMoney(investment)}</b>
-      <em>월순수익 {formatMoney(netIncome)}</em>
-      <em>인수금 기준 · 매매가 {formatMoney(property.sale_price)}</em>
-      <em>월세수입 {formatMoney(property.total_monthly_rent)}</em>
-    </div>
-  ) : (
-   <div className="list-price">
-  <b>보증금 {formatMoney(property.deposit)} / 월세 {formatMoney(property.rent)}</b>
-  <em>
-    {property.maintenance_fee
-      ? String(property.maintenance_fee).includes('포함')
-        ? '관리비 포함'
-        : `관리비 ${formatMoney(property.maintenance_fee)}`
-      : '관리비 확인'}
-  </em>
-</div>
-  );
-})()}
+  return (
+    <button
+      className={`property-list-item ${active ? 'active' : ''}`}
+      onClick={onClick}
+    >
+      <div className="list-thumb">
+        <img src={cover} alt={property.title} />
+        {property.is_featured && <span>추천</span>}
+      </div>
+
+      <div className="list-info">
+        <p>{property.category} · {shortAddress(property.address)}</p>
+        <h3>{property.title}</h3>
+
+        {isSale ? (
+          <div className="list-price">
+            {investment && <b>실투자금 {formatMoney(investment)}</b>}
+            {netIncome && <em>월순수익 {formatMoney(netIncome)}</em>}
+            {property.sale_price && <em>인수금 기준 · 매매가 {formatMoney(property.sale_price)}</em>}
+            {property.total_monthly_rent && <em>월세수입 {formatMoney(property.total_monthly_rent)}</em>}
+          </div>
+        ) : (
+          <div className="list-price">
+            <b>
+              보증금 {formatMoney(property.deposit)} / 월세 {formatMoney(property.rent || property.monthly_rent)}
+            </b>
+            <em>
+              {property.maintenance_fee
+                ? String(property.maintenance_fee).includes('포함')
+                  ? '관리비 포함'
+                  : `관리비 ${formatMoney(property.maintenance_fee)}`
+                : '관리비 확인'}
+            </em>
+          </div>
+        )}
+
         <div className="mini-facts">
           <span>{property.area || '면적 확인'}</span>
           <span>{property.room_bath || '방/욕실 확인'}</span>
