@@ -867,13 +867,16 @@ function FilterBar({ filters, setFilters, onReset }) {
         <option value="옥탑">옥탑</option>
       </select>
 
-      <select value={filters.extra} onChange={(e) => update('extra', e.target.value)}>
-        <option value="전체">추가필터</option>
-        <option value="관리비 포함">관리비 포함</option>
-        <option value="주차 가능">주차 가능</option>
-        <option value="엘리베이터">엘리베이터</option>
-        <option value="복층">복층</option>
-      </select>
+     <select value={filters.extra} onChange={(e) => update('extra', e.target.value)}>
+  <option value="전체">추가필터</option>
+  <option value="관리비 포함">관리비 포함</option>
+  <option value="즉시입주">즉시입주</option>
+  <option value="리모델링">리모델링</option>
+  <option value="풀옵션">풀옵션</option>
+  <option value="주차 가능">주차 가능</option>
+  <option value="엘리베이터">엘리베이터</option>
+  <option value="복층">복층</option>
+</select>
 
       <button type="button" onClick={onReset} className="reset-filter-btn">
         초기화
