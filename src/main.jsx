@@ -835,12 +835,13 @@ function FilterBar({ filters, setFilters, onReset }) {
 
   return (
     <div className="filter-strip">
-      <select value={filters.trade} onChange={(e) => update('trade', e.target.value)}>
-        <option value="전체">월세/전세</option>
-        <option value="월세">월세</option>
-        <option value="전세">전세</option>
-        <option value="매매">매매</option>
-      </select>
+     <select value={filters.trade} onChange={(e) => update('trade', e.target.value)}>
+  <option value="전체">거래형태</option>
+  <option value="월세">월세</option>
+  <option value="반전세">반전세</option>
+  <option value="전세">전세</option>
+  <option value="매매">매매</option>
+</select>
 
       <select value={filters.room} onChange={(e) => update('room', e.target.value)}>
         <option value="전체">방크기</option>
