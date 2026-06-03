@@ -5044,3 +5044,103 @@ button.property-list-item,
     margin-bottom: 0 !important;
   }
 }
+/* PC 첫 화면 지도 카드 최종 정리 - 중앙 몰림, 크기, 왼쪽 이동, 하단 공백 수정 */
+@media (min-width: 769px) {
+  .hero-right,
+  .hero-visual,
+  .hero-content,
+  .hero-section,
+  .hero {
+    overflow: visible !important;
+  }
+
+  .hero-map-card {
+    width: 480px !important;
+    max-width: 480px !important;
+    min-height: auto !important;
+    height: auto !important;
+    padding: 26px 30px 24px !important;
+    margin-left: -55px !important;
+    overflow: visible !important;
+  }
+
+  .hero-map-card h2,
+  .hero-map-card h3,
+  .hero-map-card .map-title {
+    margin-top: 0 !important;
+    margin-bottom: 8px !important;
+  }
+
+  .hero-map-card p,
+  .hero-map-card .map-desc {
+    margin-bottom: 14px !important;
+  }
+
+  .hero-map-visual {
+    width: 100% !important;
+    height: 310px !important;
+    min-height: 310px !important;
+    position: relative !important;
+    overflow: hidden !important;
+    border-radius: 24px !important;
+  }
+
+  .hero-map-visual .map-marker {
+    position: absolute !important;
+    white-space: nowrap !important;
+    word-break: keep-all !important;
+    z-index: 10 !important;
+    padding: 14px 28px !important;
+    font-size: 15px !important;
+    font-weight: 800 !important;
+  }
+
+  .hero-map-visual .marker-gumi {
+    left: 12% !important;
+    top: 36% !important;
+  }
+
+  .hero-map-visual .marker-room {
+    right: 12% !important;
+    top: 36% !important;
+  }
+
+  .hero-map-visual .marker-profit {
+    left: 15% !important;
+    bottom: 24% !important;
+  }
+
+  .hero-map-visual .marker-buksam {
+    right: 15% !important;
+    bottom: 24% !important;
+  }
+
+  .hero-map-card .map-filter-buttons {
+    display: grid !important;
+    grid-template-columns: repeat(2, 1fr) !important;
+    gap: 12px !important;
+    margin-top: 14px !important;
+    margin-bottom: 0 !important;
+    width: 100% !important;
+  }
+
+  .hero-map-card .map-filter-buttons button {
+    width: 100% !important;
+    min-width: 0 !important;
+    height: auto !important;
+    padding: 12px 10px !important;
+    font-size: 15px !important;
+    font-weight: 800 !important;
+    line-height: 1.2 !important;
+    text-align: center !important;
+    white-space: nowrap !important;
+    word-break: keep-all !important;
+  }
+
+  .hero,
+  .hero-section,
+  .hero-content {
+    padding-bottom: 22px !important;
+    margin-bottom: 0 !important;
+  }
+}
