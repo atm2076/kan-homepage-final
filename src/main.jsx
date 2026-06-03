@@ -531,7 +531,7 @@ return fixed;
 
   return properties.filter((item) => {
    const normalizeCategory = (value = '') =>
-  String(value).replace(/\s+/g, '').replace(/·/g, '/');
+ String(value).replace(/\s+/g, '').replace(/\u00B7/g, '/');
 
 const matchCategory =
   category === '전체' || normalizeCategory(item.category) === normalizeCategory(category);
