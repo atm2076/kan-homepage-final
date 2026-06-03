@@ -6075,3 +6075,170 @@ button.property-list-item,
     margin-top: 26px !important;
   }
 }
+/* =========================================================
+   PC 첫 화면 시안형 압축 레이아웃
+   - 지도카드 위로 이동
+   - hero 세로 높이 축소
+   - 아래 장점 카드가 첫 화면에 보이도록 조정
+   ========================================================= */
+
+@media (min-width: 1025px) {
+  .hero {
+    min-height: 640px !important;
+    height: 640px !important;
+    padding: 62px 52px 40px !important;
+    overflow: hidden !important;
+    background-position: center center !important;
+    background-size: cover !important;
+  }
+
+  .hero-inner,
+  .hero-content-wrap,
+  .hero-layout {
+    width: 100% !important;
+    max-width: 1360px !important;
+    height: 100% !important;
+    margin: 0 auto !important;
+    display: grid !important;
+    grid-template-columns: minmax(0, 1fr) 490px !important;
+    gap: 36px !important;
+    align-items: start !important;
+  }
+
+  .hero-copy,
+  .hero-left,
+  .hero-text {
+    max-width: 650px !important;
+    padding-top: 12px !important;
+    min-width: 0 !important;
+  }
+
+  .hero h1 {
+    max-width: 650px !important;
+    font-size: 60px !important;
+    line-height: 1.06 !important;
+    letter-spacing: -2.8px !important;
+    margin: 28px 0 18px !important;
+    word-break: keep-all !important;
+  }
+
+  .hero p {
+    max-width: 650px !important;
+    font-size: 16.5px !important;
+    line-height: 1.5 !important;
+    margin-bottom: 22px !important;
+  }
+
+  .hero-search,
+  .search-box,
+  .main-search {
+    width: 100% !important;
+    max-width: 590px !important;
+    min-width: 0 !important;
+    margin-bottom: 18px !important;
+  }
+
+  .hero-search input,
+  .search-box input,
+  .main-search input {
+    min-width: 0 !important;
+  }
+
+  .hero-search button,
+  .search-box button,
+  .main-search button {
+    flex-shrink: 0 !important;
+  }
+
+  .hero-map-card,
+  .map-card,
+  .area-map-card {
+    width: 490px !important;
+    max-width: 490px !important;
+    max-height: 520px !important;
+    justify-self: end !important;
+    align-self: start !important;
+    margin-top: 0 !important;
+    margin-right: 0 !important;
+    transform: translateY(-6px) !important;
+    position: relative !important;
+    z-index: 3 !important;
+  }
+
+  .hero-map-card h2,
+  .map-card h2,
+  .area-map-card h2 {
+    font-size: 28px !important;
+    line-height: 1.2 !important;
+    margin-bottom: 8px !important;
+  }
+
+  .hero-map-card p,
+  .map-card p,
+  .area-map-card p {
+    font-size: 14px !important;
+    margin-bottom: 18px !important;
+  }
+}
+
+/* 1360px 이하 PC/노트북에서는 더 압축 */
+@media (min-width: 1025px) and (max-width: 1380px) {
+  .hero {
+    min-height: 610px !important;
+    height: 610px !important;
+    padding: 56px 42px 34px !important;
+  }
+
+  .hero-inner,
+  .hero-content-wrap,
+  .hero-layout {
+    max-width: 1260px !important;
+    grid-template-columns: minmax(0, 1fr) 470px !important;
+    gap: 30px !important;
+  }
+
+  .hero-copy,
+  .hero-left,
+  .hero-text {
+    max-width: 620px !important;
+    padding-top: 10px !important;
+  }
+
+  .hero h1 {
+    max-width: 620px !important;
+    font-size: 56px !important;
+    line-height: 1.05 !important;
+    margin: 24px 0 16px !important;
+  }
+
+  .hero p {
+    max-width: 600px !important;
+    font-size: 16px !important;
+  }
+
+  .hero-search,
+  .search-box,
+  .main-search {
+    max-width: 570px !important;
+  }
+
+  .hero-map-card,
+  .map-card,
+  .area-map-card {
+    width: 470px !important;
+    max-width: 470px !important;
+    transform: translateY(-8px) !important;
+  }
+}
+
+/* 첫 화면 아래 장점 카드가 너무 내려가지 않게 */
+@media (min-width: 1025px) {
+  .hero-benefits,
+  .benefit-strip,
+  .feature-strip,
+  .quick-benefits {
+    margin-top: -72px !important;
+    position: relative !important;
+    z-index: 5 !important;
+  }
+}
