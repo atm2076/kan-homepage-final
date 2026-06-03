@@ -4925,3 +4925,81 @@ button.property-list-item,
     word-break: keep-all !important;
   }
 }
+/* PC 오른쪽 지도 카드 확대 + 왼쪽 이동 + 지도 버튼 사각 정렬 */
+@media (min-width: 769px) {
+  .hero-right,
+  .hero-visual {
+    overflow: visible !important;
+  }
+
+  .hero-map-card {
+    width: 470px !important;
+    max-width: 470px !important;
+    min-height: 650px !important;
+    padding: 36px 32px 40px !important;
+    margin-left: -45px !important;
+    overflow: visible !important;
+  }
+
+  .hero-map-visual {
+    width: 100% !important;
+    height: 300px !important;
+    min-height: 300px !important;
+    position: relative !important;
+    overflow: hidden !important;
+    border-radius: 24px !important;
+  }
+
+  .hero-map-visual .map-marker {
+    position: absolute !important;
+    white-space: nowrap !important;
+    word-break: keep-all !important;
+    z-index: 10 !important;
+    padding: 14px 28px !important;
+    font-size: 15px !important;
+    font-weight: 800 !important;
+  }
+
+  /* 지도 안 버튼 4개 사각 정렬 */
+  .hero-map-visual .marker-gumi {
+    left: 13% !important;
+    top: 38% !important;
+  }
+
+  .hero-map-visual .marker-room {
+    right: 13% !important;
+    top: 38% !important;
+  }
+
+  .hero-map-visual .marker-profit {
+    left: 25% !important;
+    bottom: 24% !important;
+  }
+
+  .hero-map-visual .marker-buksam {
+    right: 22% !important;
+    bottom: 24% !important;
+  }
+
+  /* 아래 버튼 2칸씩 정렬 유지 */
+  .hero-map-card .map-filter-buttons {
+    display: grid !important;
+    grid-template-columns: repeat(2, 1fr) !important;
+    gap: 12px !important;
+    margin-top: 20px !important;
+    width: 100% !important;
+  }
+
+  .hero-map-card .map-filter-buttons button {
+    width: 100% !important;
+    min-width: 0 !important;
+    height: auto !important;
+    padding: 13px 10px !important;
+    font-size: 15px !important;
+    font-weight: 800 !important;
+    line-height: 1.2 !important;
+    text-align: center !important;
+    white-space: nowrap !important;
+    word-break: keep-all !important;
+  }
+}
