@@ -6366,3 +6366,109 @@ button.property-list-item,
     min-height: 410px !important;
   }
 }
+/* =========================================================
+   PC hero 지도카드 위치 최종 고정
+   - 아래로 밀린 구미·칠곡 매물 지도카드를 오른쪽 상단에 고정
+   - 왼쪽 검색창과 겹치지 않게 왼쪽 영역 폭 제한
+   ========================================================= */
+
+@media (min-width: 1025px) {
+  .hero {
+    position: relative !important;
+    height: 620px !important;
+    min-height: 620px !important;
+    padding: 52px 64px 36px !important;
+    overflow: hidden !important;
+  }
+
+  .hero-copy,
+  .hero-left,
+  .hero-text {
+    max-width: 610px !important;
+    width: 610px !important;
+    position: relative !important;
+    z-index: 4 !important;
+  }
+
+  .hero h1 {
+    max-width: 610px !important;
+    font-size: 56px !important;
+    line-height: 1.06 !important;
+    letter-spacing: -2.6px !important;
+    margin: 24px 0 18px !important;
+  }
+
+  .hero p {
+    max-width: 610px !important;
+    font-size: 16px !important;
+    line-height: 1.45 !important;
+  }
+
+  .hero-search,
+  .search-box,
+  .main-search {
+    max-width: 560px !important;
+    width: 560px !important;
+    position: relative !important;
+    z-index: 5 !important;
+  }
+
+  .hero-map-card,
+  .map-card,
+  .area-map-card {
+    display: block !important;
+    visibility: visible !important;
+    opacity: 1 !important;
+
+    position: absolute !important;
+    top: 54px !important;
+    right: 64px !important;
+
+    width: 500px !important;
+    max-width: 500px !important;
+    min-height: 430px !important;
+
+    margin: 0 !important;
+    transform: none !important;
+    z-index: 6 !important;
+  }
+}
+
+/* 노트북 폭에서는 지도카드 살짝 작게 */
+@media (min-width: 1025px) and (max-width: 1380px) {
+  .hero {
+    height: 600px !important;
+    min-height: 600px !important;
+    padding-left: 56px !important;
+    padding-right: 56px !important;
+  }
+
+  .hero-copy,
+  .hero-left,
+  .hero-text {
+    max-width: 570px !important;
+    width: 570px !important;
+  }
+
+  .hero h1 {
+    max-width: 570px !important;
+    font-size: 52px !important;
+  }
+
+  .hero-search,
+  .search-box,
+  .main-search {
+    max-width: 540px !important;
+    width: 540px !important;
+  }
+
+  .hero-map-card,
+  .map-card,
+  .area-map-card {
+    top: 46px !important;
+    right: 56px !important;
+    width: 470px !important;
+    max-width: 470px !important;
+    min-height: 410px !important;
+  }
+}
