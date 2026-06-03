@@ -522,7 +522,7 @@ function App() {
   }, []);
 
   const categories = useMemo(() => {
-   const fixed = ['전체', '원룸', '미니투룸', '투룸', '다가구매매', '상가/사무실'];
+  const fixed = ['전체', '원룸', '미니투룸', '투룸', '다가구 매매', '상가·사무실'];
 return fixed;
   }, [properties]);
 
