@@ -4875,3 +4875,30 @@ button.property-list-item,
     overflow: visible !important;
   }
 }
+/* PC 오른쪽 지도 카드 하단 버튼 글자 깨짐 수정 */
+@media (min-width: 769px) {
+  .hero-location-tags,
+  .map-filter-chips {
+    display: grid !important;
+    grid-template-columns: repeat(2, 1fr) !important;
+    gap: 10px !important;
+    margin-top: 18px !important;
+    overflow: visible !important;
+  }
+
+  .hero-location-tags button,
+  .map-filter-chips button,
+  .hero-location-tags .tag,
+  .map-filter-chips .tag,
+  .hero-location-tags .filter-chip,
+  .map-filter-chips .filter-chip {
+    width: 100% !important;
+    min-width: 0 !important;
+    white-space: nowrap !important;
+    word-break: keep-all !important;
+    text-align: center !important;
+    padding: 12px 10px !important;
+    font-size: 14px !important;
+    line-height: 1.2 !important;
+  }
+}
