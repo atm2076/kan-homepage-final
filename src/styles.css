@@ -5949,3 +5949,129 @@ button.property-list-item,
     max-width: 660px !important;
   }
 }
+/* =========================================================
+   PC 첫 화면 검색창/지도카드 겹침 최종 보정
+   - 검색창이 지도카드 밑으로 들어가는 문제 해결
+   - 왼쪽 문구와 오른쪽 지도카드 간격 확보
+   ========================================================= */
+
+@media (min-width: 1025px) {
+  .hero {
+    padding-left: 52px !important;
+    padding-right: 52px !important;
+    overflow: hidden !important;
+  }
+
+  .hero-inner,
+  .hero-content-wrap,
+  .hero-layout {
+    width: 100% !important;
+    max-width: 1360px !important;
+    margin: 0 auto !important;
+    display: grid !important;
+    grid-template-columns: minmax(0, 1fr) 520px !important;
+    gap: 34px !important;
+    align-items: start !important;
+  }
+
+  .hero-copy,
+  .hero-left,
+  .hero-text {
+    width: 100% !important;
+    max-width: 690px !important;
+    min-width: 0 !important;
+    padding-top: 38px !important;
+  }
+
+  .hero h1 {
+    max-width: 690px !important;
+    font-size: 64px !important;
+    line-height: 1.08 !important;
+    letter-spacing: -2.8px !important;
+    word-break: keep-all !important;
+  }
+
+  .hero p {
+    max-width: 670px !important;
+    font-size: 17px !important;
+    line-height: 1.5 !important;
+  }
+
+  .hero-search,
+  .search-box,
+  .main-search {
+    width: 100% !important;
+    max-width: 640px !important;
+    min-width: 0 !important;
+  }
+
+  .hero-search input,
+  .search-box input,
+  .main-search input {
+    min-width: 0 !important;
+  }
+
+  .hero-search button,
+  .search-box button,
+  .main-search button {
+    flex-shrink: 0 !important;
+  }
+
+  .hero-map-card,
+  .map-card,
+  .area-map-card {
+    width: 520px !important;
+    max-width: 520px !important;
+    justify-self: end !important;
+    align-self: start !important;
+    margin-top: 26px !important;
+    margin-right: 0 !important;
+    position: relative !important;
+    z-index: 3 !important;
+  }
+}
+
+/* 노트북 폭에서는 더 좁게 보정 */
+@media (min-width: 1025px) and (max-width: 1380px) {
+  .hero {
+    padding-left: 42px !important;
+    padding-right: 42px !important;
+  }
+
+  .hero-inner,
+  .hero-content-wrap,
+  .hero-layout {
+    max-width: 1260px !important;
+    grid-template-columns: minmax(0, 1fr) 490px !important;
+    gap: 30px !important;
+  }
+
+  .hero-copy,
+  .hero-left,
+  .hero-text {
+    max-width: 640px !important;
+  }
+
+  .hero h1 {
+    max-width: 640px !important;
+    font-size: 58px !important;
+  }
+
+  .hero p {
+    max-width: 620px !important;
+  }
+
+  .hero-search,
+  .search-box,
+  .main-search {
+    max-width: 590px !important;
+  }
+
+  .hero-map-card,
+  .map-card,
+  .area-map-card {
+    width: 490px !important;
+    max-width: 490px !important;
+    margin-top: 26px !important;
+  }
+}
