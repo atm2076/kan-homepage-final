@@ -996,10 +996,14 @@ function PropertyListItem({ property, active, onClick }) {
 
   return (
     <>
-     투자금 {formatAmount(saleDisplay.investment)}
-월순수익 {formatAmount(saleDisplay.netProfit)}
-매매가 {formatAmount(saleDisplay.salePrice)}
-총월세 {formatAmount(saleDisplay.totalRent)}
+  <>
+  <span className="sale-main-price">
+    투자금 {formatAmount(saleDisplay.investment)} · 월순수익 {formatAmount(saleDisplay.netProfit)}
+  </span>
+  <span className="sale-sub-price">
+    매매가 {formatAmount(saleDisplay.salePrice)} · 총월세 {formatAmount(saleDisplay.totalRent)}
+  </span>
+</>
     </>
   );
 })()}
