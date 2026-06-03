@@ -5863,3 +5863,89 @@ button.property-list-item,
     margin-right: 0 !important;
   }
 }
+
+/* =========================================================
+   PC 첫 화면 좌우 여백 축소 + 지도카드 오른쪽 정렬
+   ========================================================= */
+
+@media (min-width: 1025px) {
+  .hero {
+    padding-left: 28px !important;
+    padding-right: 28px !important;
+  }
+
+  .hero-inner,
+  .hero-content-wrap,
+  .hero-layout {
+    width: 100% !important;
+    max-width: 1480px !important;
+    margin: 0 auto !important;
+    display: grid !important;
+    grid-template-columns: minmax(0, 1fr) 520px !important;
+    gap: 28px !important;
+    align-items: start !important;
+  }
+
+  .hero-copy,
+  .hero-left,
+  .hero-text {
+    max-width: 760px !important;
+    min-width: 0 !important;
+  }
+
+  .hero h1 {
+    max-width: 760px !important;
+  }
+
+  .hero p {
+    max-width: 760px !important;
+  }
+
+  .hero-search,
+  .search-box,
+  .main-search {
+    width: 86% !important;
+    max-width: 720px !important;
+  }
+
+  .hero-map-card,
+  .map-card,
+  .area-map-card {
+    width: 520px !important;
+    max-width: 520px !important;
+    justify-self: end !important;
+    margin-right: 0 !important;
+    margin-top: -20px !important;
+  }
+}
+
+/* 노트북 화면에서는 지도카드가 너무 커지지 않게 조정 */
+@media (min-width: 1025px) and (max-width: 1280px) {
+  .hero {
+    padding-left: 20px !important;
+    padding-right: 20px !important;
+  }
+
+  .hero-inner,
+  .hero-content-wrap,
+  .hero-layout {
+    grid-template-columns: minmax(0, 1fr) 470px !important;
+    gap: 22px !important;
+    max-width: 1220px !important;
+  }
+
+  .hero-map-card,
+  .map-card,
+  .area-map-card {
+    width: 470px !important;
+    max-width: 470px !important;
+    margin-top: -14px !important;
+  }
+
+  .hero-search,
+  .search-box,
+  .main-search {
+    width: 84% !important;
+    max-width: 660px !important;
+  }
+}
