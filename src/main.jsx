@@ -1023,7 +1023,7 @@ function PropertyListItem({ property, active, onClick }) {
           </div>
         )}
 
-        <div className="mini-facts">
+       <div className="mini-facts mobile-card-extra-info">
           <span>{property.area || '면적 확인'}</span>
           <span>{property.room_bath || '방/욕실 확인'}</span>
           <span>{property.floor_info || '층수 확인'}</span>
