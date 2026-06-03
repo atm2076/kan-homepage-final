@@ -4666,3 +4666,43 @@ button.property-list-item,
     line-height: 1.35 !important;
   }
 }
+/* ============================= */
+/* 관련 매물 카드 사각형 정리 */
+/* ============================= */
+
+.related-grid {
+  display: grid !important;
+  grid-template-columns: repeat(4, minmax(0, 1fr)) !important;
+  gap: 18px !important;
+}
+
+.related-card {
+  border-radius: 18px !important;
+  clip-path: none !important;
+  overflow: hidden !important;
+  min-height: auto !important;
+  aspect-ratio: auto !important;
+}
+
+.related-card img {
+  width: 100% !important;
+  height: 150px !important;
+  object-fit: cover !important;
+  border-radius: 14px !important;
+  clip-path: none !important;
+}
+
+@media (max-width: 768px) {
+  .related-grid {
+    grid-template-columns: 1fr !important;
+    gap: 14px !important;
+  }
+
+  .related-card {
+    border-radius: 18px !important;
+  }
+
+  .related-card img {
+    height: 190px !important;
+  }
+}
