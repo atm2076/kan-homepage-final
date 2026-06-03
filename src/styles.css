@@ -5334,3 +5334,29 @@ button.property-list-item,
     font-size: 16px !important;
   }
 }
+/* =========================================================
+   최종 수정 3차: 매매 카드 가격 줄바꿈 정리
+   ========================================================= */
+
+.sale-main-price {
+  display: block !important;
+  width: 100% !important;
+  color: #0F3A66 !important;
+  font-size: 16.5px !important;
+  font-weight: 950 !important;
+  line-height: 1.45 !important;
+  letter-spacing: -0.4px !important;
+  margin-top: 6px !important;
+  white-space: normal !important;
+}
+
+.sale-sub-price {
+  display: block !important;
+  width: 100% !important;
+  color: #6b5c4f !important;
+  font-size: 12.5px !important;
+  font-weight: 850 !important;
+  line-height: 1.45 !important;
+  margin-top: 3px !important;
+  white-space: normal !important;
+}
