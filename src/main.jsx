@@ -1177,10 +1177,10 @@ const infoRows = isSaleProperty
          <div className="big-price">
   {(property.category?.includes('매매') || property.trade_type === '매매') ? (
     <>
-      <span>매매가 {property.sale_price || property.deposit || '-'}</span>
-      <strong>총월세 {property.total_monthly_rent || property.rent || '-'}</strong>
-      {property.acquisition_price && <em>실인수가 {property.acquisition_price}</em>}
-      {property.net_profit && <em>월순수익 {property.net_profit}</em>}
+      <span>투자금 {property.acquisition_price || property.takeover_price || property.investment_price || '-'}</span>
+<strong>총월세 {property.total_monthly_rent || property.rent || '-'}</strong>
+{property.sale_price && <em>매매가 {property.sale_price}</em>}
+{property.net_profit && <em>월순수익 {property.net_profit}</em>}
     </>
   ) : (
     <>
