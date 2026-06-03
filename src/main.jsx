@@ -1184,12 +1184,12 @@ const infoRows = isSaleProperty
           <h1>{property.title}</h1>
          <div className="big-price">
   {(property.category?.includes('매매') || property.trade_type === '매매') ? (
-    <>
-      <span>투자금 {property.acquisition_price || property.takeover_price || property.investment_price || '-'}</span>
-<strong>총월세 {property.total_monthly_rent || property.rent || '-'}</strong>
-{property.sale_price && <em>매매가 {property.sale_price}</em>}
-{property.net_profit && <em>월순수익 {property.net_profit}</em>}
-    </>
+   <>
+  <span>투자금 {formatAmount(getSaleDisplay(property).investment)}</span>
+  <strong>총월세 {formatAmount(getSaleDisplay(property).totalRent)}</strong>
+  <em>매매가 {formatAmount(getSaleDisplay(property).salePrice)}</em>
+  <em>월순수익 {formatAmount(getSaleDisplay(property).netProfit)}</em>
+</>
   ) : (
     <>
       <span>보증금 {property.deposit || '-'}</span>
