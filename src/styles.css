@@ -7045,3 +7045,74 @@ button.property-list-item,
     display: none !important;
   }
 }
+/* 매물 뱃지 색상 */
+.property-badge-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  align-items: center;
+}
+
+.list-thumb .property-badge-row {
+  position: absolute;
+  left: 10px;
+  top: 10px;
+  z-index: 5;
+}
+
+.property-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 26px;
+  padding: 5px 9px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 900;
+  line-height: 1;
+  box-shadow: 0 6px 14px rgba(20, 43, 76, 0.16);
+}
+
+.property-badge.badge-recommend {
+  background: #183a67;
+  color: #ffffff;
+}
+
+.property-badge.badge-hot {
+  background: #ef4444;
+  color: #ffffff;
+}
+
+.property-badge.badge-green {
+  background: #16a34a;
+  color: #ffffff;
+}
+
+.property-badge.badge-blue {
+  background: #dbeafe;
+  color: #17406f;
+}
+
+.property-badge.badge-purple {
+  background: #7c3aed;
+  color: #ffffff;
+}
+
+.property-badge.badge-gold {
+  background: #facc15;
+  color: #172554;
+}
+
+.property-badge.badge-gray,
+.property-badge.badge-default {
+  background: #f3f4f6;
+  color: #1f2937;
+}
+
+@media (max-width: 768px) {
+  .property-badge {
+    min-height: 24px;
+    padding: 5px 8px;
+    font-size: 11px;
+  }
+}
