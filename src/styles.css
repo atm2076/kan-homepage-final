@@ -6584,3 +6584,90 @@ button.property-list-item,
     bottom: 10px;
   }
 }
+/* 네이버지도 마커 크기 최종 보정 */
+.naver-count-marker {
+  width: 82px !important;
+  height: 46px !important;
+  min-height: 46px !important;
+  padding: 7px 8px !important;
+  border-radius: 999px !important;
+  background: #183a67 !important;
+  color: #ffffff !important;
+  box-shadow: 0 8px 18px rgba(24, 58, 103, 0.26) !important;
+  display: flex !important;
+  flex-direction: column !important;
+  align-items: center !important;
+  justify-content: center !important;
+  text-align: center !important;
+  font-family: inherit !important;
+  line-height: 1.1 !important;
+  box-sizing: border-box !important;
+  pointer-events: auto !important;
+}
+
+.naver-count-marker strong {
+  display: block !important;
+  font-size: 11px !important;
+  font-weight: 800 !important;
+  color: #ffffff !important;
+  white-space: nowrap !important;
+}
+
+.naver-count-marker span {
+  display: block !important;
+  margin-top: 2px !important;
+  font-size: 11px !important;
+  font-weight: 800 !important;
+  color: #dceaff !important;
+  white-space: nowrap !important;
+}
+
+/* 지도 하단 수량 버튼도 작게 정리 */
+.naver-map-count-panel {
+  left: 10px !important;
+  right: 10px !important;
+  bottom: 10px !important;
+  display: grid !important;
+  grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+  gap: 6px !important;
+}
+
+.naver-map-count-panel button {
+  min-height: 34px !important;
+  padding: 5px 6px !important;
+  border-radius: 12px !important;
+}
+
+.naver-map-count-panel button span {
+  font-size: 10px !important;
+}
+
+.naver-map-count-panel button strong {
+  font-size: 12px !important;
+  margin-top: 1px !important;
+}
+
+@media (max-width: 768px) {
+  .naver-count-marker {
+    width: 72px !important;
+    height: 42px !important;
+    min-height: 42px !important;
+    padding: 6px 6px !important;
+  }
+
+  .naver-count-marker strong {
+    font-size: 10px !important;
+  }
+
+  .naver-count-marker span {
+    font-size: 10px !important;
+  }
+
+  .naver-map-count-panel {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  }
+
+  .naver-map-count-panel button {
+    min-height: 32px !important;
+  }
+}
