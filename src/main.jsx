@@ -349,10 +349,14 @@ function getBadgeClassName(badge) {
 
   if (text.includes('급매') || text.includes('가격인하')) return 'badge-hot';
   if (text.includes('추천')) return 'badge-recommend';
+  if (text.includes('수익형')) return 'badge-purple';
+  if (text.includes('소액투자') || text.includes('투자금')) return 'badge-gold';
   if (text.includes('즉시입주')) return 'badge-green';
-  if (text.includes('관리비')) return 'badge-blue';
+  if (text.includes('관리비')) return 'badge-teal';
+  if (text.includes('상가')) return 'badge-gray';
+  if (text.includes('리모델링')) return 'badge-orange';
+  if (text.includes('신축')) return 'badge-sky';
   if (text.includes('반전세')) return 'badge-purple';
-  if (text.includes('수익형') || text.includes('투자')) return 'badge-gold';
   if (text.includes('실사진') || text.includes('확인')) return 'badge-gray';
 
   return 'badge-default';
