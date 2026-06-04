@@ -357,17 +357,23 @@ function getBadgeClassName(badge) {
 
   return 'badge-default';
 }
-
 function getPropertyBadges(property) {
   const savedBadges = Array.isArray(property.badges) ? property.badges : [];
-  const baseBadges = property.is_featured ? ['추천', ...savedBadges] : savedBadges;
+  const cleanedBadges = savedBadges
+    .map((badge) => String(badge).trim())
+    .filter(Boolean);
 
-  return [...new Set(baseBadges.map((badge) => String(badge).trim()).filter(Boolean))];
+  const baseBadges =
+    cleanedBadges.length > 0
+      ? cleanedBadges
+      : property.is_featured
+      ? ['추천']
+      : [];
+
+  return [...new Set(baseBadges)];
 }
-
 function BadgeList({ property }) {
   const badges = getPropertyBadges(property);
-
   if (!badges.length) return null;
 
   return (
