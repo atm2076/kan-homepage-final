@@ -6973,3 +6973,75 @@ button.property-list-item,
     font-size: 11px !important;
   }
 }
+/* 네이버지도 마커 겹침/잘림 최종 보정 */
+.naver-real-map {
+  height: 300px !important;
+  min-height: 300px !important;
+}
+
+/* 숫자 원을 조금 넓게 */
+.naver-cluster-marker span {
+  width: 58px !important;
+  height: 58px !important;
+  min-width: 58px !important;
+  min-height: 58px !important;
+  font-size: 11px !important;
+}
+
+/* 지역명 라벨은 더 작고 짧게 */
+.naver-cluster-marker strong {
+  margin-top: 3px !important;
+  padding: 2px 6px !important;
+  font-size: 9px !important;
+  max-width: 72px !important;
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
+}
+
+/* 안내문은 카드 안에서 작게 */
+.map-help-text {
+  margin: 4px 0 0 !important;
+  padding: 0 8px !important;
+  font-size: 11px !important;
+  line-height: 1.35 !important;
+  color: #5f6b7a !important;
+}
+
+/* 모바일에서는 안내문 숨김: 카드 높이 깨짐 방지 */
+@media (max-width: 768px) {
+  .naver-real-map {
+    height: 260px !important;
+    min-height: 260px !important;
+  }
+
+  .naver-cluster-marker {
+    width: 72px !important;
+    height: 62px !important;
+    min-height: 62px !important;
+  }
+
+  .naver-cluster-marker span {
+    width: 48px !important;
+    height: 48px !important;
+    min-width: 48px !important;
+    min-height: 48px !important;
+    font-size: 10px !important;
+  }
+
+  .naver-cluster-marker.area span {
+    width: 52px !important;
+    height: 52px !important;
+    min-width: 52px !important;
+    min-height: 52px !important;
+    font-size: 10px !important;
+  }
+
+  .naver-cluster-marker strong {
+    font-size: 8px !important;
+    max-width: 64px !important;
+  }
+
+  .map-help-text {
+    display: none !important;
+  }
+}
