@@ -2079,7 +2079,7 @@ function PhotoUploader({ photos, onUpload, onRemove, onMove }) {
           {photos.map((src, index) => (
             <div key={`${src}-${index}`} className="upload-preview-item">
               <img src={src} alt={`업로드 사진 ${index + 1}`} />
-              <small>{index + 1}번 사진</small>
+             <small>{index === 0 ? '대표사진' : `${index + 1}번 사진`}</small>
               <div>
                 <button type="button" onClick={() => onMove(index, -1)} disabled={index === 0}>앞</button>
                 <button type="button" onClick={() => onMove(index, 1)} disabled={index === photos.length - 1}>뒤</button>
