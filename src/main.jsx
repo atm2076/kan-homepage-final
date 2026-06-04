@@ -46,7 +46,7 @@ const emptyForm = {
   category: '원룸 월세',
   trade_type: '월세',
   address: '',
-
+badgesText: '',
   // 임대용
   deposit: '',
   rent: '',
@@ -340,17 +340,53 @@ function propertyToForm(property) {
     photosText: arrayToLines(property.photos),
     convenienceText: arrayToLines(property.convenience),
     safetyText: arrayToLines(property.safety),
-    educationText: arrayToLines(property.education)
+    educationText: arrayToLines(property.education),
+    badgesText: arrayToLines(property.badges),
   };
 }
+function getBadgeClassName(badge) {
+  const text = String(badge || '').trim();
 
+  if (text.includes('급매') || text.includes('가격인하')) return 'badge-hot';
+  if (text.includes('추천')) return 'badge-recommend';
+  if (text.includes('즉시입주')) return 'badge-green';
+  if (text.includes('관리비')) return 'badge-blue';
+  if (text.includes('반전세')) return 'badge-purple';
+  if (text.includes('수익형') || text.includes('투자')) return 'badge-gold';
+  if (text.includes('실사진') || text.includes('확인')) return 'badge-gray';
+
+  return 'badge-default';
+}
+
+function getPropertyBadges(property) {
+  const savedBadges = Array.isArray(property.badges) ? property.badges : [];
+  const baseBadges = property.is_featured ? ['추천', ...savedBadges] : savedBadges;
+
+  return [...new Set(baseBadges.map((badge) => String(badge).trim()).filter(Boolean))];
+}
+
+function BadgeList({ property }) {
+  const badges = getPropertyBadges(property);
+
+  if (!badges.length) return null;
+
+  return (
+    <div className="property-badge-row">
+      {badges.map((badge) => (
+        <span key={badge} className={`property-badge ${getBadgeClassName(badge)}`}>
+          {badge}
+        </span>
+      ))}
+    </div>
+  );
+}
 function formToPayload(form) {
   return {
     title: form.title.trim(),
     category: form.category.trim(),
     trade_type: form.trade_type.trim(),
     address: form.address.trim(),
-
+badges: linesToArray(form.badgesText),
     deposit: (form.deposit || '').trim(),
     rent: (form.rent || '').trim(),
     maintenance_fee: (form.maintenance_fee || '').trim(),
@@ -1189,7 +1225,7 @@ function PropertyListItem({ property, active, onClick }) {
     >
       <div className="list-thumb">
         <img src={cover} alt={property.title} />
-        {property.is_featured && <span>추천</span>}
+    <BadgeList property={property} />
       </div>
 
      <div className="list-info mobile-card-text">
@@ -1513,7 +1549,7 @@ const infoRows = isSaleProperty
   alt={property.title || '매물 대표사진'}
 />
           <div className="badge-line">
-            {property.is_featured && <span>추천</span>}
+         <BadgeList property={property} />
             <span>{property.category}</span>
             <span>{property.trade_type}</span>
           </div>
@@ -1934,6 +1970,21 @@ function AdminModal({ isAdmin, setIsAdmin, onClose, properties, reload }) {
                 <input type="checkbox" checked={form.is_featured} onChange={(e) => updateField('is_featured', e.target.checked)} />
                 추천 매물로 표시
               </label>
+              <label className="form-field full">
+  <span>매물 뱃지</span>
+  <textarea
+    value={form.badgesText || ''}
+    onChange={(e) => updateField('badgesText', e.target.value)}
+    placeholder={`한 줄에 하나씩 입력
+추천
+급매
+관리비포함
+즉시입주
+반전세가능
+수익형`}
+    rows={5}
+  />
+</label>
               <button className="primary-btn submit-btn" type="submit">{editingId ? '수정 저장' : '매물 등록하기'}</button>
               <p className="status-text">{status}</p>
             </form>
