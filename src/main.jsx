@@ -1909,7 +1909,13 @@ function reorderPhoto(fromIndex, toIndex) {
 
               <section className="admin-section-block">
                 <h4>2. 사진등록</h4>
-                <PhotoUploader photos={photoUrls} onUpload={uploadPhotoFiles} onRemove={removePhoto} onMove={movePhoto} />
+               <PhotoUploader
+  photos={photoUrls}
+  onUpload={uploadPhotoFiles}
+  onRemove={removePhoto}
+  onMove={movePhoto}
+  onReorder={reorderPhoto}
+/>
                 <details className="manual-url-box">
                   <summary>사진 주소 직접 확인/수정</summary>
                   <TextArea label="업로드된 사진 URL — 한 줄에 1개씩" value={form.photosText} onChange={(v) => updateField('photosText', v)} rows={4} />
@@ -2059,9 +2065,9 @@ function reorderPhoto(fromIndex, toIndex) {
   );
 }
 
-function PhotoUploader({ photos, onUpload, onRemove, onMove }) {
+function PhotoUploader({ photos, onUpload, onRemove, onMove, onReorder }) {
   const [dragging, setDragging] = useState(false);
-
+const [dragIndex, setDragIndex] = useState(null);
   function handleDrop(e) {
     e.preventDefault();
     setDragging(false);
@@ -2087,7 +2093,20 @@ function PhotoUploader({ photos, onUpload, onRemove, onMove }) {
       {photos.length > 0 && (
         <div className="upload-preview-grid">
           {photos.map((src, index) => (
-            <div key={`${src}-${index}`} className="upload-preview-item">
+           <div
+  key={`${src}-${index}`}
+  className="upload-preview-item"
+  draggable
+  onDragStart={() => setDragIndex(index)}
+  onDragOver={(e) => e.preventDefault()}
+  onDrop={(e) => {
+    e.preventDefault();
+    if (dragIndex === null) return;
+    onReorder(dragIndex, index);
+    setDragIndex(null);
+  }}
+  onDragEnd={() => setDragIndex(null)}
+>
               <img src={src} alt={`업로드 사진 ${index + 1}`} />
              <small>{index === 0 ? '대표사진' : `${index + 1}번 사진`}</small>
               <div>
