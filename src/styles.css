@@ -6472,3 +6472,115 @@ button.property-list-item,
     min-height: 410px !important;
   }
 }
+/* 네이버지도 실매물 지도 카드 */
+.naver-map-wrap {
+  position: relative;
+  width: 100%;
+  height: 290px;
+  min-height: 290px;
+  overflow: hidden;
+  border-radius: 22px;
+  background: #eef3f7;
+  border: 1px solid rgba(20, 43, 76, 0.12);
+}
+
+.naver-real-map {
+  width: 100%;
+  height: 100%;
+  min-height: 290px;
+}
+
+.naver-count-marker {
+  width: 112px;
+  min-height: 54px;
+  border: 0;
+  border-radius: 999px;
+  background: #183a67;
+  color: #fff;
+  box-shadow: 0 12px 28px rgba(24, 58, 103, 0.28);
+  cursor: pointer;
+  font-family: inherit;
+  line-height: 1.2;
+}
+
+.naver-count-marker strong {
+  display: block;
+  font-size: 13px;
+  font-weight: 800;
+}
+
+.naver-count-marker span {
+  display: block;
+  margin-top: 2px;
+  font-size: 12px;
+  font-weight: 700;
+  color: #dceaff;
+}
+
+.naver-map-count-panel {
+  position: absolute;
+  left: 12px;
+  right: 12px;
+  bottom: 12px;
+  z-index: 10;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+  pointer-events: auto;
+}
+
+.naver-map-count-panel button {
+  min-height: 42px;
+  border: 1px solid rgba(24, 58, 103, 0.25);
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.94);
+  color: #16365f;
+  font-family: inherit;
+  cursor: pointer;
+  box-shadow: 0 8px 20px rgba(24, 58, 103, 0.12);
+}
+
+.naver-map-count-panel button span {
+  display: block;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.naver-map-count-panel button strong {
+  display: block;
+  margin-top: 2px;
+  font-size: 14px;
+  font-weight: 900;
+}
+
+@media (max-width: 768px) {
+  .naver-map-wrap {
+    height: 300px;
+    min-height: 300px;
+    border-radius: 18px;
+  }
+
+  .naver-real-map {
+    min-height: 300px;
+  }
+
+  .naver-count-marker {
+    width: 94px;
+    min-height: 48px;
+  }
+
+  .naver-count-marker strong {
+    font-size: 12px;
+  }
+
+  .naver-count-marker span {
+    font-size: 11px;
+  }
+
+  .naver-map-count-panel {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    left: 10px;
+    right: 10px;
+    bottom: 10px;
+  }
+}
