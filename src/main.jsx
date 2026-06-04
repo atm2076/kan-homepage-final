@@ -2145,3 +2145,34 @@ function Footer() {
 }
 
 createRoot(document.getElementById('root')).render(<App />);
+.badge-blue {
+  background: #1f4b8f;
+}
+
+.badge-red {
+  background: #d83a3a;
+}
+
+.badge-purple {
+  background: #6f42c1;
+}
+
+.badge-gold {
+  background: #b7791f;
+}
+
+.badge-green {
+  background: #2f9e44;
+}
+
+.badge-teal {
+  background: #0f766e;
+}
+
+.badge-gray {
+  background: #5c677d;
+}
+
+.badge-orange {
+  background: #ea580c;
+}
