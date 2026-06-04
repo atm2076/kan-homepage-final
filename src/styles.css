@@ -6671,3 +6671,132 @@ button.property-list-item,
     min-height: 32px !important;
   }
 }
+/* 네이버지도 카드 2차 보정 - 지도와 수량버튼 분리 */
+.naver-map-wrap {
+  height: auto !important;
+  min-height: 0 !important;
+  overflow: visible !important;
+  border: 0 !important;
+  background: transparent !important;
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 10px !important;
+}
+
+.naver-real-map {
+  width: 100% !important;
+  height: 230px !important;
+  min-height: 230px !important;
+  border-radius: 18px !important;
+  overflow: hidden !important;
+  border: 1px solid rgba(24, 58, 103, 0.14) !important;
+}
+
+/* 지도 위 실제 마커는 작은 수량표시만 보이게 */
+.naver-count-marker {
+  width: 54px !important;
+  height: 30px !important;
+  min-height: 30px !important;
+  padding: 0 6px !important;
+  border-radius: 999px !important;
+  background: #183a67 !important;
+  color: #ffffff !important;
+  box-shadow: 0 6px 14px rgba(24, 58, 103, 0.25) !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  box-sizing: border-box !important;
+  line-height: 1 !important;
+}
+
+.naver-count-marker strong {
+  display: none !important;
+}
+
+.naver-count-marker span {
+  display: block !important;
+  margin: 0 !important;
+  font-size: 11px !important;
+  font-weight: 900 !important;
+  color: #ffffff !important;
+  white-space: nowrap !important;
+}
+
+/* 지역별 수량 버튼은 지도 아래로 분리 */
+.naver-map-count-panel {
+  position: static !important;
+  display: grid !important;
+  grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+  gap: 8px !important;
+  width: 100% !important;
+  z-index: 1 !important;
+}
+
+.naver-map-count-panel button {
+  min-height: 46px !important;
+  padding: 7px 8px !important;
+  border-radius: 14px !important;
+  border: 1px solid rgba(24, 58, 103, 0.22) !important;
+  background: #ffffff !important;
+  color: #183a67 !important;
+  box-shadow: 0 5px 14px rgba(24, 58, 103, 0.09) !important;
+  display: flex !important;
+  flex-direction: column !important;
+  align-items: center !important;
+  justify-content: center !important;
+}
+
+.naver-map-count-panel button span {
+  display: block !important;
+  font-size: 11px !important;
+  font-weight: 800 !important;
+  color: #183a67 !important;
+  line-height: 1.2 !important;
+  white-space: nowrap !important;
+}
+
+.naver-map-count-panel button strong {
+  display: block !important;
+  margin-top: 3px !important;
+  font-size: 13px !important;
+  font-weight: 900 !important;
+  color: #0b2e59 !important;
+  line-height: 1.1 !important;
+}
+
+/* 모바일 보정 */
+@media (max-width: 768px) {
+  .naver-real-map {
+    height: 220px !important;
+    min-height: 220px !important;
+    border-radius: 16px !important;
+  }
+
+  .naver-map-count-panel {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+    gap: 7px !important;
+  }
+
+  .naver-map-count-panel button {
+    min-height: 42px !important;
+    padding: 6px 7px !important;
+  }
+
+  .naver-map-count-panel button span {
+    font-size: 10px !important;
+  }
+
+  .naver-map-count-panel button strong {
+    font-size: 12px !important;
+  }
+
+  .naver-count-marker {
+    width: 48px !important;
+    height: 28px !important;
+    min-height: 28px !important;
+  }
+
+  .naver-count-marker span {
+    font-size: 10px !important;
+  }
+}
