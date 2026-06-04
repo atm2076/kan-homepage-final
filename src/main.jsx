@@ -784,44 +784,147 @@ function Hero({ keyword, setKeyword }) {
           </button>
         </div>
 
-        <div className="map-visual-box">
-          <div className="map-road road-a"></div>
-          <div className="map-road road-b"></div>
-          <div className="map-river"></div>
-
-          <span className="map-label label-gumi">구미시청</span>
-          <span className="map-label label-station">구미역</span>
-          <span className="map-label label-river">낙동강</span>
-          <span className="map-label label-buksam">북삼·석적</span>
-
-          <button type="button" className="map-marker marker-gumi" onClick={() => setKeyword('구미')}>
-            구미
-          </button>
-
-          <button type="button" className="map-marker marker-room" onClick={() => setKeyword('원룸')}>
-            원룸
-          </button>
-
-          <button type="button" className="map-marker marker-income" onClick={() => setKeyword('수익형')}>
-            수익형
-          </button>
-
-          <button type="button" className="map-marker marker-buksam" onClick={() => setKeyword('북삼')}>
-            북삼
-          </button>
-        </div>
-
-        <div className="map-filter-buttons">
-          <button type="button" onClick={() => setKeyword('구미')}>구미 전지역</button>
-          <button type="button" onClick={() => setKeyword('원룸')}>원룸·투룸</button>
-          <button type="button" onClick={() => setKeyword('수익형')}>수익형 부동산</button>
-          <button type="button" onClick={() => setKeyword('북삼')}>북삼·석적</button>
-        </div>
+      <NaverMapBox setKeyword={setKeyword} />
       </div>
     </section>
   );
 }  
+const NAVER_MAP_CLIENT_ID = 'lbmpj85ec5';
 
+const KAN_MAP_AREAS = [
+  {
+    label: '구미 전지역',
+    count: '3,000+',
+    keyword: '구미',
+    lat: 36.1195,
+    lng: 128.3446,
+  },
+  {
+    label: '원룸·투룸',
+    count: '2,400+',
+    keyword: '원룸',
+    lat: 36.1092,
+    lng: 128.4196,
+  },
+  {
+    label: '북삼',
+    count: '300+',
+    keyword: '북삼',
+    lat: 36.0647,
+    lng: 128.3478,
+  },
+  {
+    label: '석적·중리',
+    count: '260+',
+    keyword: '석적',
+    lat: 36.0757,
+    lng: 128.4078,
+  },
+  {
+    label: '수익형 부동산',
+    count: '150+',
+    keyword: '수익형',
+    lat: 36.1217,
+    lng: 128.3643,
+  },
+];
+
+function loadNaverMapScript() {
+  return new Promise((resolve, reject) => {
+    if (window.naver?.maps) {
+      resolve();
+      return;
+    }
+
+    const existingScript = document.getElementById('naver-map-script');
+    if (existingScript) {
+      existingScript.addEventListener('load', resolve);
+      existingScript.addEventListener('error', reject);
+      return;
+    }
+
+    const script = document.createElement('script');
+    script.id = 'naver-map-script';
+    script.src = `https://oapi.map.naver.com/openapi/v3/maps.js?ncpKeyId=${NAVER_MAP_CLIENT_ID}`;
+    script.async = true;
+    script.onload = resolve;
+    script.onerror = reject;
+    document.head.appendChild(script);
+  });
+}
+
+function NaverMapBox({ setKeyword }) {
+  const mapElementRef = useRef(null);
+
+  useEffect(() => {
+    let isMounted = true;
+
+    loadNaverMapScript()
+      .then(() => {
+        if (!isMounted || !mapElementRef.current || !window.naver?.maps) return;
+
+        const naver = window.naver;
+
+        const map = new naver.maps.Map(mapElementRef.current, {
+          center: new naver.maps.LatLng(36.1195, 128.3446),
+          zoom: 11,
+          minZoom: 9,
+          zoomControl: true,
+          zoomControlOptions: {
+            position: naver.maps.Position.TOP_RIGHT,
+          },
+        });
+
+        KAN_MAP_AREAS.forEach((area) => {
+          const marker = new naver.maps.Marker({
+            position: new naver.maps.LatLng(area.lat, area.lng),
+            map,
+            icon: {
+              content: `
+                <button type="button" class="naver-count-marker">
+                  <strong>${area.label}</strong>
+                  <span>${area.count}</span>
+                </button>
+              `,
+              size: new naver.maps.Size(112, 54),
+              anchor: new naver.maps.Point(56, 27),
+            },
+          });
+
+          naver.maps.Event.addListener(marker, 'click', () => {
+            setKeyword(area.keyword);
+            map.panTo(new naver.maps.LatLng(area.lat, area.lng));
+          });
+        });
+      })
+      .catch((error) => {
+        console.error('네이버지도 로딩 오류:', error);
+      });
+
+    return () => {
+      isMounted = false;
+    };
+  }, [setKeyword]);
+
+  return (
+    <div className="naver-map-wrap">
+      <div ref={mapElementRef} className="naver-real-map" />
+
+      <div className="naver-map-count-panel">
+        {KAN_MAP_AREAS.map((area) => (
+          <button
+            type="button"
+            key={area.label}
+            onClick={() => setKeyword(area.keyword)}
+          >
+            <span>{area.label}</span>
+            <strong>{area.count}</strong>
+          </button>
+        ))}
+      </div>
+    </div>
+  );
+}
 function CategoryStrip({ categories, category, setCategory }) {
   return (
     <section className="category-strip">
