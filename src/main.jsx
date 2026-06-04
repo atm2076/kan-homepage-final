@@ -634,7 +634,12 @@ const matchExtra =
   return (
     <div>
       <Header showAdminAccess={showAdminAccess} onAdmin={() => setAdminOpen(true)} />
-      <Hero keyword={keyword} setKeyword={setKeyword} />
+     <Hero
+  keyword={keyword}
+  setKeyword={setKeyword}
+  setCategory={setCategory}
+  setFilters={setFilters}
+/>
       <main className="page-shell">
         {!isSupabaseReady && <SetupNotice />}
         {error && <ErrorNotice message={error} />}
@@ -734,7 +739,7 @@ function Header({ showAdminAccess, onAdmin }) {
 }
 
 
-function Hero({ keyword, setKeyword }) {
+function Hero({ keyword, setKeyword, setCategory, setFilters }) {
   return (
     <section className="hero" id="top">
       <div className="hero-overlay" />
@@ -784,7 +789,11 @@ function Hero({ keyword, setKeyword }) {
           </button>
         </div>
 
-      <NaverMapBox setKeyword={setKeyword} />
+      <NaverMapBox
+  setKeyword={setKeyword}
+  setCategory={setCategory}
+  setFilters={setFilters}
+/>
       </div>
     </section>
   );
@@ -853,7 +862,7 @@ function loadNaverMapScript() {
   });
 }
 
-function NaverMapBox({ setKeyword }) {
+function NaverMapBox({ setKeyword, setCategory, setFilters }) {
   const mapElementRef = useRef(null);
   const mapRef = useRef(null);
   const markersRef = useRef([]);
@@ -932,7 +941,28 @@ function NaverMapBox({ setKeyword }) {
 
         naver.maps.Event.addListener(marker, 'click', () => {
           setKeyword(item.keyword);
+setKeyword(item.keyword);
 
+if (typeof setCategory === 'function') {
+  setCategory('전체');
+}
+
+if (typeof setFilters === 'function') {
+  setFilters((prev) => ({
+    ...prev,
+    trade: '전체',
+    room: '전체',
+    approval: '전체',
+    floor: '전체',
+    extra: '전체',
+  }));
+}
+
+if (stage === 'area' || stage === 'dong') {
+  map.panTo(new naver.maps.LatLng(item.lat, item.lng));
+  map.setZoom(item.zoom || zoom + 2);
+  return;
+}
           if (stage === 'area' || stage === 'dong') {
             map.panTo(new naver.maps.LatLng(item.lat, item.lng));
             map.setZoom(item.zoom || zoom + 2);
