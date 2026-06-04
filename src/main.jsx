@@ -2093,21 +2093,34 @@ const [dragIndex, setDragIndex] = useState(null);
       {photos.length > 0 && (
         <div className="upload-preview-grid">
           {photos.map((src, index) => (
-           <div
+<div
   key={`${src}-${index}`}
   className="upload-preview-item"
-  draggable
-  onDragStart={() => setDragIndex(index)}
-  onDragOver={(e) => e.preventDefault()}
+  draggable={true}
+  onDragStart={(e) => {
+    setDragIndex(index);
+    e.dataTransfer.effectAllowed = 'move';
+    e.dataTransfer.setData('text/plain', String(index));
+  }}
+  onDragOver={(e) => {
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'move';
+  }}
   onDrop={(e) => {
     e.preventDefault();
-    if (dragIndex === null) return;
-    onReorder(dragIndex, index);
+
+    const fromText = e.dataTransfer.getData('text/plain');
+    const fromIndex = dragIndex !== null ? dragIndex : Number(fromText);
+
+    if (Number.isNaN(fromIndex)) return;
+    if (fromIndex === index) return;
+
+    onReorder(fromIndex, index);
     setDragIndex(null);
   }}
   onDragEnd={() => setDragIndex(null)}
 >
-              <img src={src} alt={`업로드 사진 ${index + 1}`} />
+             <img src={src} alt={`업로드 사진 ${index + 1}`} draggable={false} />
              <small>{index === 0 ? '대표사진' : `${index + 1}번 사진`}</small>
               <div>
                 <button type="button" onClick={() => onMove(index, -1)} disabled={index === 0}>앞</button>
