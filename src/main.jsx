@@ -639,6 +639,7 @@ const matchExtra =
   setKeyword={setKeyword}
   setCategory={setCategory}
   setFilters={setFilters}
+       setSelected={setSelected}
 />
       <main className="page-shell">
         {!isSupabaseReady && <SetupNotice />}
@@ -739,7 +740,7 @@ function Header({ showAdminAccess, onAdmin }) {
 }
 
 
-function Hero({ keyword, setKeyword, setCategory, setFilters }) {
+function Hero({ keyword, setKeyword, setCategory, setFilters, setSelected }) {
   return (
     <section className="hero" id="top">
       <div className="hero-overlay" />
@@ -793,6 +794,7 @@ function Hero({ keyword, setKeyword, setCategory, setFilters }) {
   setKeyword={setKeyword}
   setCategory={setCategory}
   setFilters={setFilters}
+        setSelected={setSelected}
 />
       </div>
     </section>
@@ -862,7 +864,7 @@ function loadNaverMapScript() {
   });
 }
 
-function NaverMapBox({ setKeyword, setCategory, setFilters }) {
+function NaverMapBox({ setKeyword, setCategory, setFilters, setSelected }) {
   const mapElementRef = useRef(null);
   const mapRef = useRef(null);
   const markersRef = useRef([]);
@@ -941,7 +943,6 @@ function NaverMapBox({ setKeyword, setCategory, setFilters }) {
 
         naver.maps.Event.addListener(marker, 'click', () => {
           setKeyword(item.keyword);
-setKeyword(item.keyword);
 
 if (typeof setCategory === 'function') {
   setCategory('전체');
@@ -957,7 +958,9 @@ if (typeof setFilters === 'function') {
     extra: '전체',
   }));
 }
-
+if (typeof setSelected === 'function') {
+  setSelected(null);
+}
 if (stage === 'area' || stage === 'dong') {
   map.panTo(new naver.maps.LatLng(item.lat, item.lng));
   map.setZoom(item.zoom || zoom + 2);
