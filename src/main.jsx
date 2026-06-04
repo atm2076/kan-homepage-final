@@ -855,9 +855,103 @@ function loadNaverMapScript() {
 
 function NaverMapBox({ setKeyword }) {
   const mapElementRef = useRef(null);
+  const mapRef = useRef(null);
+  const markersRef = useRef([]);
 
   useEffect(() => {
     let isMounted = true;
+
+    const clearMarkers = () => {
+      markersRef.current.forEach((marker) => marker.setMap(null));
+      markersRef.current = [];
+    };
+
+    const getZoomStage = (zoom) => {
+      if (zoom >= 15) return 'property';
+      if (zoom >= 12) return 'dong';
+      return 'area';
+    };
+
+    const AREA_MARKERS = [
+      { label: '구미권', count: '3,000+', keyword: '구미', lat: 36.1195, lng: 128.3446, zoom: 12 },
+      { label: '인동·진평', count: '720+', keyword: '진평', lat: 36.1075, lng: 128.4245, zoom: 13 },
+      { label: '옥계·산동', count: '480+', keyword: '옥계', lat: 36.1437, lng: 128.4205, zoom: 13 },
+      { label: '북삼', count: '300+', keyword: '북삼', lat: 36.0647, lng: 128.3478, zoom: 13 },
+      { label: '석적·중리', count: '260+', keyword: '석적', lat: 36.0757, lng: 128.4078, zoom: 13 },
+      { label: '수익형', count: '150+', keyword: '수익형', lat: 36.1217, lng: 128.3643, zoom: 13 },
+    ];
+
+    const DONG_MARKERS = [
+      { label: '인의동', count: '210', keyword: '인의동', lat: 36.1032, lng: 128.4282, zoom: 15 },
+      { label: '진평동', count: '180', keyword: '진평동', lat: 36.1008, lng: 128.4218, zoom: 15 },
+      { label: '구평동', count: '130', keyword: '구평동', lat: 36.0938, lng: 128.4318, zoom: 15 },
+      { label: '옥계동', count: '220', keyword: '옥계동', lat: 36.1395, lng: 128.4208, zoom: 15 },
+      { label: '공단권', count: '350', keyword: '공단', lat: 36.1168, lng: 128.3828, zoom: 15 },
+      { label: '북삼읍', count: '300', keyword: '북삼', lat: 36.0647, lng: 128.3478, zoom: 15 },
+      { label: '석적읍', count: '260', keyword: '석적', lat: 36.0757, lng: 128.4078, zoom: 15 },
+    ];
+
+    const PROPERTY_MARKERS = [
+      { label: '진평동 원룸', count: '8', keyword: '진평동 원룸', lat: 36.1008, lng: 128.4218 },
+      { label: '인의동 원룸', count: '6', keyword: '인의동 원룸', lat: 36.1032, lng: 128.4282 },
+      { label: '구평동 투룸', count: '4', keyword: '구평동 투룸', lat: 36.0938, lng: 128.4318 },
+      { label: '옥계동 원룸', count: '7', keyword: '옥계동 원룸', lat: 36.1395, lng: 128.4208 },
+      { label: '북삼 투룸', count: '5', keyword: '북삼 투룸', lat: 36.0647, lng: 128.3478 },
+      { label: '석적 원룸', count: '3', keyword: '석적 원룸', lat: 36.0757, lng: 128.4078 },
+      { label: '다가구 매매', count: '2', keyword: '다가구매매', lat: 36.1217, lng: 128.3643 },
+    ];
+
+    const getMarkersByStage = (stage) => {
+      if (stage === 'property') return PROPERTY_MARKERS;
+      if (stage === 'dong') return DONG_MARKERS;
+      return AREA_MARKERS;
+    };
+
+    const renderMarkers = (map, naver) => {
+      clearMarkers();
+
+      const zoom = map.getZoom();
+      const stage = getZoomStage(zoom);
+      const markers = getMarkersByStage(stage);
+
+      markers.forEach((item) => {
+        const marker = new naver.maps.Marker({
+          position: new naver.maps.LatLng(item.lat, item.lng),
+          map,
+          icon: {
+            content: `
+              <div class="naver-count-marker naver-cluster-marker ${stage}">
+                <span>${item.count}</span>
+                <strong>${item.label}</strong>
+              </div>
+            `,
+            size: new naver.maps.Size(92, 78),
+            anchor: new naver.maps.Point(46, 39),
+          },
+        });
+
+        naver.maps.Event.addListener(marker, 'click', () => {
+          setKeyword(item.keyword);
+
+          if (stage === 'area' || stage === 'dong') {
+            map.panTo(new naver.maps.LatLng(item.lat, item.lng));
+            map.setZoom(item.zoom || zoom + 2);
+            return;
+          }
+
+          const listSection =
+            document.querySelector('.property-layout') ||
+            document.querySelector('.property-list') ||
+            document.querySelector('.listing-section');
+
+          if (listSection) {
+            listSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
+          }
+        });
+
+        markersRef.current.push(marker);
+      });
+    };
 
     loadNaverMapScript()
       .then(() => {
@@ -869,32 +963,18 @@ function NaverMapBox({ setKeyword }) {
           center: new naver.maps.LatLng(36.1195, 128.3446),
           zoom: 11,
           minZoom: 9,
+          maxZoom: 17,
           zoomControl: true,
           zoomControlOptions: {
             position: naver.maps.Position.TOP_RIGHT,
           },
         });
 
-        KAN_MAP_AREAS.forEach((area) => {
-          const marker = new naver.maps.Marker({
-            position: new naver.maps.LatLng(area.lat, area.lng),
-            map,
-            icon: {
-              content: `
-                <button type="button" class="naver-count-marker">
-                  <strong>${area.label}</strong>
-                  <span>${area.count}</span>
-                </button>
-              `,
-              size: new naver.maps.Size(112, 54),
-              anchor: new naver.maps.Point(56, 27),
-            },
-          });
+        mapRef.current = map;
+        renderMarkers(map, naver);
 
-          naver.maps.Event.addListener(marker, 'click', () => {
-            setKeyword(area.keyword);
-            map.panTo(new naver.maps.LatLng(area.lat, area.lng));
-          });
+        naver.maps.Event.addListener(map, 'zoom_changed', () => {
+          renderMarkers(map, naver);
         });
       })
       .catch((error) => {
@@ -903,25 +983,16 @@ function NaverMapBox({ setKeyword }) {
 
     return () => {
       isMounted = false;
+      clearMarkers();
     };
   }, [setKeyword]);
 
   return (
     <div className="naver-map-wrap">
       <div ref={mapElementRef} className="naver-real-map" />
-
-      <div className="naver-map-count-panel">
-        {KAN_MAP_AREAS.map((area) => (
-          <button
-            type="button"
-            key={area.label}
-            onClick={() => setKeyword(area.keyword)}
-          >
-            <span>{area.label}</span>
-            <strong>{area.count}</strong>
-          </button>
-        ))}
-      </div>
+      <p className="map-help-text">
+        지도의 숫자 마커를 누르면 지역이 확대되고, 마지막 단계에서 매물목록이 연결됩니다.
+      </p>
     </div>
   );
 }
