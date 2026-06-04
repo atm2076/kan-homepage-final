@@ -7197,3 +7197,50 @@ button.property-list-item,
   writing-mode: horizontal-tb !important;
   text-orientation: mixed !important;
 }
+.property-badge.badge-blue,
+.badge-blue {
+  background: #1f4b8f !important;
+  color: #fff !important;
+}
+
+.property-badge.badge-red,
+.badge-red {
+  background: #d83a3a !important;
+  color: #fff !important;
+}
+
+.property-badge.badge-purple,
+.badge-purple {
+  background: #6f42c1 !important;
+  color: #fff !important;
+}
+
+.property-badge.badge-gold,
+.badge-gold {
+  background: #f4c430 !important;
+  color: #102a43 !important;
+}
+
+.property-badge.badge-green,
+.badge-green {
+  background: #2f9e44 !important;
+  color: #fff !important;
+}
+
+.property-badge.badge-teal,
+.badge-teal {
+  background: #0f766e !important;
+  color: #fff !important;
+}
+
+.property-badge.badge-gray,
+.badge-gray {
+  background: #5c677d !important;
+  color: #fff !important;
+}
+
+.property-badge.badge-orange,
+.badge-orange {
+  background: #ea580c !important;
+  color: #fff !important;
+}
