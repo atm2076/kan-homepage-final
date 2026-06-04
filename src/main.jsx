@@ -1971,11 +1971,41 @@ function AdminModal({ isAdmin, setIsAdmin, onClose, properties, reload }) {
                 <TextArea label="안전시설 — 한 줄에 1개씩" value={form.safetyText} onChange={(v) => updateField('safetyText', v)} />
                 <TextArea label="생활권 — 한 줄에 1개씩" value={form.educationText} onChange={(v) => updateField('educationText', v)} />
               </details>
+<div className="featured-badge-line">
+  <label className="check-line">
+    <input
+      type="checkbox"
+      checked={form.is_featured}
+      onChange={(e) => updateField('is_featured', e.target.checked)}
+    />
+    추천 매물로 표시
+  </label>
 
-              <label className="check-line">
-                <input type="checkbox" checked={form.is_featured} onChange={(e) => updateField('is_featured', e.target.checked)} />
-                추천 매물로 표시
-              </label>
+  <label className="badge-select-inline">
+    <span>대표 배지</span>
+    <select
+      value={(form.badgesText || '').split('\n').map((v) => v.trim()).filter(Boolean)[0] || ''}
+      onChange={(e) => {
+        const selected = e.target.value;
+        const lines = (form.badgesText || '').split('\n').map((v) => v.trim()).filter(Boolean);
+        const rest = lines.slice(1).filter((v) => v !== selected);
+        updateField('badgesText', selected ? [selected, ...rest].join('\n') : rest.join('\n'));
+      }}
+    >
+      <option value="">선택안함</option>
+      <option value="추천">추천</option>
+      <option value="급매">급매</option>
+      <option value="수익형">수익형</option>
+      <option value="소액투자">소액투자</option>
+      <option value="즉시입주">즉시입주</option>
+      <option value="관리비포함">관리비포함</option>
+      <option value="상가">상가</option>
+      <option value="신축급">신축급</option>
+      <option value="리모델링">리모델링</option>
+    </select>
+  </label>
+</div>
+             
               <label className="form-field full">
   <span>매물 뱃지</span>
   <textarea
