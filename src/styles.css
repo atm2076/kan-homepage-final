@@ -7303,3 +7303,52 @@ button.property-list-item,
   background: #163b66 !important;
   color: #ffffff !important;
 }
+.list-thumb .property-badge-row .property-badge.badge-recommend {
+  background: #163b66 !important;
+  color: #ffffff !important;
+}
+
+.list-thumb .property-badge-row .property-badge.badge-hot {
+  background: #d93636 !important;
+  color: #ffffff !important;
+}
+
+.list-thumb .property-badge-row .property-badge.badge-purple {
+  background: #6d28d9 !important;
+  color: #ffffff !important;
+}
+
+.list-thumb .property-badge-row .property-badge.badge-gold {
+  background: #facc15 !important;
+  color: #111827 !important;
+}
+
+.list-thumb .property-badge-row .property-badge.badge-green {
+  background: #16a34a !important;
+  color: #ffffff !important;
+}
+
+.list-thumb .property-badge-row .property-badge.badge-teal {
+  background: #0f766e !important;
+  color: #ffffff !important;
+}
+
+.list-thumb .property-badge-row .property-badge.badge-gray {
+  background: #64748b !important;
+  color: #ffffff !important;
+}
+
+.list-thumb .property-badge-row .property-badge.badge-orange {
+  background: #ea580c !important;
+  color: #ffffff !important;
+}
+
+.list-thumb .property-badge-row .property-badge.badge-sky {
+  background: #0284c7 !important;
+  color: #ffffff !important;
+}
+
+.list-thumb .property-badge-row .property-badge.badge-default {
+  background: #163b66 !important;
+  color: #ffffff !important;
+}
