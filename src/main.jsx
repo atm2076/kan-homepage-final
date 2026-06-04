@@ -1761,7 +1761,17 @@ function AdminModal({ isAdmin, setIsAdmin, onClose, properties, reload }) {
       return { ...prev, photosText: next.join('\n') };
     });
   }
+function reorderPhoto(fromIndex, toIndex) {
+  if (fromIndex === toIndex) return;
 
+  setForm((prev) => {
+    const next = linesToArray(prev.photosText);
+    const [moved] = next.splice(fromIndex, 1);
+    next.splice(toIndex, 0, moved);
+
+    return { ...prev, photosText: next.join('\n') };
+  });
+}
   async function saveProperty(e) {
     e.preventDefault();
     setStatus('저장 중입니다.');
