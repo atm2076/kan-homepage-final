@@ -7169,3 +7169,31 @@ button.property-list-item,
   writing-mode: horizontal-tb !important;
   text-orientation: mixed !important;
 }
+.property-badge-row {
+  position: absolute;
+  top: 10px;
+  left: 10px;
+  display: flex !important;
+  flex-direction: row !important;
+  align-items: center;
+  gap: 6px;
+  writing-mode: horizontal-tb !important;
+}
+
+.property-badge {
+  display: inline-flex !important;
+  align-items: center;
+  justify-content: center;
+  width: auto !important;
+  min-width: 62px;
+  height: 30px;
+  padding: 0 12px !important;
+  border-radius: 999px;
+  font-size: 13px;
+  font-weight: 800;
+  line-height: 1;
+  color: #fff;
+  white-space: nowrap !important;
+  writing-mode: horizontal-tb !important;
+  text-orientation: mixed !important;
+}
