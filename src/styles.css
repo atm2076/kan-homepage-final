@@ -7116,3 +7116,28 @@ button.property-list-item,
     font-size: 11px;
   }
 }
+.featured-badge-line {
+  display: flex;
+  align-items: center;
+  gap: 24px;
+  flex-wrap: wrap;
+  margin-bottom: 12px;
+}
+
+.badge-select-inline {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-weight: 700;
+  color: #14345a;
+}
+
+.badge-select-inline select {
+  height: 36px;
+  padding: 0 34px 0 12px;
+  border: 1px solid #d8dee8;
+  border-radius: 10px;
+  background: #fff;
+  font-weight: 700;
+  color: #14345a;
+}
