@@ -1658,7 +1658,16 @@ const [quickRoomType, setQuickRoomType] = useState('원룸');
   const [quickTitleKeyword, setQuickTitleKeyword] = useState('');
   const adminPassword = import.meta.env.VITE_ADMIN_PASSWORD || '3883';
   const photoUrls = linesToArray(form.photosText);
+const quickMissingItems = [
+  !form.title && '제목',
+  !form.address && '주소',
+  !form.deposit && '보증금',
+  !form.rent && '월세',
+  !form.room_bath && '방/욕실',
+  photoUrls.length === 0 && '사진',
+].filter(Boolean);
 
+const quickReady = quickMissingItems.length === 0;
   function login(e) {
     e.preventDefault();
     if (password === adminPassword) {
@@ -2179,7 +2188,11 @@ setStatus('직원 간단 등록 기본값을 적용했습니다. 제목, 방/욕
   <p className="muted">
     저장하기 전에 제목, 가격, 주소, 방/욕실, 사진 수를 한 번에 확인하세요.
   </p>
-
+<div className={quickReady ? 'quick-status ok' : 'quick-status warn'}>
+  {quickReady
+    ? '기본 확인 완료: 저장 전 상세 내용만 한 번 더 확인하세요.'
+    : `필수 확인 필요: ${quickMissingItems.join(', ')}`}
+</div>
   <div className="quick-check-grid">
     <div>
       <span>제목</span>
