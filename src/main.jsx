@@ -2174,6 +2174,74 @@ setStatus('직원 간단 등록 기본값을 적용했습니다. 제목, 방/욕
                 <TextArea label="짧은 설명" value={form.summary} onChange={(v) => updateField('summary', v)} rows={3} placeholder="위치, 장점, 입주조건을 짧게 입력" />
               </section>
 )}
+              <section className="admin-section-block quick-check-box">
+  <h4>입력자료 한눈에 확인</h4>
+  <p className="muted">
+    저장하기 전에 제목, 가격, 주소, 방/욕실, 사진 수를 한 번에 확인하세요.
+  </p>
+
+  <div className="quick-check-grid">
+    <div>
+      <span>제목</span>
+      <strong>{form.title || '제목 미입력'}</strong>
+    </div>
+
+    <div>
+      <span>매물종류</span>
+      <strong>{form.category || '미입력'}</strong>
+    </div>
+
+    <div>
+      <span>거래형태</span>
+      <strong>{form.trade_type || '미입력'}</strong>
+    </div>
+
+    <div>
+      <span>주소</span>
+      <strong>{form.address || '주소 미입력'}</strong>
+    </div>
+
+    <div>
+      <span>층/호</span>
+      <strong>{form.floor_info || '미입력'}</strong>
+    </div>
+
+    <div>
+      <span>보증금 / 월세</span>
+      <strong>{form.deposit || '-'} / {form.rent || '-'}</strong>
+    </div>
+
+    <div>
+      <span>관리비</span>
+      <strong>{form.maintenance_fee || '월세에 포함'}</strong>
+    </div>
+
+    <div>
+      <span>방/욕실</span>
+      <strong>{form.room_bath || '미입력'}</strong>
+    </div>
+
+    <div>
+      <span>입주가능일</span>
+      <strong>{form.move_in || '즉시입주 협의'}</strong>
+    </div>
+
+    <div>
+      <span>방향</span>
+      <strong>{form.direction || '주출입구 기준 확인 필요'}</strong>
+    </div>
+
+    <div>
+      <span>주차</span>
+      <strong>{form.parking || '확인 필요'}</strong>
+    </div>
+
+    <div>
+      <span>사진</span>
+      <strong>{photoUrls.length}장</strong>
+    </div>
+  </div>
+</section>
               <section className="admin-section-block">
                 <h4>2. 사진등록</h4>
               <PhotoUploader
