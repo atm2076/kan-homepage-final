@@ -7482,3 +7482,12 @@ button.property-list-item,
   overflow-wrap: normal;
   word-break: keep-all;
 }
+.list-info p {
+  word-break: keep-all;
+  overflow-wrap: normal;
+}
+
+.mobile-card-text {
+  word-break: keep-all;
+  overflow-wrap: normal;
+}
