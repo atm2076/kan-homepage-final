@@ -1266,13 +1266,13 @@ function PropertyListItem({ property, active, onClick }) {
             <b>
               보증금 {formatMoney(property.deposit)} / 월세 {formatMoney(property.rent || property.monthly_rent)}
             </b>
-            <em>
-              {property.maintenance_fee
-                ? String(property.maintenance_fee).includes('포함')
-                  ? '관리비 포함'
-                  : `관리비 ${formatMoney(property.maintenance_fee)}`
-                : '관리비 확인'}
-            </em>
+           <em>
+  {property.maintenance_fee
+    ? String(property.maintenance_fee).includes('포함')
+      ? '관리비 포함'
+      : `관리비 ${formatMoney(property.maintenance_fee)}`
+    : '관리비 확인'}
+</em>
           </div>
         )}
 
