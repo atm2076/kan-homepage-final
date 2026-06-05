@@ -7491,3 +7491,8 @@ button.property-list-item,
   word-break: keep-all;
   overflow-wrap: normal;
 }
+.no-break {
+  white-space: nowrap;
+  word-break: keep-all;
+  overflow-wrap: normal;
+}
