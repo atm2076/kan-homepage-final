@@ -531,7 +531,9 @@ function App() {
   const [filters, setFilters] = useState(defaultFilters);
   const [adminOpen, setAdminOpen] = useState(false);
   const [isAdmin, setIsAdmin] = useState(false);
-  const showAdminAccess = typeof window !== 'undefined' && new URLSearchParams(window.location.search).get('admin') === '1';
+const [photoAutoEdit, setPhotoAutoEdit] = useState(true);
+const [photoWatermark, setPhotoWatermark] = useState(true);
+const showAdminAccess = typeof window !== 'undefined' && new URLSearchParams(window.location.search).get('admin') === '1';
 
   async function loadProperties() {
     setError('');
@@ -1692,7 +1694,8 @@ function AdminModal({ isAdmin, setIsAdmin, onClose, properties, reload }) {
     setBulkText('');
     setStatus('새 매물 등록 상태입니다.');
   }
-function autoEditPhoto(file) {
+function autoEditPhoto(file, options = {}) {
+  const { autoEdit = true, watermark = true } = options;
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
     const img = new Image();
@@ -1716,10 +1719,10 @@ function autoEditPhoto(file) {
         canvas.height = height;
 
         // 밝기 / 대비 / 채도 자동 보정
-        ctx.filter = 'brightness(1.08) contrast(1.08) saturate(1.06)';
+        ctx.filter = autoEdit ? 'brightness(1.08) contrast(1.08) saturate(1.06)' : 'none';
         ctx.drawImage(img, 0, 0, width, height);
         ctx.filter = 'none';
-
+if (watermark) {
       // 워터마크 글씨만 중앙 하단에 표시
 const fontSize = Math.max(28, Math.round(width * 0.03));
 ctx.fillStyle = 'rgba(255, 255, 255, 0.88)';
@@ -1742,7 +1745,7 @@ ctx.shadowColor = 'transparent';
 ctx.shadowBlur = 0;
 ctx.shadowOffsetX = 0;
 ctx.shadowOffsetY = 0;
-
+}
         canvas.toBlob(
           (blob) => {
             if (!blob) {
@@ -1774,7 +1777,14 @@ ctx.shadowOffsetY = 0;
 }
   async function uploadPhotoFiles(fileList) {
    const originalFiles = Array.from(fileList || []).filter((file) => file.type.startsWith('image/'));
-const files = await Promise.all(originalFiles.map((file) => autoEditPhoto(file)));
+const files = await Promise.all(
+  originalFiles.map((file) =>
+    autoEditPhoto(file, {
+      autoEdit: photoAutoEdit,
+      watermark: photoWatermark,
+    })
+  )
+);
 
     if (!files.length) {
       setStatus('업로드할 사진 파일이 없습니다. JPG, PNG 같은 이미지 파일을 선택하세요.');
@@ -1989,12 +1999,16 @@ function reorderPhoto(fromIndex, toIndex) {
 
               <section className="admin-section-block">
                 <h4>2. 사진등록</h4>
-               <PhotoUploader
+              <PhotoUploader
   photos={photoUrls}
   onUpload={uploadPhotoFiles}
   onRemove={removePhoto}
   onMove={movePhoto}
   onReorder={reorderPhoto}
+  autoEditEnabled={photoAutoEdit}
+  watermarkEnabled={photoWatermark}
+  onToggleAutoEdit={setPhotoAutoEdit}
+  onToggleWatermark={setPhotoWatermark}
 />
                 <details className="manual-url-box">
                   <summary>사진 주소 직접 확인/수정</summary>
@@ -2145,7 +2159,17 @@ function reorderPhoto(fromIndex, toIndex) {
   );
 }
 
-function PhotoUploader({ photos, onUpload, onRemove, onMove, onReorder }) {
+function PhotoUploader({
+  photos,
+  onUpload,
+  onRemove,
+  onMove,
+  onReorder,
+  autoEditEnabled = true,
+  watermarkEnabled = true,
+  onToggleAutoEdit = () => {},
+  onToggleWatermark = () => {},
+}) {
   const [dragging, setDragging] = useState(false);
 const [dragIndex, setDragIndex] = useState(null);
   function handleDrop(e) {
@@ -2167,6 +2191,25 @@ const [dragIndex, setDragIndex] = useState(null);
       >
         <strong>사진을 여기에 드래그하거나 아래 버튼으로 선택하세요.</strong>
         <p className="muted">여러 장을 한 번에 올릴 수 있습니다. 첫 번째 사진이 대표사진입니다.</p>
+        <div className="photo-edit-options">
+  <label>
+    <input
+      type="checkbox"
+      checked={autoEditEnabled}
+      onChange={(e) => onToggleAutoEdit(e.target.checked)}
+    />
+    사진 자동 보정 적용
+  </label>
+
+  <label>
+    <input
+      type="checkbox"
+      checked={watermarkEnabled}
+      onChange={(e) => onToggleWatermark(e.target.checked)}
+    />
+    워터마크 삽입
+  </label>
+</div>
         <input type="file" accept="image/*" multiple onChange={(e) => { onUpload(e.target.files); e.target.value = ''; }} />
       </div>
 
