@@ -1692,7 +1692,80 @@ function AdminModal({ isAdmin, setIsAdmin, onClose, properties, reload }) {
     setBulkText('');
     setStatus('새 매물 등록 상태입니다.');
   }
+function autoEditPhoto(file) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    const img = new Image();
 
+    reader.onload = (event) => {
+      img.onload = () => {
+        const maxWidth = 1600;
+        const maxHeight = 1200;
+
+        let width = img.width;
+        let height = img.height;
+
+        const ratio = Math.min(maxWidth / width, maxHeight / height, 1);
+        width = Math.round(width * ratio);
+        height = Math.round(height * ratio);
+
+        const canvas = document.createElement('canvas');
+        const ctx = canvas.getContext('2d');
+
+        canvas.width = width;
+        canvas.height = height;
+
+        // 밝기 / 대비 / 채도 자동 보정
+        ctx.filter = 'brightness(1.08) contrast(1.08) saturate(1.06)';
+        ctx.drawImage(img, 0, 0, width, height);
+        ctx.filter = 'none';
+
+        // 하단 워터마크 배경
+        const barHeight = Math.max(58, Math.round(height * 0.07));
+        ctx.fillStyle = 'rgba(0, 0, 0, 0.48)';
+        ctx.fillRect(0, height - barHeight, width, barHeight);
+
+        // 워터마크 문구
+        const fontSize = Math.max(24, Math.round(width * 0.026));
+        ctx.fillStyle = '#ffffff';
+        ctx.font = `bold ${fontSize}px sans-serif`;
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText(
+          '칸공인중개사 010-5323-3883',
+          width / 2,
+          height - barHeight / 2
+        );
+
+        canvas.toBlob(
+          (blob) => {
+            if (!blob) {
+              reject(new Error('사진 자동편집 실패'));
+              return;
+            }
+
+            const newName = file.name.replace(/\.[^/.]+$/, '') + '.jpg';
+
+            const editedFile = new File([blob], newName, {
+              type: 'image/jpeg',
+              lastModified: Date.now(),
+            });
+
+            resolve(editedFile);
+          },
+          'image/jpeg',
+          0.82
+        );
+      };
+
+      img.onerror = reject;
+      img.src = event.target.result;
+    };
+
+    reader.onerror = reject;
+    reader.readAsDataURL(file);
+  });
+}
   async function uploadPhotoFiles(fileList) {
     const files = Array.from(fileList || []).filter((file) => file.type.startsWith('image/'));
 
