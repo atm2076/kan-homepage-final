@@ -1720,22 +1720,28 @@ function autoEditPhoto(file) {
         ctx.drawImage(img, 0, 0, width, height);
         ctx.filter = 'none';
 
-        // 하단 워터마크 배경
-        const barHeight = Math.max(58, Math.round(height * 0.07));
-        ctx.fillStyle = 'rgba(0, 0, 0, 0.48)';
-        ctx.fillRect(0, height - barHeight, width, barHeight);
+      // 워터마크 글씨만 중앙 하단에 표시
+const fontSize = Math.max(28, Math.round(width * 0.03));
+ctx.fillStyle = 'rgba(255, 255, 255, 0.88)';
+ctx.font = `bold ${fontSize}px sans-serif`;
+ctx.textAlign = 'center';
+ctx.textBaseline = 'bottom';
 
-        // 워터마크 문구
-        const fontSize = Math.max(24, Math.round(width * 0.026));
-        ctx.fillStyle = '#ffffff';
-        ctx.font = `bold ${fontSize}px sans-serif`;
-        ctx.textAlign = 'center';
-        ctx.textBaseline = 'middle';
-        ctx.fillText(
-          '칸공인중개사 010-5323-3883',
-          width / 2,
-          height - barHeight / 2
-        );
+ctx.shadowColor = 'rgba(0, 0, 0, 0.55)';
+ctx.shadowBlur = 4;
+ctx.shadowOffsetX = 1;
+ctx.shadowOffsetY = 1;
+
+ctx.fillText(
+  '칸공인중개사 010-5323-3883',
+  width / 2,
+  height - 20
+);
+
+ctx.shadowColor = 'transparent';
+ctx.shadowBlur = 0;
+ctx.shadowOffsetX = 0;
+ctx.shadowOffsetY = 0;
 
         canvas.toBlob(
           (blob) => {
