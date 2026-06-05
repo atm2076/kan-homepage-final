@@ -7538,3 +7538,22 @@ button.property-list-item,
     grid-template-columns: 1fr;
   }
 }
+.quick-status {
+  margin: 12px 0 16px;
+  padding: 12px 14px;
+  border-radius: 14px;
+  font-weight: 900;
+  line-height: 1.4;
+}
+
+.quick-status.warn {
+  background: #fff1f1;
+  border: 1px solid #f2b8b8;
+  color: #b42318;
+}
+
+.quick-status.ok {
+  background: #eefaf1;
+  border: 1px solid #b7e1c1;
+  color: #146c2e;
+}
