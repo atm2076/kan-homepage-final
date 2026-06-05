@@ -1655,6 +1655,8 @@ function AdminModal({ isAdmin, setIsAdmin, onClose, properties, reload }) {
 const [photoWatermark, setPhotoWatermark] = useState(true);
   const [entryMode, setEntryMode] = useState('simple');
 const [quickRoomType, setQuickRoomType] = useState('원룸');
+  const [addressResults, setAddressResults] = useState([]);
+const [addressSearching, setAddressSearching] = useState(false);
   const [quickTitleKeyword, setQuickTitleKeyword] = useState('');
   const adminPassword = import.meta.env.VITE_ADMIN_PASSWORD || '3883';
   const photoUrls = linesToArray(form.photosText);
@@ -1681,7 +1683,37 @@ const quickReady = quickMissingItems.length === 0;
   function updateField(name, value) {
     setForm((prev) => ({ ...prev, [name]: value }));
   }
+async function handleAddressSearch() {
+  const keyword = form.address?.trim();
 
+  if (!keyword || keyword.length < 2) {
+    setStatus('주소를 2글자 이상 입력해주세요.');
+    return;
+  }
+
+  try {
+    setAddressSearching(true);
+    setAddressResults([]);
+
+    const response = await fetch(`/api/search-address?keyword=${encodeURIComponent(keyword)}`);
+    const data = await response.json();
+
+    if (!response.ok) {
+      setStatus(data.error || '주소 검색 중 오류가 발생했습니다.');
+      return;
+    }
+
+    setAddressResults(data.results || []);
+
+    if (!data.results || data.results.length === 0) {
+      setStatus('검색된 주소가 없습니다. 동/번지를 다시 확인해주세요.');
+    }
+  } catch (error) {
+    setStatus('주소 검색 서버 연결 중 오류가 발생했습니다.');
+  } finally {
+    setAddressSearching(false);
+  }
+}
   function applyBulkInput() {
     const parsed = parseBulkText(bulkText);
 
@@ -2042,12 +2074,44 @@ function reorderPhoto(fromIndex, toIndex) {
   </button>
 </div>
     <div className="two-cols">
-      <Field
-        label="주소"
-        value={form.address}
-        onChange={(v) => updateField('address', v)}
-        placeholder="예: 구미시 진평동 1052-1"
-      />
+     <div className="address-search-wrap">
+  <Field
+    label="주소"
+    value={form.address}
+    onChange={(v) => updateField('address', v)}
+    placeholder="예: 구미시 진평동 1052-1"
+  />
+
+  <button
+    type="button"
+    className="address-search-button"
+    onClick={handleAddressSearch}
+    disabled={addressSearching}
+  >
+    {addressSearching ? '검색중...' : '주소검색'}
+  </button>
+
+  {addressResults.length > 0 && (
+    <div className="address-result-list">
+      {addressResults.map((item, index) => (
+        <button
+          key={`${item.bdMgtSn}-${index}`}
+          type="button"
+          className="address-result-item"
+          onClick={() => {
+            updateField('address', item.roadAddr || item.jibunAddr);
+            setAddressResults([]);
+            setStatus('주소를 선택했습니다.');
+          }}
+        >
+          <strong>{item.roadAddr}</strong>
+          <span>{item.jibunAddr}</span>
+          <em>{item.zipNo}</em>
+        </button>
+      ))}
+    </div>
+  )}
+</div>
 
       <Field
         label="층/호"
