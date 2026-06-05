@@ -7434,3 +7434,33 @@ button.property-list-item,
   color: #ffffff;
   border-color: #183962;
 }
+.quick-title-keyword-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin: 16px 0 18px;
+}
+
+.quick-title-keyword-row .quick-label {
+  width: 100%;
+  margin: 0 0 2px;
+  font-weight: 800;
+  color: #3b2d1f;
+}
+
+.quick-title-keyword-row button {
+  border: 1px solid #d8c8b4;
+  background: #ffffff;
+  color: #1f3556;
+  font-weight: 800;
+  padding: 10px 14px;
+  border-radius: 999px;
+  cursor: pointer;
+}
+
+.quick-title-keyword-row button.active {
+  background: #183962;
+  color: #ffffff;
+  border-color: #183962;
+}
