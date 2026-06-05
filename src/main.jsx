@@ -1657,6 +1657,8 @@ const [photoWatermark, setPhotoWatermark] = useState(true);
 const [quickRoomType, setQuickRoomType] = useState('원룸');
   const [addressResults, setAddressResults] = useState([]);
 const [addressSearching, setAddressSearching] = useState(false);
+  const [selectedAddressItem, setSelectedAddressItem] = useState(null);
+const [buildingLedgerSearching, setBuildingLedgerSearching] = useState(false);
   const [quickTitleKeyword, setQuickTitleKeyword] = useState('');
   const adminPassword = import.meta.env.VITE_ADMIN_PASSWORD || '3883';
   const photoUrls = linesToArray(form.photosText);
@@ -1694,7 +1696,7 @@ async function handleAddressSearch() {
   try {
     setAddressSearching(true);
     setAddressResults([]);
-
+setSelectedAddressItem(null);
     const response = await fetch(`/api/search-address?keyword=${encodeURIComponent(keyword)}`);
     const data = await response.json();
 
@@ -1712,6 +1714,71 @@ async function handleAddressSearch() {
     setStatus('주소 검색 서버 연결 중 오류가 발생했습니다.');
   } finally {
     setAddressSearching(false);
+  }
+}
+  async function fetchBuildingLedger() {
+  if (!selectedAddressItem) {
+    setStatus('먼저 주소검색 후 주소를 선택해주세요.');
+    return;
+  }
+
+  const jibunText = selectedAddressItem.jibunAddr || '';
+  const lotMatch = jibunText.match(/(산\s*)?(\d+)(?:-(\d+))?\s*$/);
+
+  const admCd = selectedAddressItem.admCd;
+  const lnbrMnnm = selectedAddressItem.lnbrMnnm || lotMatch?.[2];
+  const lnbrSlno = selectedAddressItem.lnbrSlno || lotMatch?.[3] || '0';
+  const mtYn = selectedAddressItem.mtYn || (lotMatch?.[1] ? '1' : '0');
+
+  if (!admCd || !lnbrMnnm) {
+    setStatus('건축물대장 조회에 필요한 법정동/번지 정보가 부족합니다.');
+    return;
+  }
+
+  try {
+    setBuildingLedgerSearching(true);
+    setStatus('건축물대장 조회 중입니다...');
+
+    const query = new URLSearchParams({
+      admCd,
+      lnbrMnnm,
+      lnbrSlno,
+      mtYn
+    });
+
+    const response = await fetch(`/api/building-ledger?${query.toString()}`);
+    const data = await response.json();
+
+    if (!response.ok || !data.ok) {
+      setStatus(data.message || '건축물대장 조회 중 오류가 발생했습니다.');
+      return;
+    }
+
+    if (!data.summary) {
+      setStatus('건축물대장 정보가 없습니다. 주소 또는 번지를 확인해주세요.');
+      return;
+    }
+
+    const s = data.summary;
+
+    updateField('approval_date', s.사용승인일 || '');
+    updateField('main_use', s.주용도 || '');
+    updateField('structure', s.구조 || '');
+    updateField('floor_count', s.지상층수 || '');
+    updateField('basement_floor_count', s.지하층수 || '');
+    updateField('total_floor_info', `지상 ${s.지상층수 || 0}층 / 지하 ${s.지하층수 || 0}층`);
+    updateField('total_area', s.연면적 || '');
+    updateField('building_area', s.건축면적 || '');
+    updateField('land_area', s.대지면적 || '');
+    updateField('parking', s.주차대수 ? `${s.주차대수}대` : '');
+
+    setStatus(
+      `건축물대장 조회 완료: ${s.주용도 || ''} / ${s.구조 || ''} / 사용승인일 ${s.사용승인일 || ''}`
+    );
+  } catch (error) {
+    setStatus('건축물대장 서버 연결 중 오류가 발생했습니다.');
+  } finally {
+    setBuildingLedgerSearching(false);
   }
 }
   function applyBulkInput() {
@@ -2090,7 +2157,14 @@ function reorderPhoto(fromIndex, toIndex) {
   >
     {addressSearching ? '검색중...' : '주소검색'}
   </button>
-
+<button
+  type="button"
+  className="address-search-button"
+  onClick={fetchBuildingLedger}
+  disabled={buildingLedgerSearching || !selectedAddressItem}
+>
+  {buildingLedgerSearching ? '대장조회중...' : '건축물대장 조회'}
+</button>
   {addressResults.length > 0 && (
     <div className="address-result-list">
       {addressResults.map((item, index) => (
@@ -2099,9 +2173,10 @@ function reorderPhoto(fromIndex, toIndex) {
           type="button"
           className="address-result-item"
           onClick={() => {
-            updateField('address', item.roadAddr || item.jibunAddr);
-            setAddressResults([]);
-            setStatus('주소를 선택했습니다.');
+           updateField('address', item.roadAddr || item.jibunAddr);
+setSelectedAddressItem(item);
+setAddressResults([]);
+setStatus('주소를 선택했습니다. 건축물대장 조회를 진행할 수 있습니다.');
           }}
         >
           <strong>{item.roadAddr}</strong>
