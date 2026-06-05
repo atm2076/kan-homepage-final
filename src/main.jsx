@@ -2037,15 +2037,15 @@ function reorderPhoto(fromIndex, toIndex) {
 
       <Field
         label="월세"
-        value={form.monthly}
-        onChange={(v) => updateField('monthly', v)}
+        value={form.rent}
+onChange={(v) => updateField('rent', v)}
         placeholder="예: 35"
       />
 
       <Field
         label="관리비"
-        value={form.maintenance}
-        onChange={(v) => updateField('maintenance', v)}
+       value={form.maintenance_fee}
+onChange={(v) => updateField('maintenance_fee', v)}
         placeholder="월세에 포함"
       />
     </div>
@@ -2062,22 +2062,47 @@ function reorderPhoto(fromIndex, toIndex) {
       type="button"
       className="primary-btn"
       onClick={() => {
-        const roomBathMap = {
-          원룸: '1/1',
-          미니투룸: '1/1',
-          투룸: '2/1',
-          쓰리룸: '3/1',
-          포룸: '4/2',
-        };
+   const roomBathMap = {
+  원룸: '1/1',
+  미니투룸: '1/1',
+  투룸: '2/1',
+  쓰리룸: '3/1',
+  포룸: '4/2',
+};
 
-        updateField('category', quickRoomType);
-        updateField('trade_type', '월세');
-        updateField('room_bath', roomBathMap[quickRoomType]);
-        updateField('maintenance', form.maintenance || '월세에 포함');
-        updateField('move_in', form.move_in || '즉시입주 협의');
-        updateField('direction', form.direction || '주출입구 기준 확인 필요');
-        updateField('parking', form.parking || '확인 필요');
-        setStatus('직원 간단 등록 기본값을 적용했습니다. 사진과 가격 확인 후 저장하세요.');
+const addressText = form.address
+  ? form.address.replace('경상북도 ', '').replace('구미시 ', '구미 ')
+  : '구미';
+
+const depositText = form.deposit ? `${form.deposit}` : '';
+const rentText = form.rent ? `${form.rent}` : '';
+const maintenanceText = form.maintenance_fee || '월세에 포함';
+
+const titleParts = [
+  addressText,
+  quickRoomType,
+  '월세',
+  depositText && rentText ? `${depositText}/${rentText}` : '',
+  maintenanceText.includes('포함') ? '관리비포함' : '',
+].filter(Boolean);
+
+updateField('title', titleParts.join(' '));
+updateField('category', quickRoomType);
+updateField('trade_type', '월세');
+updateField('room_bath', roomBathMap[quickRoomType]);
+updateField('maintenance_fee', maintenanceText);
+updateField('move_in', form.move_in || '즉시입주 협의');
+updateField('direction', form.direction || '주출입구 기준 확인 필요');
+updateField('parking', form.parking || '확인 필요');
+
+if (!form.summary) {
+  updateField(
+    'summary',
+    `${quickRoomType} 월세 매물입니다. 사진과 실제 조건 확인 후 최종 검수해 주세요.`
+  );
+}
+
+setStatus('직원 간단 등록 기본값을 적용했습니다. 제목, 방/욕실, 관리비 기본값을 자동 적용했습니다.');
       }}
     >
       간단등록 기본값 적용
