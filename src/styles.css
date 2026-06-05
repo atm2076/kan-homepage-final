@@ -7496,3 +7496,45 @@ button.property-list-item,
   word-break: keep-all;
   overflow-wrap: normal;
 }
+.quick-check-box {
+  background: #fffaf0;
+  border: 1px solid #ead7bd;
+  border-radius: 18px;
+}
+
+.quick-check-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+  margin-top: 14px;
+}
+
+.quick-check-grid > div {
+  background: #ffffff;
+  border: 1px solid #eadfce;
+  border-radius: 14px;
+  padding: 12px 14px;
+}
+
+.quick-check-grid span {
+  display: block;
+  font-size: 12px;
+  font-weight: 800;
+  color: #8a7862;
+  margin-bottom: 5px;
+}
+
+.quick-check-grid strong {
+  display: block;
+  font-size: 15px;
+  font-weight: 900;
+  color: #17345b;
+  word-break: keep-all;
+  line-height: 1.35;
+}
+
+@media (max-width: 720px) {
+  .quick-check-grid {
+    grid-template-columns: 1fr;
+  }
+}
