@@ -7557,3 +7557,71 @@ button.property-list-item,
   border: 1px solid #b7e1c1;
   color: #146c2e;
 }
+.address-search-wrap {
+  width: 100%;
+}
+
+.address-search-button {
+  margin-top: 8px;
+  height: 36px;
+  padding: 0 16px;
+  border: 1px solid #173b67;
+  border-radius: 999px;
+  background: #173b67;
+  color: white;
+  font-size: 14px;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.address-search-button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.address-result-list {
+  margin-top: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.address-result-item {
+  width: 100%;
+  padding: 10px 12px;
+  border: 1px solid #e1d3bd;
+  border-radius: 14px;
+  background: #fff;
+  text-align: left;
+  cursor: pointer;
+}
+
+.address-result-item:hover {
+  border-color: #173b67;
+  background: #f7fbff;
+}
+
+.address-result-item strong {
+  display: block;
+  color: #111827;
+  font-size: 14px;
+  font-weight: 800;
+  line-height: 1.4;
+}
+
+.address-result-item span {
+  display: block;
+  margin-top: 4px;
+  color: #6b7280;
+  font-size: 13px;
+  line-height: 1.4;
+}
+
+.address-result-item em {
+  display: inline-block;
+  margin-top: 5px;
+  color: #173b67;
+  font-size: 12px;
+  font-style: normal;
+  font-weight: 800;
+}
