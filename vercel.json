@@ -1,7 +1,1 @@
-{
-  "functions": {
-    "api/search-address.js": {
-      "maxDuration": 10
-    }
-  }
-}
+{}
