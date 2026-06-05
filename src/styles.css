@@ -7384,3 +7384,53 @@ button.property-list-item,
   background: #163b66 !important;
   color: #ffffff !important;
 }
+.entry-mode-tabs {
+  display: flex;
+  gap: 10px;
+  margin: 18px 0;
+  padding: 10px;
+  background: #f7f3ec;
+  border: 1px solid #eadfce;
+  border-radius: 18px;
+}
+
+.entry-mode-tabs button {
+  flex: 1;
+  border: 1px solid #d8c8b4;
+  background: #ffffff;
+  color: #1f3556;
+  font-weight: 800;
+  font-size: 15px;
+  padding: 14px 18px;
+  border-radius: 14px;
+  cursor: pointer;
+}
+
+.entry-mode-tabs button.active {
+  background: #183962;
+  color: #ffffff;
+  border-color: #183962;
+}
+
+.quick-room-type-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 14px 0 18px;
+}
+
+.quick-room-type-row button {
+  border: 1px solid #d8c8b4;
+  background: #ffffff;
+  color: #1f3556;
+  font-weight: 800;
+  padding: 11px 15px;
+  border-radius: 999px;
+  cursor: pointer;
+}
+
+.quick-room-type-row button.active {
+  background: #183962;
+  color: #ffffff;
+  border-color: #183962;
+}
