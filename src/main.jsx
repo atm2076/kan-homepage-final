@@ -2314,3 +2314,4 @@ function Footer() {
 }
 
 createRoot(document.getElementById('root')).render(<App />);
+
