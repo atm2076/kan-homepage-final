@@ -2067,8 +2067,12 @@ const roomBathMap = {
   투룸: '2/1',
   '쓰리룸 이상': '3/1',
 };
-const addressText = form.address
-  ? form.address.replace('경상북도 ', '').replace('구미시 ', '구미 ')
+const rawAddress = (form.address || '').trim();
+
+const addressText = rawAddress
+  ? rawAddress.includes('구미')
+    ? rawAddress.replace('경상북도 ', '').replace('구미시 ', '구미 ')
+    : `구미 ${rawAddress}`
   : '구미';
 
 const depositText = form.deposit ? `${form.deposit}` : '';
