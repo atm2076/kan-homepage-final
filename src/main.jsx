@@ -1653,6 +1653,8 @@ function AdminModal({ isAdmin, setIsAdmin, onClose, properties, reload }) {
   const [status, setStatus] = useState('');
   const [photoAutoEdit, setPhotoAutoEdit] = useState(true);
 const [photoWatermark, setPhotoWatermark] = useState(true);
+  const [entryMode, setEntryMode] = useState('simple');
+const [quickRoomType, setQuickRoomType] = useState('원룸');
   const adminPassword = import.meta.env.VITE_ADMIN_PASSWORD || '3883';
   const photoUrls = linesToArray(form.photosText);
 
@@ -1955,7 +1957,134 @@ function reorderPhoto(fromIndex, toIndex) {
                 <button type="button" className="primary-btn" onClick={applyBulkInput}>일괄입력 자동 채우기</button>
                 <p className="muted">사진은 위/아래 사진등록에서 올리고, 매물자료는 이 칸에 통째로 붙여넣은 뒤 자동 채우기를 누르면 됩니다.</p>
               </section>
+<div className="entry-mode-tabs">
+  <button
+    type="button"
+    className={entryMode === 'simple' ? 'active' : ''}
+    onClick={() => setEntryMode('simple')}
+  >
+    직원 간단 등록
+  </button>
 
+  <button
+    type="button"
+    className={entryMode === 'detail' ? 'active' : ''}
+    onClick={() => setEntryMode('detail')}
+  >
+    상세 등록
+  </button>
+</div>
+              {entryMode === 'simple' && (
+  <section className="admin-section-block priority-block">
+    <h4>직원 간단 등록</h4>
+    <p className="muted">
+      현장에서 사진, 주소, 방종류, 보증금, 월세만 빠르게 입력하는 화면입니다.
+      나머지 항목은 기본값으로 자동 세팅됩니다.
+    </p>
+
+    <div className="quick-room-type-row">
+      {['원룸', '미니투룸', '투룸', '쓰리룸', '포룸'].map((type) => (
+        <button
+          key={type}
+          type="button"
+          className={quickRoomType === type ? 'active' : ''}
+          onClick={() => {
+            setQuickRoomType(type);
+
+            const roomBathMap = {
+              원룸: '1/1',
+              미니투룸: '1/1',
+              투룸: '2/1',
+              쓰리룸: '3/1',
+              포룸: '4/2',
+            };
+
+            updateField('category', type);
+            updateField('room_bath', roomBathMap[type]);
+            updateField('trade_type', '월세');
+            updateField('move_in', '즉시입주 협의');
+            updateField('direction', '주출입구 기준 확인 필요');
+          }}
+        >
+          {type}
+        </button>
+      ))}
+    </div>
+
+    <div className="two-cols">
+      <Field
+        label="주소"
+        value={form.address}
+        onChange={(v) => updateField('address', v)}
+        placeholder="예: 구미시 진평동 1052-1"
+      />
+
+      <Field
+        label="층/호"
+        value={form.floor_info}
+        onChange={(v) => updateField('floor_info', v)}
+        placeholder="예: 2층 / 201호"
+      />
+    </div>
+
+    <div className="three-cols">
+      <Field
+        label="보증금"
+        value={form.deposit}
+        onChange={(v) => updateField('deposit', v)}
+        placeholder="예: 300"
+      />
+
+      <Field
+        label="월세"
+        value={form.monthly}
+        onChange={(v) => updateField('monthly', v)}
+        placeholder="예: 35"
+      />
+
+      <Field
+        label="관리비"
+        value={form.maintenance}
+        onChange={(v) => updateField('maintenance', v)}
+        placeholder="월세에 포함"
+      />
+    </div>
+
+    <TextArea
+      label="간단 메모"
+      value={form.summary}
+      onChange={(v) => updateField('summary', v)}
+      rows={3}
+      placeholder="예: 리모델링, 즉시입주, 주차가능, 공단 출퇴근 편리"
+    />
+
+    <button
+      type="button"
+      className="primary-btn"
+      onClick={() => {
+        const roomBathMap = {
+          원룸: '1/1',
+          미니투룸: '1/1',
+          투룸: '2/1',
+          쓰리룸: '3/1',
+          포룸: '4/2',
+        };
+
+        updateField('category', quickRoomType);
+        updateField('trade_type', '월세');
+        updateField('room_bath', roomBathMap[quickRoomType]);
+        updateField('maintenance', form.maintenance || '월세에 포함');
+        updateField('move_in', form.move_in || '즉시입주 협의');
+        updateField('direction', form.direction || '주출입구 기준 확인 필요');
+        updateField('parking', form.parking || '확인 필요');
+        setStatus('직원 간단 등록 기본값을 적용했습니다. 사진과 가격 확인 후 저장하세요.');
+      }}
+    >
+      간단등록 기본값 적용
+    </button>
+  </section>
+)}
+              {entryMode === 'detail' && (
               <section className="admin-section-block priority-block">
                 <h4>1. 기본정보</h4>
                 <Field label="제목" value={form.title} onChange={(v) => updateField('title', v)} placeholder="예: 진평초등 앞 리모델링 원룸임대" />
@@ -1996,7 +2125,7 @@ function reorderPhoto(fromIndex, toIndex) {
 )}
                 <TextArea label="짧은 설명" value={form.summary} onChange={(v) => updateField('summary', v)} rows={3} placeholder="위치, 장점, 입주조건을 짧게 입력" />
               </section>
-
+)}
               <section className="admin-section-block">
                 <h4>2. 사진등록</h4>
               <PhotoUploader
