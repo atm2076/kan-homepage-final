@@ -7464,3 +7464,15 @@ button.property-list-item,
   color: #ffffff;
   border-color: #183962;
 }
+.property-card-title {
+  word-break: keep-all;
+}
+
+.property-card-price {
+  word-break: keep-all;
+}
+
+.property-card-title,
+.property-card-price {
+  line-height: 1.35;
+}
