@@ -1767,7 +1767,8 @@ function autoEditPhoto(file) {
   });
 }
   async function uploadPhotoFiles(fileList) {
-    const files = Array.from(fileList || []).filter((file) => file.type.startsWith('image/'));
+   const originalFiles = Array.from(fileList || []).filter((file) => file.type.startsWith('image/'));
+const files = await Promise.all(originalFiles.map((file) => autoEditPhoto(file)));
 
     if (!files.length) {
       setStatus('업로드할 사진 파일이 없습니다. JPG, PNG 같은 이미지 파일을 선택하세요.');
