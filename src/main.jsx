@@ -1655,6 +1655,7 @@ function AdminModal({ isAdmin, setIsAdmin, onClose, properties, reload }) {
 const [photoWatermark, setPhotoWatermark] = useState(true);
   const [entryMode, setEntryMode] = useState('simple');
 const [quickRoomType, setQuickRoomType] = useState('원룸');
+  const [quickTitleKeyword, setQuickTitleKeyword] = useState('');
   const adminPassword = import.meta.env.VITE_ADMIN_PASSWORD || '3883';
   const photoUrls = linesToArray(form.photosText);
 
@@ -2009,7 +2010,28 @@ function reorderPhoto(fromIndex, toIndex) {
         </button>
       ))}
     </div>
+<div className="quick-title-keyword-row">
+  <p className="quick-label">제목 키워드 삽입</p>
 
+  {['리모델링', '단기임대', '저렴한', '넓은', '즉시입주', '풀옵션'].map((keyword) => (
+    <button
+      key={keyword}
+      type="button"
+      className={quickTitleKeyword === keyword ? 'active' : ''}
+      onClick={() => setQuickTitleKeyword(keyword)}
+    >
+      {keyword}
+    </button>
+  ))}
+
+  <button
+    type="button"
+    className={quickTitleKeyword === '' ? 'active' : ''}
+    onClick={() => setQuickTitleKeyword('')}
+  >
+    선택안함
+  </button>
+</div>
     <div className="two-cols">
       <Field
         label="주소"
@@ -2080,7 +2102,7 @@ const rentText = form.rent ? `${form.rent}` : '';
 const maintenanceText = form.maintenance_fee || '월세에 포함';
 
 const titleParts = [
-  addressText,
+ quickTitleKeyword,
   quickRoomType,
   '월세',
   depositText && rentText ? `${depositText}/${rentText}` : '',
