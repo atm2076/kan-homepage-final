@@ -1983,7 +1983,7 @@ function reorderPhoto(fromIndex, toIndex) {
     </p>
 
     <div className="quick-room-type-row">
-      {['원룸', '미니투룸', '투룸', '쓰리룸', '포룸'].map((type) => (
+     {['원룸', '미니투룸', '투룸', '쓰리룸 이상'].map((type) => (
         <button
           key={type}
           type="button"
@@ -1992,13 +1992,12 @@ function reorderPhoto(fromIndex, toIndex) {
             setQuickRoomType(type);
 
             const roomBathMap = {
-              원룸: '1/1',
-              미니투룸: '1/1',
-              투룸: '2/1',
-              쓰리룸: '3/1',
-              포룸: '4/2',
-            };
-
+  원룸: '1/1',
+  미니투룸: '1/1',
+  투룸: '2/1',
+  '쓰리룸 이상': '3/1',
+};
+            
             updateField('category', type);
             updateField('room_bath', roomBathMap[type]);
             updateField('trade_type', '월세');
@@ -2062,14 +2061,12 @@ onChange={(v) => updateField('maintenance_fee', v)}
       type="button"
       className="primary-btn"
       onClick={() => {
-   const roomBathMap = {
+const roomBathMap = {
   원룸: '1/1',
   미니투룸: '1/1',
   투룸: '2/1',
-  쓰리룸: '3/1',
-  포룸: '4/2',
+  '쓰리룸 이상': '3/1',
 };
-
 const addressText = form.address
   ? form.address.replace('경상북도 ', '').replace('구미시 ', '구미 ')
   : '구미';
@@ -2115,7 +2112,7 @@ setStatus('직원 간단 등록 기본값을 적용했습니다. 제목, 방/욕
                 <Field label="제목" value={form.title} onChange={(v) => updateField('title', v)} placeholder="예: 진평초등 앞 리모델링 원룸임대" />
                 <div className="two-cols">
                 
-                 <SelectField label="매물종류" value={form.category} onChange={(v) => updateField('category', v)} options={['원룸', '미니투룸', '투룸', '다가구 매매', '상가·사무실']} />
+                <SelectField label="매물종류" value={form.category} onChange={(v) => updateField('category', v)} options={['원룸', '미니투룸', '투룸', '쓰리룸 이상', '다가구 매매', '상가·사무실']} />
 <SelectField label="거래형태" value={form.trade_type} onChange={(v) => updateField('trade_type', v)} options={['월세', '반전세', '전세', '매매', '단기임대']} />
                 </div>
                 <Field label="주소" value={form.address} onChange={(v) => updateField('address', v)} placeholder="경상북도 구미시 진평동 1052-1" />
