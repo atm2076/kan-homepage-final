@@ -531,8 +531,6 @@ function App() {
   const [filters, setFilters] = useState(defaultFilters);
   const [adminOpen, setAdminOpen] = useState(false);
   const [isAdmin, setIsAdmin] = useState(false);
-const [photoAutoEdit, setPhotoAutoEdit] = useState(true);
-const [photoWatermark, setPhotoWatermark] = useState(true);
 const showAdminAccess = typeof window !== 'undefined' && new URLSearchParams(window.location.search).get('admin') === '1';
 
   async function loadProperties() {
@@ -1653,6 +1651,8 @@ function AdminModal({ isAdmin, setIsAdmin, onClose, properties, reload }) {
   const [bulkText, setBulkText] = useState('');
   const [editingId, setEditingId] = useState(null);
   const [status, setStatus] = useState('');
+  const [photoAutoEdit, setPhotoAutoEdit] = useState(true);
+const [photoWatermark, setPhotoWatermark] = useState(true);
   const adminPassword = import.meta.env.VITE_ADMIN_PASSWORD || '3883';
   const photoUrls = linesToArray(form.photosText);
 
