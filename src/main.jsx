@@ -100,7 +100,14 @@ badgesText: '',
   convenienceText: '에어컨\n세탁기\n냉장고\nTV\n신발장\n싱크대\n도어락\n인터넷',
   safetyText: '실사진 확인 매물\n직접 확인 후 안내\n공동현관\nCCTV',
   educationText: '편의점 인근\n버스 이용 편리\n공단 출퇴근 동선',
-  is_featured: false
+  is_featured: false,
+  status: 'pending'
+};
+
+const STATUS_LABELS = {
+  pending: '검수대기',
+  published: '승인',
+  hold: '보류'
 };
 
 const sampleProperties = [
@@ -134,6 +141,7 @@ const sampleProperties = [
     safety: ['공동현관', '실사진 확인 매물', '직접 확인 후 안내'],
     education: ['인의동 생활권', '경운대 이동 가능', '직장인 자취 추천'],
     is_featured: true,
+    status: 'published',
     created_at: new Date().toISOString()
   },
   {
@@ -165,6 +173,7 @@ const sampleProperties = [
     safety: ['직접 확인 매물', '실사진 안내', '입주 전 상태 확인'],
     education: ['강동병원 인근', '진평동 먹자상권', '공단 출퇴근 편리'],
     is_featured: false,
+    status: 'published',
     created_at: new Date(Date.now() - 1000000).toISOString()
   }
 ];
@@ -446,7 +455,8 @@ badges: linesToArray(form.badgesText),
     convenience: linesToArray(form.convenienceText),
     safety: linesToArray(form.safetyText),
     education: linesToArray(form.educationText),
-    is_featured: Boolean(form.is_featured)
+    is_featured: Boolean(form.is_featured),
+    status: form.status || 'pending'
   };
 }
 function formatMoneyPair(property) {
@@ -522,6 +532,12 @@ function getSaleDisplay(property) {
   };
 }
 function App() {
+  const queryMode = useMemo(() => {
+    const params = new URLSearchParams(window.location.search);
+    if (params.get('admin') === '1') return 'admin';
+    if (params.get('staff') === '1') return 'staff';
+    return '';
+  }, []);
   const [properties, setProperties] = useState(sampleProperties);
   const [selected, setSelected] = useState(sampleProperties[0]);
   const [loading, setLoading] = useState(true);
@@ -529,33 +545,44 @@ function App() {
   const [keyword, setKeyword] = useState('');
   const [category, setCategory] = useState('전체');
   const [filters, setFilters] = useState(defaultFilters);
-  const [adminOpen, setAdminOpen] = useState(false);
+  const [adminOpen, setAdminOpen] = useState(Boolean(queryMode));
+  const [portalMode, setPortalMode] = useState(queryMode);
   const [isAdmin, setIsAdmin] = useState(false);
-const showAdminAccess = typeof window !== 'undefined' && new URLSearchParams(window.location.search).get('admin') === '1';
+  const canManageAll = portalMode === 'admin' && isAdmin;
+const showAdminAccess = true;
 
   async function loadProperties() {
     setError('');
     setLoading(true);
 
     if (!isSupabaseReady) {
-      setProperties(sampleProperties);
-      setSelected((prev) => prev || sampleProperties[0]);
+      const previewList = canManageAll ? sampleProperties : sampleProperties.filter((item) => item.status === 'published');
+      setProperties(previewList);
+      setSelected((prev) => previewList.find((item) => item.id === prev?.id) || previewList[0]);
       setLoading(false);
       return;
     }
 
-    const { data, error: fetchError } = await supabase
+    let query = supabase
       .from('properties')
       .select('*')
       .order('is_featured', { ascending: false })
       .order('created_at', { ascending: false });
 
+    if (!canManageAll) {
+      query = query.eq('status', 'published');
+    }
+
+    const { data, error: fetchError } = await query;
+
     if (fetchError) {
       setError(fetchError.message);
-      setProperties(sampleProperties);
-      setSelected(sampleProperties[0]);
+      const fallbackList = canManageAll ? sampleProperties : sampleProperties.filter((item) => item.status === 'published');
+      setProperties(fallbackList);
+      setSelected(fallbackList[0]);
     } else {
-      const list = data?.length ? data : sampleProperties;
+      const fallbackList = canManageAll ? sampleProperties : sampleProperties.filter((item) => item.status === 'published');
+      const list = data?.length ? data : fallbackList;
       setProperties(list);
       setSelected((prev) => list.find((item) => item.id === prev?.id) || list[0]);
     }
@@ -565,7 +592,7 @@ const showAdminAccess = typeof window !== 'undefined' && new URLSearchParams(win
 
   useEffect(() => {
     loadProperties();
-  }, []);
+  }, [canManageAll]);
 
   const categories = useMemo(() => {
   const fixed = ['전체', '원룸', '미니투룸', '투룸', '다가구 매매', '상가·사무실'];
@@ -743,9 +770,11 @@ const matchExtra =
         )}
       </main>
       <Footer />
-      <FloatingButtons />
+      <FloatingButtons onAdmin={() => setAdminOpen(true)} />
       {adminOpen && (
         <AdminModal
+          mode={portalMode}
+          setMode={setPortalMode}
           isAdmin={isAdmin}
           setIsAdmin={setIsAdmin}
           onClose={() => setAdminOpen(false)}
@@ -1645,7 +1674,7 @@ function optionIcon(label) {
   return '✓';
 }
 
-function AdminModal({ isAdmin, setIsAdmin, onClose, properties, reload }) {
+function AdminModal({ mode, setMode, isAdmin, setIsAdmin, onClose, properties, reload }) {
   const [password, setPassword] = useState('');
   const [form, setForm] = useState(emptyForm);
   const [bulkText, setBulkText] = useState('');
@@ -1661,6 +1690,9 @@ const [addressSearching, setAddressSearching] = useState(false);
 const [buildingLedgerSearching, setBuildingLedgerSearching] = useState(false);
   const [quickTitleKeyword, setQuickTitleKeyword] = useState('');
   const adminPassword = import.meta.env.VITE_ADMIN_PASSWORD || '3883';
+  const isStaffMode = mode === 'staff';
+  const isAdminMode = mode === 'admin';
+  const canEditExisting = isAdminMode && isAdmin;
   const photoUrls = linesToArray(form.photosText);
 const quickMissingItems = [
   !form.title && '제목',
@@ -1672,6 +1704,26 @@ const quickMissingItems = [
 ].filter(Boolean);
 
 const quickReady = quickMissingItems.length === 0;
+
+  useEffect(() => {
+    if (isStaffMode) {
+      setEntryMode('simple');
+    }
+    if (!editingId) {
+      setForm((prev) => ({ ...prev, status: isAdminMode ? 'published' : 'pending' }));
+    }
+  }, [editingId, isAdminMode, isStaffMode]);
+
+  function chooseMode(nextMode) {
+    setMode(nextMode);
+    setStatus('');
+    const url = new URL(window.location.href);
+    url.searchParams.delete('staff');
+    url.searchParams.delete('admin');
+    url.searchParams.set(nextMode, '1');
+    window.history.replaceState(null, '', `${url.pathname}${url.search}${url.hash}`);
+  }
+
   function login(e) {
     e.preventDefault();
     if (password === adminPassword) {
@@ -1801,7 +1853,7 @@ setSelectedAddressItem(null);
 
   function resetForm() {
     setEditingId(null);
-    setForm(emptyForm);
+    setForm({ ...emptyForm, status: isAdminMode ? 'published' : 'pending' });
     setBulkText('');
     setStatus('새 매물 등록 상태입니다.');
   }
@@ -1977,7 +2029,37 @@ function reorderPhoto(fromIndex, toIndex) {
     e.preventDefault();
     setStatus('저장 중입니다.');
 
-    if (!form.title.trim()) {
+    const roomBathMap = {
+      원룸: '1/1',
+      미니투룸: '1/1',
+      투룸: '2/1',
+      '쓰리룸 이상': '3/1',
+    };
+    const maintenanceText = form.maintenance_fee || '월세에 포함';
+    const staffTitle = [
+      quickTitleKeyword,
+      quickRoomType,
+      '월세',
+      form.deposit && form.rent ? `${form.deposit}/${form.rent}` : '',
+      maintenanceText.includes('포함') ? '관리비포함' : '',
+    ].filter(Boolean).join(' ');
+    const saveForm = isStaffMode
+      ? {
+          ...form,
+          title: form.title?.trim() || staffTitle || '직원 등록 매물',
+          category: form.category || quickRoomType,
+          trade_type: form.trade_type || '월세',
+          room_bath: form.room_bath || roomBathMap[quickRoomType],
+          maintenance_fee: maintenanceText,
+          move_in: form.move_in || '즉시입주 협의',
+          direction: form.direction || '주출입구 기준 확인 필요',
+          parking: form.parking || '확인 필요',
+          summary: form.summary || '직원이 현장에서 등록한 검수대기 매물입니다.',
+          status: 'pending',
+        }
+      : form;
+
+    if (!saveForm.title.trim()) {
       setStatus('제목은 필수입니다.');
       return;
     }
@@ -1987,7 +2069,10 @@ function reorderPhoto(fromIndex, toIndex) {
       return;
     }
 
-    const payload = formToPayload(form);
+    const payload = {
+      ...formToPayload(saveForm),
+      status: isStaffMode ? 'pending' : (saveForm.status || 'published')
+    };
     const request = editingId
       ? supabase.from('properties').update(payload).eq('id', editingId)
       : supabase.from('properties').insert(payload);
@@ -1998,8 +2083,22 @@ function reorderPhoto(fromIndex, toIndex) {
       return;
     }
 
-    setStatus(editingId ? '수정 완료되었습니다.' : '등록 완료되었습니다.');
+    setStatus(isStaffMode ? '등록 완료되었습니다. 대표 검수 후 홈페이지에 노출됩니다.' : (editingId ? '수정 완료되었습니다.' : '등록 완료되었습니다.'));
     resetForm();
+    await reload();
+  }
+
+  async function changePropertyStatus(id, nextStatus) {
+    if (!isSupabaseReady) {
+      setStatus('Supabase 연결 전에는 상태 변경이 되지 않습니다.');
+      return;
+    }
+    const { error } = await supabase.from('properties').update({ status: nextStatus }).eq('id', id);
+    if (error) {
+      setStatus(`상태 변경 실패: ${error.message}`);
+      return;
+    }
+    setStatus(`${STATUS_LABELS[nextStatus]} 상태로 변경했습니다.`);
     await reload();
   }
 
@@ -2030,7 +2129,18 @@ function reorderPhoto(fromIndex, toIndex) {
           <button className="icon-btn" onClick={onClose}>×</button>
         </div>
 
-        {!isAdmin ? (
+        {!mode ? (
+          <div className="mode-choice">
+            <button type="button" onClick={() => chooseMode('staff')}>
+              <strong>직원 간단등록</strong>
+              <span>현장에서 사진, 주소, 보증금, 월세, 관리비, 간단 메모만 빠르게 저장합니다.</span>
+            </button>
+            <button type="button" onClick={() => chooseMode('admin')}>
+              <strong>대표 관리자</strong>
+              <span>기존 비밀번호로 로그인해 검수대기 매물을 수정, 승인, 보류, 삭제합니다.</span>
+            </button>
+          </div>
+        ) : isAdminMode && !isAdmin ? (
           <form className="login-box" onSubmit={login}>
             <label>관리자 비밀번호</label>
             <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} placeholder="비밀번호 입력" />
@@ -2041,10 +2151,17 @@ function reorderPhoto(fromIndex, toIndex) {
           <div className="admin-grid simple-admin-grid">
             <form className="property-form" onSubmit={saveProperty}>
               <div className="form-topline">
-                <h3>{editingId ? '매물 수정' : '간단 매물 등록'}</h3>
+                <h3>{editingId ? '매물 수정' : isStaffMode ? '직원 간단등록' : '간단 매물 등록'}</h3>
                 <button type="button" className="small-btn" onClick={resetForm}>새 등록</button>
               </div>
 
+              {isStaffMode && (
+                <div className="notice warning compact-notice">
+                  직원이 저장한 매물은 검수대기로 저장되며, 대표 승인 후 손님용 홈페이지와 지도에 노출됩니다.
+                </div>
+              )}
+
+              {isAdminMode && (
               <section className="admin-section-block priority-block">
                 <h4>0. 매물자료 일괄입력</h4>
                 <TextArea
@@ -2066,6 +2183,8 @@ function reorderPhoto(fromIndex, toIndex) {
                 <button type="button" className="primary-btn" onClick={applyBulkInput}>일괄입력 자동 채우기</button>
                 <p className="muted">사진은 위/아래 사진등록에서 올리고, 매물자료는 이 칸에 통째로 붙여넣은 뒤 자동 채우기를 누르면 됩니다.</p>
               </section>
+              )}
+{isAdminMode && (
 <div className="entry-mode-tabs">
   <button
     type="button"
@@ -2083,6 +2202,7 @@ function reorderPhoto(fromIndex, toIndex) {
     상세 등록
   </button>
 </div>
+)}
               {entryMode === 'simple' && (
   <section className="admin-section-block priority-block">
     <h4>직원 간단 등록</h4>
@@ -2413,6 +2533,7 @@ setStatus('직원 간단 등록 기본값을 적용했습니다. 제목, 방/욕
                 </details>
               </section>
 
+              {isAdminMode && (
               <details className="admin-details" open={Boolean(editingId)}>
                 <summary>3. 상세정보 더 입력하기</summary>
                 <div className="two-cols">
@@ -2482,6 +2603,8 @@ setStatus('직원 간단 등록 기본값을 적용했습니다. 제목, 방/욕
                 <TextArea label="안전시설 — 한 줄에 1개씩" value={form.safetyText} onChange={(v) => updateField('safetyText', v)} />
                 <TextArea label="생활권 — 한 줄에 1개씩" value={form.educationText} onChange={(v) => updateField('educationText', v)} />
               </details>
+              )}
+{isAdminMode && (
 <div className="featured-badge-line">
   <label className="check-line">
     <input
@@ -2516,7 +2639,9 @@ setStatus('직원 간단 등록 기본값을 적용했습니다. 제목, 방/욕
     </select>
   </label>
 </div>
+)}
              
+              {isAdminMode && (
               <label className="form-field full">
   <span>매물 뱃지</span>
   <textarea
@@ -2532,23 +2657,44 @@ setStatus('직원 간단 등록 기본값을 적용했습니다. 제목, 방/욕
     rows={5}
   />
 </label>
+              )}
+              {isAdminMode && (
+                <label className="field">
+                  <span>게시 상태</span>
+                  <select value={form.status || 'pending'} onChange={(e) => updateField('status', e.target.value)}>
+                    <option value="pending">검수대기</option>
+                    <option value="published">승인</option>
+                    <option value="hold">보류</option>
+                  </select>
+                </label>
+              )}
               <button className="primary-btn submit-btn" type="submit">{editingId ? '수정 저장' : '매물 등록하기'}</button>
               <p className="status-text">{status}</p>
             </form>
 
+            {canEditExisting && (
             <div className="admin-list">
               <h3>등록 매물</h3>
               {properties.map((property) => (
                 <div className="admin-list-item" key={property.id}>
-                  <strong>{property.title}</strong>
+                  <div className="admin-item-title">
+                    <strong>{property.title}</strong>
+                    <em className={`status-chip status-${property.status || 'pending'}`}>
+                      {STATUS_LABELS[property.status || 'pending'] || property.status}
+                    </em>
+                  </div>
                   <span>{(property.category?.includes('매매') || property.trade_type === '매매') ? `매매가 ${property.sale_price || '-'} / 총월세 ${property.total_monthly_rent || '-'}` : `${property.deposit || '-'} / ${property.rent || '-'}`}</span>
                   <div>
                     <button onClick={() => startEdit(property)}>수정</button>
+                    <button onClick={() => changePropertyStatus(property.id, 'published')}>승인</button>
+                    <button onClick={() => changePropertyStatus(property.id, 'hold')}>보류</button>
+                    <button onClick={() => changePropertyStatus(property.id, 'pending')}>대기</button>
                     <button onClick={() => deleteProperty(property.id)}>삭제</button>
                   </div>
                 </div>
               ))}
             </div>
+            )}
           </div>
         )}
       </div>
@@ -2684,11 +2830,12 @@ function TextArea({ label, value, onChange, rows = 3, placeholder = '' }) {
   );
 }
 
-function FloatingButtons() {
+function FloatingButtons({ onAdmin }) {
   return (
     <div className="floating-buttons consumer-only">
       <a href={`tel:${OFFICE.phone}`}>전화</a>
       <a href={`sms:${OFFICE.phone}`}>문자</a>
+      <button type="button" onClick={onAdmin}>관리자</button>
     </div>
   );
 }

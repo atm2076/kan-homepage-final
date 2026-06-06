@@ -27,8 +27,17 @@ create table if not exists public.properties (
   safety text[] default '{}',
   education text[] default '{}',
   is_featured boolean default false,
+  status text default 'published' check (status in ('pending', 'published', 'hold')),
   created_at timestamptz default now()
 );
+
+alter table public.properties
+  add column if not exists status text default 'published'
+  check (status in ('pending', 'published', 'hold'));
+
+update public.properties
+set status = 'published'
+where status is null;
 
 -- 빠른 실사용용 설정입니다.
 -- 매물은 공개 광고자료라 읽기는 전체 허용합니다.
@@ -42,7 +51,7 @@ grant select, insert, update, delete on public.properties to anon, authenticated
 insert into public.properties (
   title, category, trade_type, address, deposit, rent, maintenance_fee, area, floor_info,
   direction, parking, move_in, approval_date, room_bath, structure, summary, description,
-  photos, map_image, map_link, convenience, safety, education, is_featured
+  photos, map_image, map_link, convenience, safety, education, is_featured, status
 ) values (
   '구미 인의동 원룸 월세｜200/30 관리비포함 리모델링 풀옵션',
   '원룸 월세',
@@ -71,5 +80,6 @@ insert into public.properties (
   array['편의점 인근', '버스 이용 편리', '인동 생활권', '공단 출퇴근 동선'],
   array['공동현관', '실사진 확인 매물', '직접 확인 후 안내'],
   array['인의동 생활권', '경운대 이동 가능', '직장인 자취 추천'],
-  true
+  true,
+  'published'
 ) on conflict do nothing;
