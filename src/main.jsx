@@ -82,6 +82,10 @@ badgesText: '',
   parking: '',
   move_in: '',
   approval_date: '',
+  main_use: '',
+  floor_count: '',
+  basement_floor_count: '',
+  building_name: '',
   room_bath: '',
   structure: '',
   elevator: '',            // 엘리베이터 여부
@@ -549,6 +553,10 @@ badges: linesToArray(form.badgesText),
     parking: (form.parking || '').trim(),
     move_in: (form.move_in || '').trim(),
     approval_date: (form.approval_date || '').trim(),
+    main_use: (form.main_use || '').trim(),
+    floor_count: (form.floor_count || '').trim(),
+    basement_floor_count: (form.basement_floor_count || '').trim(),
+    building_name: (form.building_name || '').trim(),
     room_bath: (form.room_bath || '').trim(),
     structure: (form.structure || '').trim(),
     elevator: (form.elevator || '').trim(),
@@ -696,6 +704,7 @@ function App() {
   const [portalMode, setPortalMode] = useState(queryMode);
   const [isAdmin, setIsAdmin] = useState(false);
   const canManageAll = portalMode === 'admin' && isAdmin;
+  const isAdminRoute = portalMode === 'admin' || portalMode === 'staff';
 
   async function loadProperties() {
     setError('');
@@ -854,7 +863,7 @@ const matchExtra =
   }
 
   return (
-    <div>
+    <div className={isAdminRoute ? 'admin-app-mode' : undefined}>
       <Header />
      <Hero
   keyword={keyword}
@@ -926,7 +935,16 @@ const matchExtra =
           setMode={setPortalMode}
           isAdmin={isAdmin}
           setIsAdmin={setIsAdmin}
-          onClose={() => setAdminOpen(false)}
+          onClose={() => {
+            if (isAdminRoute) {
+              const url = new URL(window.location.href);
+              url.searchParams.delete('admin');
+              url.searchParams.delete('staff');
+              window.history.replaceState(null, '', `${url.pathname}${url.search}${url.hash}`);
+              setPortalMode('');
+            }
+            setAdminOpen(false);
+          }}
           properties={properties}
           reload={loadProperties}
         />
@@ -1849,7 +1867,8 @@ function AdminModal({ mode, setMode, isAdmin, setIsAdmin, onClose, properties, r
   const [photoEnhanceByUrl, setPhotoEnhanceByUrl] = useState({});
   const [photoSourceByUrl, setPhotoSourceByUrl] = useState({});
 const [photoWatermark, setPhotoWatermark] = useState(true);
-  const [entryMode, setEntryMode] = useState('simple');
+  const [entryMode, setEntryMode] = useState('detail');
+  const [staffStep, setStaffStep] = useState(0);
 const [quickRoomType, setQuickRoomType] = useState('원룸');
   const [quickTradeType, setQuickTradeType] = useState('월세');
   const [maintenanceType, setMaintenanceType] = useState('관리비별도');
@@ -1892,10 +1911,28 @@ const quickMissingItems = [
 ].filter(Boolean);
 
 const quickReady = quickMissingItems.length === 0;
+const staffWizardSteps = [
+  '주소검색',
+  '호수선택',
+  '매물종류 선택',
+  '거래형태 선택',
+  '가격 입력',
+  '관리비 선택',
+  '사진 등록',
+  '입주일 선택',
+  '주차 선택',
+  '최종확인'
+];
+
+function goStaffStep(nextStep) {
+  setStaffStep(Math.max(0, Math.min(staffWizardSteps.length - 1, nextStep)));
+}
 
   useEffect(() => {
     if (isStaffMode) {
       setEntryMode('simple');
+    } else if (isAdminMode) {
+      setEntryMode('detail');
     }
     if (!editingId) {
       setForm((prev) => ({
@@ -1922,6 +1959,7 @@ const quickReady = quickMissingItems.length === 0;
     setIsAdmin(false);
     setPassword('');
     setStatus('');
+    setStaffStep(0);
     const url = new URL(window.location.href);
     url.searchParams.delete('staff');
     url.searchParams.delete('admin');
@@ -1974,19 +2012,19 @@ setSelectedAddressItem(null);
     setAddressSearching(false);
   }
 }
-  async function fetchBuildingLedger() {
-  if (!selectedAddressItem) {
+  async function fetchBuildingLedger(addressItem = selectedAddressItem) {
+  if (!addressItem) {
     setStatus('먼저 주소검색 후 주소를 선택해주세요.');
     return;
   }
 
-  const jibunText = selectedAddressItem.jibunAddr || '';
+  const jibunText = addressItem.jibunAddr || '';
   const lotMatch = jibunText.match(/(산\s*)?(\d+)(?:-(\d+))?\s*$/);
 
-  const admCd = selectedAddressItem.admCd;
-  const lnbrMnnm = selectedAddressItem.lnbrMnnm || lotMatch?.[2];
-  const lnbrSlno = selectedAddressItem.lnbrSlno || lotMatch?.[3] || '0';
-  const mtYn = selectedAddressItem.mtYn || (lotMatch?.[1] ? '1' : '0');
+  const admCd = addressItem.admCd;
+  const lnbrMnnm = addressItem.lnbrMnnm || lotMatch?.[2];
+  const lnbrSlno = addressItem.lnbrSlno || lotMatch?.[3] || '0';
+  const mtYn = addressItem.mtYn || (lotMatch?.[1] ? '1' : '0');
 
   if (!admCd || !lnbrMnnm) {
     setStatus('건축물대장 조회에 필요한 법정동/번지 정보가 부족합니다.');
@@ -2024,11 +2062,14 @@ setSelectedAddressItem(null);
     updateField('structure', s.구조 || '');
     updateField('floor_count', s.지상층수 || '');
     updateField('basement_floor_count', s.지하층수 || '');
+    updateField('building_name', s.건물명 || s.건물명칭 || '');
     updateField('total_floor_info', `지상 ${s.지상층수 || 0}층 / 지하 ${s.지하층수 || 0}층`);
     updateField('total_area', s.연면적 || '');
     updateField('building_area', s.건축면적 || '');
     updateField('land_area', s.대지면적 || '');
     updateField('parking', s.주차대수 ? `${s.주차대수}대` : '');
+    if (s.지상층수) setQuickTotalFloor(String(s.지상층수));
+    if (s.주차대수) setParkingTotal(String(s.주차대수));
 
     setStatus(
       `건축물대장 조회 완료: ${s.주용도 || ''} / ${s.구조 || ''} / 사용승인일 ${s.사용승인일 || ''}`
@@ -2112,6 +2153,7 @@ setSelectedAddressItem(null);
     setPhotoEnhanceByUrl({});
     setPhotoSourceByUrl({});
     setDuplicateWarning(null);
+    setStaffStep(0);
     setStatus('새 매물 등록 상태입니다.');
   }
 function autoEditPhoto(file, options = {}) {
@@ -2591,7 +2633,7 @@ function reorderPhoto(fromIndex, toIndex) {
                 <p className="muted">사진은 위/아래 사진등록에서 올리고, 매물자료는 이 칸에 통째로 붙여넣은 뒤 자동 채우기를 누르면 됩니다.</p>
               </section>
               )}
-{isAdminMode && (
+{false && isAdminMode && (
 <div className="entry-mode-tabs">
   <button
     type="button"
@@ -2610,7 +2652,244 @@ function reorderPhoto(fromIndex, toIndex) {
   </button>
 </div>
 )}
-              {entryMode === 'simple' && (
+              {isStaffMode && (
+                <section className="staff-step-register">
+                  <div className="staff-step-head">
+                    <div>
+                      <span className="staff-step-count">{staffStep + 1}/10</span>
+                      <h4>{staffWizardSteps[staffStep]}</h4>
+                    </div>
+                    <div className="staff-progress-track">
+                      <span style={{ width: `${((staffStep + 1) / staffWizardSteps.length) * 100}%` }} />
+                    </div>
+                  </div>
+
+                  <div className="staff-step-card">
+                    {staffStep === 0 && (
+                      <section className="staff-question">
+                        <h3>주소를 검색해주세요</h3>
+                        <p className="muted">주소를 선택하면 건축물대장을 자동으로 조회합니다.</p>
+                        <div className="address-search-wrap">
+                          <Field
+                            label="주소"
+                            value={form.address}
+                            onChange={(v) => updateField('address', v)}
+                            placeholder="예: 구미시 진평동 1052-1"
+                          />
+                          <button type="button" className="address-search-button staff-wide-action" onClick={handleAddressSearch} disabled={addressSearching}>
+                            {addressSearching ? '검색중...' : '주소검색'}
+                          </button>
+                          {buildingLedgerSearching && <p className="status-text">건축물대장 자동조회 중입니다...</p>}
+                          {addressResults.length > 0 && (
+                            <div className="address-result-list">
+                              {addressResults.map((item, index) => (
+                                <button
+                                  key={`${item.bdMgtSn}-${index}`}
+                                  type="button"
+                                  className="address-result-item"
+                                  onClick={() => {
+                                    updateField('address', item.roadAddr || item.jibunAddr);
+                                    setSelectedAddressItem(item);
+                                    setAddressResults([]);
+                                    setStatus('주소를 선택했습니다. 건축물대장을 자동조회합니다.');
+                                    fetchBuildingLedger(item);
+                                  }}
+                                >
+                                  <strong>{item.roadAddr}</strong>
+                                  <span>{item.jibunAddr}</span>
+                                  <em>{item.zipNo}</em>
+                                </button>
+                              ))}
+                            </div>
+                          )}
+                          {(form.approval_date || form.main_use || form.floor_count || form.building_name) && (
+                            <div className="ledger-mini-box">
+                              <strong>건축물대장 자동입력</strong>
+                              <span>사용승인일 {form.approval_date || '-'}</span>
+                              <span>건축용도 {form.main_use || '-'}</span>
+                              <span>총층수 {form.floor_count || quickTotalFloor || '-'}</span>
+                              <span>주차대수 {parkingTotal || form.parking || '-'}</span>
+                              <span>건물명 {form.building_name || '-'}</span>
+                            </div>
+                          )}
+                        </div>
+                      </section>
+                    )}
+
+                    {staffStep === 1 && (
+                      <section className="staff-question">
+                        <h3>호수를 선택해주세요</h3>
+                        <div className="two-cols">
+                          <Field label="호수" value={quickUnit} onChange={setQuickUnit} placeholder="예: 303호" inputMode="numeric" />
+                          <NumberField label="해당층" value={quickFloor} onChange={setQuickFloor} placeholder="예: 3" suffix="층" />
+                        </div>
+                        <label className="check-line quick-check-line">
+                          <input type="checkbox" checked={quickShowUnit} onChange={(e) => setQuickShowUnit(e.target.checked)} />
+                          호수 공개
+                        </label>
+                      </section>
+                    )}
+
+                    {staffStep === 2 && (
+                      <section className="staff-question">
+                        <h3>매물종류를 선택해주세요</h3>
+                        <ButtonChoiceGroup
+                          label="매물종류"
+                          value={quickRoomType}
+                          options={['원룸', '미니투룸', '투룸', '쓰리룸 이상']}
+                          onChange={(type) => {
+                            setQuickRoomType(type);
+                            updateField('category', type);
+                            if (ROOM_BATH_DEFAULTS[type]) updateField('room_bath', ROOM_BATH_DEFAULTS[type]);
+                            updateField('move_in', form.move_in || '즉시입주 협의');
+                            updateField('direction', form.direction || '주출입구 기준 확인 필요');
+                          }}
+                        />
+                      </section>
+                    )}
+
+                    {staffStep === 3 && (
+                      <section className="staff-question">
+                        <h3>거래형태를 선택해주세요</h3>
+                        <ButtonChoiceGroup
+                          label="거래형태"
+                          value={quickTradeType}
+                          options={['월세', '반전세', '전세', '매매', '단기']}
+                          onChange={(type) => {
+                            setQuickTradeType(type);
+                            updateField('trade_type', type);
+                            if (type === '전세') updateField('rent', '0');
+                          }}
+                        />
+                      </section>
+                    )}
+
+                    {staffStep === 4 && (
+                      <section className="staff-question">
+                        <h3>가격을 입력해주세요</h3>
+                        {quickTradeType === '매매' ? (
+                          <div className="two-cols">
+                            <NumberField label="매매가" value={form.sale_price} onChange={(v) => updateField('sale_price', v)} placeholder="예: 91000" />
+                            <NumberField label="보증금" value={form.deposit} onChange={(v) => updateField('deposit', v)} placeholder="예: 300" />
+                          </div>
+                        ) : (
+                          <div className="two-cols">
+                            <NumberField label="보증금" value={form.deposit} onChange={(v) => updateField('deposit', v)} placeholder="예: 300" />
+                            <NumberField label="월세" value={form.rent} onChange={(v) => updateField('rent', v)} placeholder="예: 40" disabled={quickTradeType === '전세'} />
+                          </div>
+                        )}
+                      </section>
+                    )}
+
+                    {staffStep === 5 && (
+                      <section className="staff-question">
+                        <h3>관리비를 선택해주세요</h3>
+                        <ButtonChoiceGroup
+                          label="관리비"
+                          value={maintenanceType === '관리비포함' ? '포함' : '별도'}
+                          options={['포함', '별도']}
+                          onChange={(type) => setMaintenanceType(type === '포함' ? '관리비포함' : '관리비별도')}
+                        />
+                        {maintenanceType !== '관리비포함' && (
+                          <NumberField label="관리비 금액" value={form.maintenance_fee} onChange={(v) => updateField('maintenance_fee', v)} placeholder="예: 5" />
+                        )}
+                      </section>
+                    )}
+
+                    {staffStep === 6 && (
+                      <section className="staff-question">
+                        <h3>사진을 등록해주세요</h3>
+                        <PhotoUploader
+                          photos={photoUrls}
+                          onUpload={uploadPhotoFiles}
+                          onRemove={removePhoto}
+                          onMove={movePhoto}
+                          onReorder={reorderPhoto}
+                          enhanceMode={photoEnhanceMode}
+                          onChangeEnhanceMode={setPhotoEnhanceMode}
+                          enhanceLevel={photoEnhanceLevel}
+                          photoEnhanceByUrl={photoEnhanceByUrl}
+                          onChangePhotoEnhance={reprocessPhoto}
+                          watermarkEnabled={photoWatermark}
+                          onChangeEnhanceLevel={setPhotoEnhanceLevel}
+                          onToggleWatermark={setPhotoWatermark}
+                        />
+                      </section>
+                    )}
+
+                    {staffStep === 7 && (
+                      <section className="staff-question">
+                        <h3>입주일을 선택해주세요</h3>
+                        <ButtonChoiceGroup
+                          label="입주일"
+                          value={moveInChoice === '날짜 직접입력' ? '날짜선택' : moveInChoice === '날짜협의' ? '협의가능' : moveInChoice}
+                          options={['즉시입주', '협의가능', '날짜선택']}
+                          onChange={(type) => {
+                            if (type === '날짜선택') setMoveInChoice('날짜 직접입력');
+                            else if (type === '협의가능') setMoveInChoice('날짜협의');
+                            else setMoveInChoice('즉시입주');
+                          }}
+                        />
+                        {moveInChoice === '날짜 직접입력' && (
+                          <Field label="입주 가능 날짜" value={moveInDate} onChange={setMoveInDate} placeholder="예: 2026년 6월 20일" />
+                        )}
+                      </section>
+                    )}
+
+                    {staffStep === 8 && (
+                      <section className="staff-question">
+                        <h3>주차 가능 여부를 선택해주세요</h3>
+                        <ButtonChoiceGroup
+                          label="주차"
+                          value={parkingChoice.includes('가능') && !parkingChoice.includes('불가') ? '가능' : parkingChoice.includes('불가') ? '불가능' : '확인필요'}
+                          options={['가능', '불가능', '확인필요']}
+                          onChange={(type) => setParkingChoice(type === '가능' ? '주차가능' : type === '불가능' ? '주차불가' : '주차 확인 필요')}
+                        />
+                      </section>
+                    )}
+
+                    {staffStep === 9 && (
+                      <section className="staff-question">
+                        <h3>최종확인 후 등록해주세요</h3>
+                        <div className={quickReady ? 'quick-status ok' : 'quick-status warn'}>
+                          {quickReady ? '기본 확인 완료: 대표 검수대기로 저장됩니다.' : `필수 확인 필요: ${quickMissingItems.join(', ')}`}
+                        </div>
+                        <div className="quick-check-grid">
+                          <div><span>주소</span><strong>{form.address || '주소 미입력'}</strong></div>
+                          <div><span>호수</span><strong>{[quickShowUnit && quickUnit ? quickUnit : '', quickFloor ? `${quickFloor}층` : ''].filter(Boolean).join(' / ') || '미입력'}</strong></div>
+                          <div><span>매물/거래</span><strong>{quickRoomType} / {quickTradeType}</strong></div>
+                          <div><span>가격</span><strong>{quickTradeType === '매매' ? `매매가 ${form.sale_price || '-'}만원` : `보증금 ${form.deposit || '-'} / 월세 ${form.rent || '-'}`}</strong></div>
+                          <div><span>관리비</span><strong>{maintenanceType === '관리비포함' ? '포함' : `별도 ${form.maintenance_fee || '-'}만원`}</strong></div>
+                          <div><span>사진</span><strong>{photoUrls.length}장</strong></div>
+                          <div><span>입주일</span><strong>{moveInChoice === '날짜 직접입력' ? moveInDate || '날짜 미입력' : moveInChoice}</strong></div>
+                          <div><span>주차</span><strong>{parkingChoice}</strong></div>
+                          <div><span>사용승인일</span><strong>{form.approval_date || '-'}</strong></div>
+                          <div><span>건축용도</span><strong>{form.main_use || '-'}</strong></div>
+                          <div><span>총층수</span><strong>{form.floor_count || quickTotalFloor || '-'}</strong></div>
+                          <div><span>건물명</span><strong>{form.building_name || '-'}</strong></div>
+                        </div>
+                      </section>
+                    )}
+                  </div>
+
+                  <div className="staff-step-actions">
+                    <button type="button" className="secondary-btn" onClick={() => goStaffStep(staffStep - 1)} disabled={staffStep === 0}>
+                      이전
+                    </button>
+                    {staffStep < 9 ? (
+                      <button type="button" className="primary-btn" onClick={() => goStaffStep(staffStep + 1)}>
+                        다음
+                      </button>
+                    ) : (
+                      <button className="primary-btn" type="submit">
+                        등록하기
+                      </button>
+                    )}
+                  </div>
+                </section>
+              )}
+
+              {entryMode === 'simple' && !isStaffMode && (
   <section className="admin-section-block priority-block">
     <h4>직원 간단 등록</h4>
     <p className="muted">
@@ -3170,7 +3449,7 @@ function reorderPhoto(fromIndex, toIndex) {
                   </select>
                 </label>
               )}
-              {isStaffMode && (
+              {false && isStaffMode && (
                 <section className="admin-section-block quick-check-box staff-review-box">
                   <h4>입력자료 한눈에 확인</h4>
                   <p className="muted">저장하기 전에 현장 입력값과 누락된 항목을 마지막으로 확인하세요.</p>
@@ -3217,11 +3496,13 @@ function reorderPhoto(fromIndex, toIndex) {
                   </div>
                 </section>
               )}
-              <button className="primary-btn submit-btn" type="submit">{editingId ? '수정 저장' : '매물 등록하기'}</button>
+              {!isStaffMode && (
+                <button className="primary-btn submit-btn" type="submit">{editingId ? '수정 저장' : '매물 등록하기'}</button>
+              )}
               <p className="status-text">{status}</p>
             </form>
 
-            {isStaffMode && (
+            {false && isStaffMode && (
               <div className="admin-list staff-draft-list">
                 <h3>임시저장된 내가 등록한 매물 목록</h3>
                 {staffSavedItems.length ? (
@@ -3584,4 +3865,3 @@ function Footer() {
 }
 
 createRoot(document.getElementById('root')).render(<App />);
-
