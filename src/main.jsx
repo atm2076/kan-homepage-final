@@ -110,6 +110,12 @@ const STATUS_LABELS = {
   hold: '보류'
 };
 
+const OPTION_PRESETS = {
+  convenienceText: ['에어컨', '세탁기', '냉장고', 'TV', '인덕션', '전자레인지', '침대', '옷장', '신발장', '책상', '의자', '인터넷', '유선방송'],
+  safetyText: ['실사진 확인 매물', '직접 확인 후 안내', '공동현관', 'CCTV', '도어락', '방범창', '화재감지기', '엘리베이터'],
+  educationText: ['편의점 인근', '버스 이용 편리', '공단 출퇴근 동선', '마트 인근', '식당가 인근', '병원 인근', '학교 인근', '주차 편리', '조용한 주거지']
+};
+
 const sampleProperties = [
   {
     id: 'sample-1',
@@ -2347,6 +2353,30 @@ onChange={(v) => updateField('maintenance_fee', v)}
       placeholder="예: 리모델링, 즉시입주, 주차가능, 공단 출퇴근 편리"
     />
 
+    <SelectableOptionGroup
+      label="옵션/편의"
+      value={form.convenienceText}
+      options={OPTION_PRESETS.convenienceText}
+      onChange={(v) => updateField('convenienceText', v)}
+      placeholder="예: 건조기, 공기청정기"
+    />
+
+    <SelectableOptionGroup
+      label="안전시설"
+      value={form.safetyText}
+      options={OPTION_PRESETS.safetyText}
+      onChange={(v) => updateField('safetyText', v)}
+      placeholder="예: 보안등, 관리실"
+    />
+
+    <SelectableOptionGroup
+      label="생활권"
+      value={form.educationText}
+      options={OPTION_PRESETS.educationText}
+      onChange={(v) => updateField('educationText', v)}
+      placeholder="예: 역세권, 산책로 인근"
+    />
+
     <button
       type="button"
       className="primary-btn"
@@ -2599,9 +2629,27 @@ setStatus('직원 간단 등록 기본값을 적용했습니다. 제목, 방/욕
                   <Field label="지도 이미지 URL" value={form.map_image} onChange={(v) => updateField('map_image', v)} />
                   <Field label="지도 링크" value={form.map_link} onChange={(v) => updateField('map_link', v)} />
                 </div>
-                <TextArea label="옵션/편의 — 한 줄에 1개씩" value={form.convenienceText} onChange={(v) => updateField('convenienceText', v)} />
-                <TextArea label="안전시설 — 한 줄에 1개씩" value={form.safetyText} onChange={(v) => updateField('safetyText', v)} />
-                <TextArea label="생활권 — 한 줄에 1개씩" value={form.educationText} onChange={(v) => updateField('educationText', v)} />
+                <SelectableOptionGroup
+                  label="옵션/편의"
+                  value={form.convenienceText}
+                  options={OPTION_PRESETS.convenienceText}
+                  onChange={(v) => updateField('convenienceText', v)}
+                  placeholder="예: 건조기, 공기청정기"
+                />
+                <SelectableOptionGroup
+                  label="안전시설"
+                  value={form.safetyText}
+                  options={OPTION_PRESETS.safetyText}
+                  onChange={(v) => updateField('safetyText', v)}
+                  placeholder="예: 보안등, 관리실"
+                />
+                <SelectableOptionGroup
+                  label="생활권"
+                  value={form.educationText}
+                  options={OPTION_PRESETS.educationText}
+                  onChange={(v) => updateField('educationText', v)}
+                  placeholder="예: 역세권, 산책로 인근"
+                />
               </details>
               )}
 {isAdminMode && (
@@ -2827,6 +2875,74 @@ function TextArea({ label, value, onChange, rows = 3, placeholder = '' }) {
       <span>{label}</span>
       <textarea rows={rows} value={value || ''} placeholder={placeholder} onChange={(e) => onChange(e.target.value)} />
     </label>
+  );
+}
+
+function SelectableOptionGroup({ label, value, options, onChange, placeholder = '직접 추가 입력' }) {
+  const [customValue, setCustomValue] = useState('');
+  const selected = linesToArray(value);
+
+  function setSelected(next) {
+    onChange([...new Set(next.map((item) => String(item).trim()).filter(Boolean))].join('\n'));
+  }
+
+  function toggleOption(option) {
+    if (selected.includes(option)) {
+      setSelected(selected.filter((item) => item !== option));
+    } else {
+      setSelected([...selected, option]);
+    }
+  }
+
+  function addCustomOption() {
+    const item = customValue.trim();
+    if (!item) return;
+    setSelected([...selected, item]);
+    setCustomValue('');
+  }
+
+  return (
+    <section className="selectable-option-group">
+      <div className="option-group-head">
+        <strong>{label}</strong>
+        <span>{selected.length}개 선택</span>
+      </div>
+      <div className="option-button-grid">
+        {options.map((option) => (
+          <button
+            key={option}
+            type="button"
+            className={selected.includes(option) ? 'selected' : ''}
+            onClick={() => toggleOption(option)}
+          >
+            {option}
+          </button>
+        ))}
+      </div>
+      <div className="option-custom-row">
+        <input
+          value={customValue}
+          onChange={(e) => setCustomValue(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter') {
+              e.preventDefault();
+              addCustomOption();
+            }
+          }}
+          placeholder={placeholder}
+        />
+        <button type="button" onClick={addCustomOption}>추가</button>
+      </div>
+      {selected.length > 0 && (
+        <div className="selected-option-list">
+          {selected.map((item) => (
+            <button key={item} type="button" onClick={() => toggleOption(item)}>
+              {item} ×
+            </button>
+          ))}
+        </div>
+      )}
+    </section>
   );
 }
 
