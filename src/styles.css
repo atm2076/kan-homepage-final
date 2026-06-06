@@ -1144,6 +1144,11 @@ img {
   gap: 10px;
 }
 
+.photo-mode-buttons {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  margin-bottom: 16px;
+}
+
 .photo-enhance-buttons button {
   min-height: 48px;
   border: 1px solid #d8c8b4;
@@ -1173,6 +1178,30 @@ img {
 
 .photo-enhance-help strong {
   color: var(--brown-dark);
+}
+
+.photo-item-enhance {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 7px;
+  width: 100%;
+  margin: 8px 0;
+}
+
+.photo-item-enhance button {
+  min-height: 38px;
+  border: 1px solid #d8c8b4;
+  border-radius: 12px;
+  background: #fffaf3;
+  color: var(--brown-dark);
+  font-size: 12px;
+  font-weight: 900;
+}
+
+.photo-item-enhance button.selected {
+  border-color: var(--brown-dark);
+  background: var(--brown-dark);
+  color: #fff;
 }
 
 .upload-dropzone.dragging {
@@ -7818,6 +7847,15 @@ button.property-list-item,
   font-weight: 900;
 }
 
+.quick-number-field.disabled {
+  opacity: 0.7;
+}
+
+.quick-number-field.disabled input {
+  background: #f4efe7;
+  cursor: not-allowed;
+}
+
 .quick-number-field em {
   justify-self: start;
   margin-top: -4px;
@@ -7829,6 +7867,10 @@ button.property-list-item,
 
 .quick-check-line {
   min-height: 48px;
+}
+
+.staff-review-box {
+  margin-top: 20px;
 }
 
 .option-custom-row {
@@ -7919,6 +7961,11 @@ button.property-list-item,
   .photo-enhance-buttons {
     grid-template-columns: 1fr 1fr;
     gap: 10px;
+  }
+
+  .photo-item-enhance button {
+    min-height: 44px;
+    font-size: 13px;
   }
 
   .option-custom-row {

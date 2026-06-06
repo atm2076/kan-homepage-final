@@ -120,6 +120,20 @@ const QUICK_PROPERTY_TYPES = ['원룸', '미니투룸', '투룸', '쓰리룸 이
 const QUICK_TRADE_TYPES = ['월세', '전세', '반전세', '매매'];
 const MAINTENANCE_TYPES = ['관리비포함', '관리비별도', '관리비없음', '확인필요'];
 const MAINTENANCE_ITEMS = ['인터넷', '유선방송', '공용전기', '수도요금', '공용청소비', '관리용역비', '승강기유지비', '주차비'];
+const DIRECTION_OPTIONS = ['동향', '서향', '남향', '북향', '남동향', '남서향', '북동향', '북서향', '확인필요'];
+const MOVE_IN_OPTIONS = ['즉시입주', '날짜협의', '공실 확인 필요', '현재 거주중', '날짜 직접입력'];
+const PARKING_OPTIONS = ['주차가능', '주차불가', '세대당 1대 가능', '건물 앞 주차', '인근 주차 가능', '주차 확인 필요'];
+const HEATING_OPTIONS = ['도시가스', '개별난방', '전기난방', '중앙난방', 'LPG', '확인필요'];
+const ELEVATOR_OPTIONS = ['엘리베이터 있음', '엘리베이터 없음', '확인필요'];
+const BADGE_OPTIONS = ['추천', '급매', '관리비포함', '즉시입주', '리모델링', '풀옵션', '소액투자', '수익형'];
+const POST_STATUS_OPTIONS = [
+  { label: '임시저장', value: 'pending' },
+  { label: '공개중', value: 'published' },
+  { label: '비공개', value: 'hold' },
+  { label: '계약완료', value: 'hold' },
+  { label: '보류', value: 'hold' },
+  { label: '확인필요', value: 'pending' }
+];
 const ROOM_BATH_DEFAULTS = {
   원룸: '방 1 / 욕실 1',
   미니투룸: '방 1 / 욕실 1',
@@ -553,7 +567,8 @@ function getMaintenanceInfo(value) {
 function formatMaintenanceFee(value) {
   const { display } = getMaintenanceInfo(value);
   if (!display) return '관리비 확인 필요';
-  if (display.startsWith('관리비')) return display;
+  if (display.startsWith('관리비 ')) return display.replace(/^관리비\s+/, '관리비 ');
+  if (display === '관리비 포함' || display === '관리비 없음' || display === '관리비 확인 필요') return display;
   if (display.includes('포함')) return '관리비 포함';
   if (display.includes('없음')) return '관리비 없음';
   if (display.includes('확인')) return '관리비 확인 필요';
@@ -1383,6 +1398,11 @@ function PropertyDetail({ property, allProperties = [], onSelect }) {
   const hasMap = Boolean(property.map_image || property.map_link);
 const isSaleProperty = property.category?.includes('매매') || property.trade_type === '매매';
 const maintenanceInfo = getMaintenanceInfo(property.maintenance_fee);
+const heatingText = (property.convenience || [])
+  .map((item) => String(item || ''))
+  .find((item) => item.startsWith('난방:'))
+  ?.replace('난방:', '')
+  .trim();
 
 const infoRows = isSaleProperty
   ? [
@@ -1408,6 +1428,8 @@ const infoRows = isSaleProperty
       ['임대중 세대수', property.rented_units || '계약 전 확인'],
       ['공실 수', property.vacant_units || '계약 전 확인'],
       ['주차', property.parking || '계약 전 확인'],
+      ['난방', heatingText || '계약 전 확인'],
+      ['엘리베이터', property.elevator || '계약 전 확인'],
       ['사용승인일', property.approval_date || '계약 전 확인'],
       ['구조', property.structure || '계약 전 확인'],
     ]
@@ -1424,6 +1446,8 @@ const infoRows = isSaleProperty
       ['방/욕실', property.room_bath || '계약 전 확인'],
       ['방향', property.direction || '계약 전 확인'],
       ['주차', property.parking || '계약 전 확인'],
+      ['난방', heatingText || '계약 전 확인'],
+      ['엘리베이터', property.elevator || '계약 전 확인'],
       ['입주가능일', property.move_in || '계약 전 확인'],
       ['사용승인일', property.approval_date || '계약 전 확인'],
       ['구조', property.structure || '계약 전 확인'],
@@ -1626,6 +1650,8 @@ const infoRows = isSaleProperty
             <p>방/욕실: {property.room_bath || '계약 전 확인'}</p>
             <p>사용승인일: {property.approval_date || '계약 전 확인'}</p>
             <p>주차: {property.parking || '계약 전 확인'}</p>
+            <p>난방: {heatingText || '계약 전 확인'}</p>
+            <p>엘리베이터: {property.elevator || '계약 전 확인'}</p>
             <p>방향: {property.direction || '계약 전 확인'}</p>
             <p>입주가능일: {property.move_in || '계약 전 확인'}</p>
             <p>상호명: {OFFICE.name}</p>
@@ -1740,6 +1766,9 @@ function AdminModal({ mode, setMode, isAdmin, setIsAdmin, onClose, properties, r
   const [editingId, setEditingId] = useState(null);
   const [status, setStatus] = useState('');
   const [photoEnhanceLevel, setPhotoEnhanceLevel] = useState('bright');
+  const [photoEnhanceMode, setPhotoEnhanceMode] = useState('batch');
+  const [photoEnhanceByUrl, setPhotoEnhanceByUrl] = useState({});
+  const [photoSourceByUrl, setPhotoSourceByUrl] = useState({});
 const [photoWatermark, setPhotoWatermark] = useState(true);
   const [entryMode, setEntryMode] = useState('simple');
 const [quickRoomType, setQuickRoomType] = useState('원룸');
@@ -1750,6 +1779,18 @@ const [quickRoomType, setQuickRoomType] = useState('원룸');
   const [quickTotalFloor, setQuickTotalFloor] = useState('');
   const [quickUnit, setQuickUnit] = useState('');
   const [quickShowUnit, setQuickShowUnit] = useState(false);
+  const [quickRoomCount, setQuickRoomCount] = useState('1');
+  const [quickBathCount, setQuickBathCount] = useState('1');
+  const [directionChoice, setDirectionChoice] = useState('확인필요');
+  const [moveInChoice, setMoveInChoice] = useState('즉시입주');
+  const [moveInDate, setMoveInDate] = useState('');
+  const [parkingChoice, setParkingChoice] = useState('주차 확인 필요');
+  const [parkingTotal, setParkingTotal] = useState('');
+  const [parkingPerUnit, setParkingPerUnit] = useState('');
+  const [parkingMemo, setParkingMemo] = useState('');
+  const [heatingChoice, setHeatingChoice] = useState('확인필요');
+  const [elevatorChoice, setElevatorChoice] = useState('확인필요');
+  const [postStatusLabel, setPostStatusLabel] = useState('임시저장');
   const [addressResults, setAddressResults] = useState([]);
 const [addressSearching, setAddressSearching] = useState(false);
   const [selectedAddressItem, setSelectedAddressItem] = useState(null);
@@ -1785,6 +1826,15 @@ const quickReady = quickMissingItems.length === 0;
       }));
     }
   }, [editingId, isAdminMode, isStaffMode, quickRoomType, quickTradeType]);
+
+  useEffect(() => {
+    if (!isStaffMode || editingId) return;
+    const defaults = ROOM_BATH_DEFAULTS[quickRoomType]?.match(/방\s*(\d+)\s*\/\s*욕실\s*(\d+)/);
+    if (!defaults) return;
+    setQuickRoomCount(defaults[1]);
+    setQuickBathCount(defaults[2]);
+    updateField('room_bath', `방 ${defaults[1]} / 욕실 ${defaults[2]}`);
+  }, [quickRoomType, isStaffMode, editingId]);
 
   function chooseMode(nextMode) {
     setMode(nextMode);
@@ -1933,6 +1983,16 @@ setSelectedAddressItem(null);
     setQuickUnit(floorText.match(/(\d+\s*호)/)?.[1]?.replace(/\s+/g, '') || '');
     setQuickFloor(floorText.match(/(\d+)\s*층/)?.[1] || '');
     setQuickTotalFloor(floorText.match(/총\s*(\d+)\s*층/)?.[1] || '');
+    const roomBathMatch = String(property.room_bath || '').match(/방\s*(\d+).*욕실\s*(\d+)|(\d+)\s*\/\s*(\d+)/);
+    setQuickRoomCount(roomBathMatch?.[1] || roomBathMatch?.[3] || '');
+    setQuickBathCount(roomBathMatch?.[2] || roomBathMatch?.[4] || '');
+    setDirectionChoice(String(property.direction || '').replace(' / 주출입구 기준', '') || '확인필요');
+    setMoveInChoice(property.move_in?.match(/\d{4}/) ? '날짜 직접입력' : (property.move_in || '즉시입주'));
+    setMoveInDate(property.move_in?.match(/\d{4}/) ? property.move_in : '');
+    setParkingChoice(property.parking || '주차 확인 필요');
+    setHeatingChoice(linesToArray(property.convenience).find((item) => item.startsWith('난방:'))?.replace('난방:', '').trim() || '확인필요');
+    setElevatorChoice(property.elevator || '확인필요');
+    setPostStatusLabel(property.status === 'published' ? '공개중' : property.status === 'hold' ? '비공개' : '임시저장');
     setStatus('선택한 매물을 수정 중입니다.');
   }
 
@@ -1948,6 +2008,20 @@ setSelectedAddressItem(null);
     setQuickTotalFloor('');
     setQuickUnit('');
     setQuickShowUnit(false);
+    setQuickRoomCount('1');
+    setQuickBathCount('1');
+    setDirectionChoice('확인필요');
+    setMoveInChoice('즉시입주');
+    setMoveInDate('');
+    setParkingChoice('주차 확인 필요');
+    setParkingTotal('');
+    setParkingPerUnit('');
+    setParkingMemo('');
+    setHeatingChoice('확인필요');
+    setElevatorChoice('확인필요');
+    setPostStatusLabel('임시저장');
+    setPhotoEnhanceByUrl({});
+    setPhotoSourceByUrl({});
     setStatus('새 매물 등록 상태입니다.');
   }
 function autoEditPhoto(file, options = {}) {
@@ -2080,15 +2154,80 @@ const files = await Promise.all(
       }
 
       const { data } = supabase.storage.from('property-images').getPublicUrl(filePath);
-      if (data?.publicUrl) uploadedUrls.push(data.publicUrl);
+      if (data?.publicUrl) uploadedUrls.push({ url: data.publicUrl, originalFile: originalFiles[index] });
     }
 
     setForm((prev) => {
       const before = linesToArray(prev.photosText);
-      return { ...prev, photosText: [...before, ...uploadedUrls].join('\n') };
+      return { ...prev, photosText: [...before, ...uploadedUrls.map((item) => item.url)].join('\n') };
     });
+    setPhotoEnhanceByUrl((prev) => ({
+      ...prev,
+      ...Object.fromEntries(uploadedUrls.map((item) => [item.url, photoEnhanceLevel]))
+    }));
+    setPhotoSourceByUrl((prev) => ({
+      ...prev,
+      ...Object.fromEntries(uploadedUrls.map((item) => [item.url, item.originalFile]))
+    }));
 
     setStatus(`사진 ${uploadedUrls.length}장 업로드 완료. 매물 등록/수정 저장을 눌러야 홈페이지에 최종 반영됩니다.`);
+  }
+
+  async function reprocessPhoto(src, nextLevel) {
+    const originalFile = photoSourceByUrl[src];
+    if (!originalFile) {
+      setPhotoEnhanceByUrl((prev) => ({ ...prev, [src]: nextLevel }));
+      setStatus('이 사진은 기존 URL 사진이라 새 보정값만 표시됩니다. 새로 업로드한 사진만 다시 보정할 수 있습니다.');
+      return;
+    }
+
+    if (!isSupabaseReady) {
+      setStatus('Supabase 연결 전에는 사진별 재보정 업로드가 되지 않습니다.');
+      return;
+    }
+
+    setStatus('선택한 사진만 다시 보정 중입니다.');
+    const editedFile = await autoEditPhoto(originalFile, {
+      enhanceLevel: nextLevel,
+      watermark: photoWatermark,
+    });
+    const uniqueId =
+      typeof crypto !== 'undefined' && crypto.randomUUID
+        ? crypto.randomUUID()
+        : `${Date.now()}-${Math.random().toString(36).slice(2)}`;
+    const filePath = `properties/${uniqueId}-reedit.jpg`;
+    const { error: uploadError } = await supabase.storage
+      .from('property-images')
+      .upload(filePath, editedFile, {
+        cacheControl: '3600',
+        upsert: false,
+        contentType: 'image/jpeg'
+      });
+    if (uploadError) {
+      setStatus(`사진 재보정 실패: ${uploadError.message}`);
+      return;
+    }
+    const { data } = supabase.storage.from('property-images').getPublicUrl(filePath);
+    const nextUrl = data?.publicUrl;
+    if (!nextUrl) {
+      setStatus('사진 재보정 URL 생성에 실패했습니다.');
+      return;
+    }
+    setForm((prev) => ({
+      ...prev,
+      photosText: linesToArray(prev.photosText).map((url) => (url === src ? nextUrl : url)).join('\n')
+    }));
+    setPhotoSourceByUrl((prev) => {
+      const next = { ...prev, [nextUrl]: originalFile };
+      delete next[src];
+      return next;
+    });
+    setPhotoEnhanceByUrl((prev) => {
+      const next = { ...prev, [nextUrl]: nextLevel };
+      delete next[src];
+      return next;
+    });
+    setStatus('선택한 사진만 다시 보정했습니다.');
   }
 
   function removePhoto(index) {
@@ -2128,9 +2267,9 @@ function reorderPhoto(fromIndex, toIndex) {
     const maintenanceItemSuffix = maintenanceItems.length ? ` (포함 항목: ${maintenanceItems.join(', ')})` : '';
     const maintenanceText =
       maintenanceType === '관리비포함'
-        ? `관리비 포함${maintenanceItemSuffix}`
+        ? `관리비 ${maintenanceAmount ? `${maintenanceAmount} 포함` : '포함'}${maintenanceItemSuffix}`
         : maintenanceType === '관리비별도'
-        ? `관리비 ${maintenanceAmount || '확인 필요'} 별도${maintenanceItemSuffix}`
+        ? (maintenanceAmount ? `관리비 ${maintenanceAmount} 별도${maintenanceItemSuffix}` : `관리비 확인 필요${maintenanceItemSuffix}`)
         : maintenanceType === '관리비없음'
         ? '관리비 없음'
         : '관리비 확인 필요';
@@ -2139,9 +2278,19 @@ function reorderPhoto(fromIndex, toIndex) {
       quickFloor ? `${quickFloor}층` : '',
       quickTotalFloor ? `총 ${quickTotalFloor}층` : ''
     ].filter(Boolean).join(' / ');
+    const roomBathText = quickRoomCount || quickBathCount ? `방 ${quickRoomCount || 0} / 욕실 ${quickBathCount || 0}` : '';
+    const directionText = `${directionChoice} / 주출입구 기준`;
+    const moveInText = moveInChoice === '날짜 직접입력' ? (moveInDate || '날짜협의') : moveInChoice;
+    const parkingText = [
+      parkingTotal ? `총 ${parkingTotal}대` : '',
+      parkingPerUnit ? `세대당 ${parkingPerUnit}대` : '',
+      parkingChoice,
+      parkingMemo
+    ].filter(Boolean).join(' / ');
+    const staffStatusValue = POST_STATUS_OPTIONS.find((item) => item.label === postStatusLabel)?.value || 'pending';
     const finalCategory = isStaffMode ? quickRoomType : (form.category || quickRoomType);
     const finalTradeType = isStaffMode ? quickTradeType : (form.trade_type || quickTradeType);
-    const finalRoomBath = form.room_bath || ROOM_BATH_DEFAULTS[finalCategory] || '';
+    const finalRoomBath = isStaffMode ? (roomBathText || ROOM_BATH_DEFAULTS[finalCategory] || '') : (form.room_bath || ROOM_BATH_DEFAULTS[finalCategory] || '');
     const staffTitle = [
       quickTitleKeyword,
       finalCategory,
@@ -2159,12 +2308,13 @@ function reorderPhoto(fromIndex, toIndex) {
           room_bath: finalRoomBath,
           maintenance_fee: maintenanceText,
           floor_info: floorInfo || form.floor_info,
-          convenienceText: [...new Set([...linesToArray(form.convenienceText), ...maintenanceItems])].join('\n'),
-          move_in: form.move_in || '즉시입주 협의',
-          direction: form.direction || '주출입구 기준 확인 필요',
-          parking: form.parking || '확인 필요',
+          convenienceText: [...new Set([...linesToArray(form.convenienceText), ...maintenanceItems, heatingChoice !== '확인필요' ? `난방: ${heatingChoice}` : ''])].join('\n'),
+          move_in: moveInText,
+          direction: directionText,
+          parking: parkingText || '주차 확인 필요',
+          elevator: elevatorChoice,
           summary: form.summary || '직원이 현장에서 등록한 검수대기 매물입니다.',
-          status: 'pending',
+          status: staffStatusValue,
         }
       : form;
 
@@ -2180,7 +2330,7 @@ function reorderPhoto(fromIndex, toIndex) {
 
     const payload = {
       ...formToPayload(saveForm),
-      status: isStaffMode ? 'pending' : (saveForm.status || 'published')
+      status: isStaffMode ? staffStatusValue : (saveForm.status || 'published')
     };
     const request = editingId
       ? supabase.from('properties').update(payload).eq('id', editingId)
@@ -2327,7 +2477,11 @@ function reorderPhoto(fromIndex, toIndex) {
         onRemove={removePhoto}
         onMove={movePhoto}
         onReorder={reorderPhoto}
+        enhanceMode={photoEnhanceMode}
+        onChangeEnhanceMode={setPhotoEnhanceMode}
         enhanceLevel={photoEnhanceLevel}
+        photoEnhanceByUrl={photoEnhanceByUrl}
+        onChangePhotoEnhance={reprocessPhoto}
         watermarkEnabled={photoWatermark}
         onChangeEnhanceLevel={setPhotoEnhanceLevel}
         onToggleWatermark={setPhotoWatermark}
@@ -2410,7 +2564,13 @@ function reorderPhoto(fromIndex, toIndex) {
         <div className="three-cols">
           <NumberField label="보증금" value={form.deposit} onChange={(v) => updateField('deposit', v)} placeholder="예: 300" />
           <NumberField label="월세" value={form.rent} onChange={(v) => updateField('rent', v)} placeholder="예: 40" />
-          <NumberField label="관리비 금액" value={form.maintenance_fee} onChange={(v) => updateField('maintenance_fee', v)} placeholder="예: 5" />
+          <NumberField
+            label="관리비 금액"
+            value={form.maintenance_fee}
+            onChange={(v) => updateField('maintenance_fee', v)}
+            placeholder="예: 5"
+            disabled={maintenanceType === '관리비없음' || maintenanceType === '확인필요'}
+          />
         </div>
       )}
     </section>
@@ -2445,8 +2605,59 @@ function reorderPhoto(fromIndex, toIndex) {
 
     <section className="quick-field-section">
       <h4>8. 방 / 욕실</h4>
-      <Field label="방 / 욕실" value={form.room_bath} onChange={(v) => updateField('room_bath', v)} placeholder="예: 방 1 / 욕실 1" />
+      <div className="two-cols">
+        <NumberField label="방 수" value={quickRoomCount} onChange={setQuickRoomCount} placeholder="예: 1" suffix="개" />
+        <NumberField label="욕실 수" value={quickBathCount} onChange={setQuickBathCount} placeholder="예: 1" suffix="개" />
+      </div>
     </section>
+
+    <ButtonChoiceGroup
+      label="11. 방향"
+      value={directionChoice}
+      options={DIRECTION_OPTIONS}
+      onChange={setDirectionChoice}
+    />
+    <p className="muted quick-helper-text">방향 기준: 주출입구 기준</p>
+
+    <ButtonChoiceGroup
+      label="12. 입주가능일"
+      value={moveInChoice}
+      options={MOVE_IN_OPTIONS}
+      onChange={setMoveInChoice}
+    />
+    {moveInChoice === '날짜 직접입력' && (
+      <section className="quick-field-section">
+        <Field label="입주 가능 날짜" value={moveInDate} onChange={setMoveInDate} placeholder="예: 2026년 6월 20일 이후" />
+      </section>
+    )}
+
+    <ButtonChoiceGroup
+      label="13. 주차"
+      value={parkingChoice}
+      options={PARKING_OPTIONS}
+      onChange={setParkingChoice}
+    />
+    <section className="quick-field-section">
+      <div className="three-cols">
+        <NumberField label="총 주차대수" value={parkingTotal} onChange={setParkingTotal} placeholder="예: 8" suffix="대" />
+        <NumberField label="세대당 주차대수" value={parkingPerUnit} onChange={setParkingPerUnit} placeholder="예: 1" suffix="대" />
+        <Field label="주차 메모" value={parkingMemo} onChange={setParkingMemo} placeholder="예: 건물 앞 주차 가능" />
+      </div>
+    </section>
+
+    <ButtonChoiceGroup
+      label="14. 난방"
+      value={heatingChoice}
+      options={HEATING_OPTIONS}
+      onChange={setHeatingChoice}
+    />
+
+    <ButtonChoiceGroup
+      label="엘리베이터"
+      value={elevatorChoice}
+      options={ELEVATOR_OPTIONS}
+      onChange={setElevatorChoice}
+    />
 
     <section className="quick-field-section">
       <h4>제목 키워드와 메모</h4>
@@ -2494,6 +2705,21 @@ function reorderPhoto(fromIndex, toIndex) {
       placeholder="예: 역세권, 산책로 인근"
     />
 
+    <SelectableOptionGroup
+      label="19. 매물 배지"
+      value={form.badgesText}
+      options={BADGE_OPTIONS}
+      onChange={(v) => updateField('badgesText', v)}
+      placeholder="예: 반전세가능"
+    />
+
+    <ButtonChoiceGroup
+      label="게시상태"
+      value={postStatusLabel}
+      options={POST_STATUS_OPTIONS.map((item) => item.label)}
+      onChange={setPostStatusLabel}
+    />
+
   </section>
 )}
               {entryMode === 'detail' && (
@@ -2538,6 +2764,7 @@ function reorderPhoto(fromIndex, toIndex) {
                 <TextArea label="짧은 설명" value={form.summary} onChange={(v) => updateField('summary', v)} rows={3} placeholder="위치, 장점, 입주조건을 짧게 입력" />
               </section>
 )}
+              {isAdminMode && (
               <section className="admin-section-block quick-check-box">
   <h4>입력자료 한눈에 확인</h4>
   <p className="muted">
@@ -2610,6 +2837,7 @@ function reorderPhoto(fromIndex, toIndex) {
     </div>
   </div>
 </section>
+              )}
               {isAdminMode && (
               <section className="admin-section-block">
                 <h4>2. 사진등록</h4>
@@ -2619,7 +2847,11 @@ function reorderPhoto(fromIndex, toIndex) {
   onRemove={removePhoto}
   onMove={movePhoto}
   onReorder={reorderPhoto}
+  enhanceMode={photoEnhanceMode}
+  onChangeEnhanceMode={setPhotoEnhanceMode}
   enhanceLevel={photoEnhanceLevel}
+  photoEnhanceByUrl={photoEnhanceByUrl}
+  onChangePhotoEnhance={reprocessPhoto}
   watermarkEnabled={photoWatermark}
   onChangeEnhanceLevel={setPhotoEnhanceLevel}
   onToggleWatermark={setPhotoWatermark}
@@ -2784,6 +3016,29 @@ function reorderPhoto(fromIndex, toIndex) {
                   </select>
                 </label>
               )}
+              {isStaffMode && (
+                <section className="admin-section-block quick-check-box staff-review-box">
+                  <h4>입력자료 한눈에 확인</h4>
+                  <p className="muted">저장하기 전에 현장 입력값과 누락된 항목을 마지막으로 확인하세요.</p>
+                  <div className={quickReady ? 'quick-status ok' : 'quick-status warn'}>
+                    {quickReady ? '기본 확인 완료: 대표 검수대기로 저장됩니다.' : `필수 확인 필요: ${quickMissingItems.join(', ')}`}
+                  </div>
+                  <div className="quick-check-grid">
+                    <div><span>사진</span><strong>{photoUrls.length}장</strong></div>
+                    <div><span>주소</span><strong>{form.address || '주소 미입력'}</strong></div>
+                    <div><span>매물/거래</span><strong>{quickRoomType} / {quickTradeType}</strong></div>
+                    <div><span>가격</span><strong>{quickTradeType === '매매' ? `매매가 ${form.sale_price || '-'}만원` : `보증금 ${form.deposit || '-'} / 월세 ${form.rent || '-'}`}</strong></div>
+                    <div><span>관리비</span><strong>{maintenanceType}{form.maintenance_fee && maintenanceType !== '관리비없음' && maintenanceType !== '확인필요' ? ` ${form.maintenance_fee}만원` : ''}</strong></div>
+                    <div><span>관리비 항목</span><strong>{linesToArray(maintenanceItemsText).join(', ') || '선택 없음'}</strong></div>
+                    <div><span>층/호수</span><strong>{[quickShowUnit && quickUnit ? quickUnit : '', quickFloor ? `${quickFloor}층` : '', quickTotalFloor ? `총 ${quickTotalFloor}층` : ''].filter(Boolean).join(' / ') || '미입력'}</strong></div>
+                    <div><span>방/욕실</span><strong>방 {quickRoomCount || 0} / 욕실 {quickBathCount || 0}</strong></div>
+                    <div><span>방향/입주</span><strong>{directionChoice} / {moveInChoice === '날짜 직접입력' ? (moveInDate || '날짜 미입력') : moveInChoice}</strong></div>
+                    <div><span>주차</span><strong>{[parkingChoice, parkingTotal ? `총 ${parkingTotal}대` : '', parkingPerUnit ? `세대당 ${parkingPerUnit}대` : ''].filter(Boolean).join(' / ')}</strong></div>
+                    <div><span>난방/엘리베이터</span><strong>{heatingChoice} / {elevatorChoice}</strong></div>
+                    <div><span>게시상태</span><strong>{postStatusLabel}로 저장</strong></div>
+                  </div>
+                </section>
+              )}
               <button className="primary-btn submit-btn" type="submit">{editingId ? '수정 저장' : '매물 등록하기'}</button>
               <p className="status-text">{status}</p>
             </form>
@@ -2824,7 +3079,11 @@ function PhotoUploader({
   onRemove,
   onMove,
   onReorder,
+  enhanceMode = 'batch',
+  onChangeEnhanceMode = () => {},
   enhanceLevel = 'bright',
+  photoEnhanceByUrl = {},
+  onChangePhotoEnhance = () => {},
   watermarkEnabled = true,
   onChangeEnhanceLevel = () => {},
   onToggleWatermark = () => {},
@@ -2840,6 +3099,25 @@ const [dragIndex, setDragIndex] = useState(null);
   return (
     <section className="photo-uploader field">
       <div className="photo-enhance-panel">
+        <div className="option-group-head">
+          <strong>사진 보정 방식</strong>
+        </div>
+        <div className="photo-enhance-buttons photo-mode-buttons">
+          <button
+            type="button"
+            className={enhanceMode === 'batch' ? 'selected' : ''}
+            onClick={() => onChangeEnhanceMode('batch')}
+          >
+            전체 일괄보정
+          </button>
+          <button
+            type="button"
+            className={enhanceMode === 'individual' ? 'selected' : ''}
+            onClick={() => onChangeEnhanceMode('individual')}
+          >
+            사진별 개별보정
+          </button>
+        </div>
         <div className="option-group-head">
           <strong>사진 보정 강도</strong>
         </div>
@@ -2919,6 +3197,20 @@ const [dragIndex, setDragIndex] = useState(null);
 >
              <img src={src} alt={`업로드 사진 ${index + 1}`} draggable={false} />
              <small>{index === 0 ? '대표사진' : `${index + 1}번 사진`}</small>
+              {enhanceMode === 'individual' && (
+                <div className="photo-item-enhance">
+                  {PHOTO_ENHANCE_LEVELS.map((level) => (
+                    <button
+                      key={level.value}
+                      type="button"
+                      className={(photoEnhanceByUrl[src] || enhanceLevel) === level.value ? 'selected' : ''}
+                      onClick={() => onChangePhotoEnhance(src, level.value)}
+                    >
+                      {level.value === 'none' ? '보정 없음' : level.label.replace(' 자연보정', '').replace(' 밝은보정', '').replace(' 강한보정', '')}
+                    </button>
+                  ))}
+                </div>
+              )}
               <div>
                 <button type="button" onClick={() => onMove(index, -1)} disabled={index === 0}>앞</button>
                 <button type="button" onClick={() => onMove(index, 1)} disabled={index === photos.length - 1}>뒤</button>
@@ -2954,18 +3246,19 @@ function ButtonChoiceGroup({ label, value, options, onChange }) {
   );
 }
 
-function NumberField({ label, value, onChange, placeholder = '', suffix = '만원' }) {
+function NumberField({ label, value, onChange, placeholder = '', suffix = '만원', disabled = false }) {
   return (
-    <label className="field quick-number-field">
+    <label className={`field quick-number-field ${disabled ? 'disabled' : ''}`}>
       <span>{label}</span>
       <input
         inputMode="numeric"
         pattern="[0-9]*"
+        disabled={disabled}
         value={value || ''}
         placeholder={placeholder}
         onChange={(e) => onChange(e.target.value.replace(/[^\d]/g, ''))}
       />
-      {value && <em>{value}{suffix}</em>}
+      {value && !disabled && <em>{value}{suffix}</em>}
     </label>
   );
 }
