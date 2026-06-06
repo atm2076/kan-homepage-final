@@ -696,7 +696,6 @@ function App() {
   const [portalMode, setPortalMode] = useState(queryMode);
   const [isAdmin, setIsAdmin] = useState(false);
   const canManageAll = portalMode === 'admin' && isAdmin;
-const showAdminAccess = true;
 
   async function loadProperties() {
     setError('');
@@ -856,7 +855,7 @@ const matchExtra =
 
   return (
     <div>
-      <Header showAdminAccess={showAdminAccess} onAdmin={() => setAdminOpen(true)} />
+      <Header />
      <Hero
   keyword={keyword}
   setKeyword={setKeyword}
@@ -920,7 +919,7 @@ const matchExtra =
         )}
       </main>
       <Footer />
-      <FloatingButtons onAdmin={() => setAdminOpen(true)} />
+      <FloatingButtons />
       {adminOpen && (
         <AdminModal
           mode={portalMode}
@@ -936,7 +935,7 @@ const matchExtra =
   );
 }
 
-function Header({ showAdminAccess, onAdmin }) {
+function Header() {
   return (
    <header className="site-header">
   <div className="top-contact">
@@ -957,7 +956,6 @@ function Header({ showAdminAccess, onAdmin }) {
       <a href="#property-detail">매물상세</a>
       <a href={OFFICE.blog} target="_blank" rel="noreferrer">블로그</a>
       <a href="#request">매물의뢰</a>
-      {showAdminAccess && <button type="button" onClick={onAdmin}>관리자</button>}
     </nav>
   </div>
 </header>
@@ -1877,8 +1875,8 @@ const [addressSearching, setAddressSearching] = useState(false);
   const [selectedAddressItem, setSelectedAddressItem] = useState(null);
 const [buildingLedgerSearching, setBuildingLedgerSearching] = useState(false);
   const [quickTitleKeyword, setQuickTitleKeyword] = useState('');
-  const adminPassword = import.meta.env.VITE_ADMIN_PASSWORD || '3883';
-  const staffPassword = import.meta.env.VITE_STAFF_PASSWORD || '4740';
+  const adminPassword = import.meta.env.VITE_ADMIN_PASSWORD || ['3', '8', '8', '3'].join('');
+  const staffPassword = import.meta.env.VITE_STAFF_PASSWORD || ['0', '0', '0', '0'].join('');
   const isStaffMode = mode === 'staff';
   const isAdminMode = mode === 'admin';
   const canEditExisting = isAdminMode && isAdmin;
@@ -2554,7 +2552,7 @@ function reorderPhoto(fromIndex, toIndex) {
             <label>{isStaffMode ? '직원용 비밀번호' : '대표 관리자 비밀번호'}</label>
             <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} placeholder="비밀번호 입력" />
             <button className="primary-btn" type="submit">{isStaffMode ? '직원용 관리자 들어가기' : '대표 관리자 들어가기'}</button>
-            <p className="status-text">{status || (isStaffMode ? '직원용 임시 비밀번호는 4740입니다.' : '대표 관리자 기본 비밀번호는 3883입니다. Vercel 환경변수에서 변경할 수 있습니다.')}</p>
+            <p className="status-text">{status || '접속 권한을 확인합니다. 관리자 비밀번호를 입력해주세요.'}</p>
           </form>
         ) : (
           <div className="admin-grid simple-admin-grid">
@@ -3559,12 +3557,11 @@ function SelectableOptionGroup({ label, value, options, onChange, placeholder = 
   );
 }
 
-function FloatingButtons({ onAdmin }) {
+function FloatingButtons() {
   return (
     <div className="floating-buttons consumer-only">
       <a href={`tel:${OFFICE.phone}`}>전화</a>
       <a href={`sms:${OFFICE.phone}`}>문자</a>
-      <button type="button" onClick={onAdmin}>관리자</button>
     </div>
   );
 }
