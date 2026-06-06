@@ -8145,6 +8145,10 @@ button.property-list-item,
   justify-content: center;
 }
 
+.admin-app-mode > .floating-buttons.consumer-only {
+  display: none !important;
+}
+
 @media (max-width: 760px) {
   .mode-choice {
     grid-template-columns: 1fr !important;
