@@ -993,6 +993,21 @@ img {
   letter-spacing: -0.05em;
 }
 
+.access-mode-badge {
+  margin: 0 0 14px;
+  padding: 12px 14px;
+  border: 1px solid #ead7bd;
+  border-radius: 14px;
+  background: #fffaf0;
+  color: var(--brown-dark);
+  font-size: 14px;
+  font-weight: 800;
+}
+
+.access-mode-badge strong {
+  font-weight: 950;
+}
+
 .icon-btn {
   width: 44px;
   height: 44px;
@@ -1061,6 +1076,10 @@ img {
   border: 1px solid var(--line);
   border-radius: 24px;
   background: #fff;
+}
+
+.staff-draft-list {
+  margin-top: 18px;
 }
 
 .admin-section-block,

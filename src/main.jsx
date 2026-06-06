@@ -105,8 +105,8 @@ badgesText: '',
 };
 
 const STATUS_LABELS = {
-  pending: '검수대기',
-  published: '승인',
+  pending: '임시저장',
+  published: '공개중',
   hold: '보류'
 };
 
@@ -605,7 +605,10 @@ function getSaleDisplay(property) {
 function App() {
   const queryMode = useMemo(() => {
     const params = new URLSearchParams(window.location.search);
-    if (params.get('admin') === '1') return 'admin';
+    const adminParam = params.get('admin');
+    if (adminParam === 'staff') return 'staff';
+    if (adminParam === 'owner') return 'admin';
+    if (adminParam === '1') return 'admin';
     if (params.get('staff') === '1') return 'staff';
     return '';
   }, []);
@@ -1765,6 +1768,7 @@ function AdminModal({ mode, setMode, isAdmin, setIsAdmin, onClose, properties, r
   const [bulkText, setBulkText] = useState('');
   const [editingId, setEditingId] = useState(null);
   const [status, setStatus] = useState('');
+  const [staffSavedItems, setStaffSavedItems] = useState([]);
   const [photoEnhanceLevel, setPhotoEnhanceLevel] = useState('bright');
   const [photoEnhanceMode, setPhotoEnhanceMode] = useState('batch');
   const [photoEnhanceByUrl, setPhotoEnhanceByUrl] = useState({});
@@ -1790,16 +1794,18 @@ const [quickRoomType, setQuickRoomType] = useState('원룸');
   const [parkingMemo, setParkingMemo] = useState('');
   const [heatingChoice, setHeatingChoice] = useState('확인필요');
   const [elevatorChoice, setElevatorChoice] = useState('확인필요');
-  const [postStatusLabel, setPostStatusLabel] = useState('임시저장');
+  const [postStatusLabel, setPostStatusLabel] = useState(POST_STATUS_OPTIONS[0].label);
   const [addressResults, setAddressResults] = useState([]);
 const [addressSearching, setAddressSearching] = useState(false);
   const [selectedAddressItem, setSelectedAddressItem] = useState(null);
 const [buildingLedgerSearching, setBuildingLedgerSearching] = useState(false);
   const [quickTitleKeyword, setQuickTitleKeyword] = useState('');
   const adminPassword = import.meta.env.VITE_ADMIN_PASSWORD || '3883';
+  const staffPassword = import.meta.env.VITE_STAFF_PASSWORD || '4740';
   const isStaffMode = mode === 'staff';
   const isAdminMode = mode === 'admin';
   const canEditExisting = isAdminMode && isAdmin;
+  const accessLabel = isStaffMode ? '직원용 관리자' : isAdminMode ? '대표 관리자' : '권한 선택';
   const photoUrls = linesToArray(form.photosText);
 const quickMissingItems = [
   !isStaffMode && !form.title && '제목',
@@ -1838,6 +1844,8 @@ const quickReady = quickMissingItems.length === 0;
 
   function chooseMode(nextMode) {
     setMode(nextMode);
+    setIsAdmin(false);
+    setPassword('');
     setStatus('');
     const url = new URL(window.location.href);
     url.searchParams.delete('staff');
@@ -1848,9 +1856,10 @@ const quickReady = quickMissingItems.length === 0;
 
   function login(e) {
     e.preventDefault();
-    if (password === adminPassword) {
+    const expectedPassword = isStaffMode ? staffPassword : adminPassword;
+    if (password === expectedPassword) {
       setIsAdmin(true);
-      setStatus('관리자 모드로 들어왔습니다.');
+      setStatus(isStaffMode ? '직원용 관리자 모드로 들어왔습니다.' : '대표 관리자 모드로 들어왔습니다.');
     } else {
       setStatus('비밀번호가 맞지 않습니다.');
     }
@@ -2019,7 +2028,7 @@ setSelectedAddressItem(null);
     setParkingMemo('');
     setHeatingChoice('확인필요');
     setElevatorChoice('확인필요');
-    setPostStatusLabel('임시저장');
+    setPostStatusLabel(POST_STATUS_OPTIONS[0].label);
     setPhotoEnhanceByUrl({});
     setPhotoSourceByUrl({});
     setStatus('새 매물 등록 상태입니다.');
@@ -2287,7 +2296,7 @@ function reorderPhoto(fromIndex, toIndex) {
       parkingChoice,
       parkingMemo
     ].filter(Boolean).join(' / ');
-    const staffStatusValue = POST_STATUS_OPTIONS.find((item) => item.label === postStatusLabel)?.value || 'pending';
+    const staffStatusValue = isStaffMode ? 'pending' : (POST_STATUS_OPTIONS.find((item) => item.label === postStatusLabel)?.value || 'pending');
     const finalCategory = isStaffMode ? quickRoomType : (form.category || quickRoomType);
     const finalTradeType = isStaffMode ? quickTradeType : (form.trade_type || quickTradeType);
     const finalRoomBath = isStaffMode ? (roomBathText || ROOM_BATH_DEFAULTS[finalCategory] || '') : (form.room_bath || ROOM_BATH_DEFAULTS[finalCategory] || '');
@@ -2332,7 +2341,7 @@ function reorderPhoto(fromIndex, toIndex) {
       ...formToPayload(saveForm),
       status: isStaffMode ? staffStatusValue : (saveForm.status || 'published')
     };
-    const request = editingId
+    const request = editingId && canEditExisting
       ? supabase.from('properties').update(payload).eq('id', editingId)
       : supabase.from('properties').insert(payload);
 
@@ -2342,12 +2351,27 @@ function reorderPhoto(fromIndex, toIndex) {
       return;
     }
 
-    setStatus(isStaffMode ? '등록 완료되었습니다. 대표 검수 후 홈페이지에 노출됩니다.' : (editingId ? '수정 완료되었습니다.' : '등록 완료되었습니다.'));
+    if (isStaffMode) {
+      setStaffSavedItems((prev) => [
+        {
+          title: saveForm.title,
+          address: saveForm.address,
+          status: 'pending',
+          createdAt: new Date().toLocaleString('ko-KR')
+        },
+        ...prev
+      ]);
+    }
+    setStatus(isStaffMode ? '임시저장 완료되었습니다. 대표 검수 후 홈페이지에 노출됩니다.' : (editingId ? '수정 완료되었습니다.' : '등록 완료되었습니다.'));
     resetForm();
     await reload();
   }
 
   async function changePropertyStatus(id, nextStatus) {
+    if (!canEditExisting) {
+      setStatus('대표 관리자만 공개상태를 변경할 수 있습니다.');
+      return;
+    }
     if (!isSupabaseReady) {
       setStatus('Supabase 연결 전에는 상태 변경이 되지 않습니다.');
       return;
@@ -2362,6 +2386,10 @@ function reorderPhoto(fromIndex, toIndex) {
   }
 
   async function deleteProperty(id) {
+    if (!canEditExisting) {
+      setStatus('대표 관리자만 매물을 삭제할 수 있습니다.');
+      return;
+    }
     if (!isSupabaseReady) {
       setStatus('Supabase 연결 전에는 삭제가 되지 않습니다.');
       return;
@@ -2387,6 +2415,11 @@ function reorderPhoto(fromIndex, toIndex) {
           </div>
           <button className="icon-btn" onClick={onClose}>×</button>
         </div>
+        {mode && (
+          <div className="access-mode-badge">
+            현재 접속: <strong>{accessLabel}</strong>
+          </div>
+        )}
 
         {!mode ? (
           <div className="mode-choice">
@@ -2399,12 +2432,12 @@ function reorderPhoto(fromIndex, toIndex) {
               <span>기존 비밀번호로 로그인해 검수대기 매물을 수정, 승인, 보류, 삭제합니다.</span>
             </button>
           </div>
-        ) : isAdminMode && !isAdmin ? (
+        ) : !isAdmin ? (
           <form className="login-box" onSubmit={login}>
-            <label>관리자 비밀번호</label>
+            <label>{isStaffMode ? '직원용 비밀번호' : '대표 관리자 비밀번호'}</label>
             <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} placeholder="비밀번호 입력" />
-            <button className="primary-btn" type="submit">관리자 들어가기</button>
-            <p className="status-text">{status || '기본 비밀번호는 3883입니다. Vercel 환경변수에서 변경할 수 있습니다.'}</p>
+            <button className="primary-btn" type="submit">{isStaffMode ? '직원용 관리자 들어가기' : '대표 관리자 들어가기'}</button>
+            <p className="status-text">{status || (isStaffMode ? '직원용 임시 비밀번호는 4740입니다.' : '대표 관리자 기본 비밀번호는 3883입니다. Vercel 환경변수에서 변경할 수 있습니다.')}</p>
           </form>
         ) : (
           <div className="admin-grid simple-admin-grid">
@@ -2716,8 +2749,14 @@ function reorderPhoto(fromIndex, toIndex) {
     <ButtonChoiceGroup
       label="게시상태"
       value={postStatusLabel}
-      options={POST_STATUS_OPTIONS.map((item) => item.label)}
-      onChange={setPostStatusLabel}
+      options={isStaffMode ? [POST_STATUS_OPTIONS[0].label] : POST_STATUS_OPTIONS.map((item) => item.label)}
+      onChange={(nextStatus) => {
+        if (isStaffMode) {
+          setPostStatusLabel(POST_STATUS_OPTIONS[0].label);
+          return;
+        }
+        setPostStatusLabel(nextStatus);
+      }}
     />
 
   </section>
@@ -3010,9 +3049,9 @@ function reorderPhoto(fromIndex, toIndex) {
                 <label className="field">
                   <span>게시 상태</span>
                   <select value={form.status || 'pending'} onChange={(e) => updateField('status', e.target.value)}>
-                    <option value="pending">검수대기</option>
-                    <option value="published">승인</option>
-                    <option value="hold">보류</option>
+                    {POST_STATUS_OPTIONS.map((item) => (
+                      <option key={`${item.label}-${item.value}`} value={item.value}>{item.label}</option>
+                    ))}
                   </select>
                 </label>
               )}
@@ -3042,6 +3081,25 @@ function reorderPhoto(fromIndex, toIndex) {
               <button className="primary-btn submit-btn" type="submit">{editingId ? '수정 저장' : '매물 등록하기'}</button>
               <p className="status-text">{status}</p>
             </form>
+
+            {isStaffMode && (
+              <div className="admin-list staff-draft-list">
+                <h3>임시저장된 내가 등록한 매물 목록</h3>
+                {staffSavedItems.length ? (
+                  staffSavedItems.map((item, index) => (
+                    <div className="admin-list-item" key={`${item.createdAt}-${index}`}>
+                      <div className="admin-item-title">
+                        <strong>{item.title}</strong>
+                        <em className="status-chip status-pending">임시저장</em>
+                      </div>
+                      <span>{item.address || '주소 미입력'} · {item.createdAt}</span>
+                    </div>
+                  ))
+                ) : (
+                  <div className="empty-box">이번 접속에서 임시저장한 매물이 아직 없습니다.</div>
+                )}
+              </div>
+            )}
 
             {canEditExisting && (
             <div className="admin-list">
