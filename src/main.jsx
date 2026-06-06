@@ -224,6 +224,79 @@ function linesToArray(value) {
     .filter(Boolean);
 }
 
+function normalizeDuplicateAddress(value) {
+  return String(value || '')
+    .replace(/\([^)]*\)/g, '')
+    .replace(/경상북도/g, '경북')
+    .replace(/대한민국/g, '')
+    .replace(/[^\p{L}\p{N}]/gu, '')
+    .replace(/^경북/, '')
+    .toLowerCase();
+}
+
+function normalizeDuplicateUnit(value) {
+  const raw = String(value || '').trim();
+  if (!raw) return '';
+  const hoMatch = raw.match(/(\d+)\s*호/);
+  if (hoMatch) return hoMatch[1];
+  const numbers = raw.match(/\d+/g);
+  if (!numbers?.length) return '';
+  return numbers[numbers.length - 1];
+}
+
+function getPropertyDuplicateParts(property = {}) {
+  const addressUnitSource = String(property.address || '').includes('호') ? property.address : '';
+  const unitSource = [property.unit, property.detail_address, property.floor_info, addressUnitSource].filter(Boolean).join(' ');
+  return {
+    address: normalizeDuplicateAddress(property.address),
+    unit: normalizeDuplicateUnit(unitSource),
+    category: String(property.category || '').replace(/\s+/g, '').toLowerCase(),
+    tradeType: String(property.trade_type || '').replace(/\s+/g, '').toLowerCase()
+  };
+}
+
+function getPublicFloorInfo(value) {
+  return String(value || '')
+    .replace(/\s*\/?\s*내부호수\s*:\s*\d+\s*호?/g, '')
+    .trim();
+}
+
+function getPropertyDuplicateKey(property = {}) {
+  const parts = getPropertyDuplicateParts(property);
+  return `${parts.address}|${parts.unit}|${parts.category}|${parts.tradeType}`;
+}
+
+function findDuplicateProperty(target, list = [], ignoreId) {
+  const targetParts = getPropertyDuplicateParts(target);
+  if (!targetParts.address || !targetParts.category || !targetParts.tradeType) return null;
+
+  return list.find((item) => {
+    if (ignoreId && String(item.id) === String(ignoreId)) return false;
+    const parts = getPropertyDuplicateParts(item);
+    if (!parts.address || !parts.category || !parts.tradeType) return false;
+    const sameBase =
+      parts.address === targetParts.address &&
+      parts.category === targetParts.category &&
+      parts.tradeType === targetParts.tradeType;
+    if (!sameBase) return false;
+    if (!targetParts.unit || !parts.unit) return true;
+    return parts.unit === targetParts.unit;
+  }) || null;
+}
+
+function dedupePublicProperties(list = []) {
+  const seen = new Set();
+  return list.filter((item) => {
+    if ((item.status || 'published') !== 'published') return true;
+    const parts = getPropertyDuplicateParts(item);
+    if (!parts.unit) return true;
+    const key = getPropertyDuplicateKey(item);
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
+}
+
 function arrayToLines(value) {
   return Array.isArray(value) ? value.join('\n') : '';
 }
@@ -631,8 +704,9 @@ const showAdminAccess = true;
 
     if (!isSupabaseReady) {
       const previewList = canManageAll ? sampleProperties : sampleProperties.filter((item) => item.status === 'published');
-      setProperties(previewList);
-      setSelected((prev) => previewList.find((item) => item.id === prev?.id) || previewList[0]);
+      const visibleList = canManageAll ? previewList : dedupePublicProperties(previewList);
+      setProperties(visibleList);
+      setSelected((prev) => visibleList.find((item) => item.id === prev?.id) || visibleList[0]);
       setLoading(false);
       return;
     }
@@ -652,11 +726,13 @@ const showAdminAccess = true;
     if (fetchError) {
       setError(fetchError.message);
       const fallbackList = canManageAll ? sampleProperties : sampleProperties.filter((item) => item.status === 'published');
-      setProperties(fallbackList);
-      setSelected(fallbackList[0]);
+      const visibleList = canManageAll ? fallbackList : dedupePublicProperties(fallbackList);
+      setProperties(visibleList);
+      setSelected(visibleList[0]);
     } else {
       const fallbackList = canManageAll ? sampleProperties : sampleProperties.filter((item) => item.status === 'published');
-      const list = data?.length ? data : fallbackList;
+      const rawList = data?.length ? data : fallbackList;
+      const list = canManageAll ? rawList : dedupePublicProperties(rawList);
       setProperties(list);
       setSelected((prev) => list.find((item) => item.id === prev?.id) || list[0]);
     }
@@ -1376,7 +1452,7 @@ function PropertyListItem({ property, active, onClick }) {
        <div className="mini-facts mobile-card-extra-info">
           <span>{property.area || '면적 확인'}</span>
           <span>{property.room_bath || '방/욕실 확인'}</span>
-          <span>{property.floor_info || '층수 확인'}</span>
+          <span>{getPublicFloorInfo(property.floor_info) || '층수 확인'}</span>
         </div>
       </div>
     </button>
@@ -1425,7 +1501,7 @@ const infoRows = isSaleProperty
       ['면적', property.area || '계약 전 확인'],
       ['대지면적', property.land_area || '계약 전 확인'],
       ['연면적', property.building_area || '계약 전 확인'],
-      ['총층', property.floor_info || '계약 전 확인'],
+      ['총층', getPublicFloorInfo(property.floor_info) || '계약 전 확인'],
       ['세대현황', property.room_bath || '계약 전 확인'],
       ['총 세대수', property.total_units || '계약 전 확인'],
       ['임대중 세대수', property.rented_units || '계약 전 확인'],
@@ -1445,7 +1521,7 @@ const infoRows = isSaleProperty
       ['관리비', maintenanceInfo.display || '계약 전 확인'],
       ...(maintenanceInfo.includedItems.length ? [['관리비 포함 항목', maintenanceInfo.includedItems.join(', ')]] : []),
       ['면적', property.area || '계약 전 확인'],
-      ['층수', property.floor_info || '계약 전 확인'],
+      ['층수', getPublicFloorInfo(property.floor_info) || '계약 전 확인'],
       ['방/욕실', property.room_bath || '계약 전 확인'],
       ['방향', property.direction || '계약 전 확인'],
       ['주차', property.parking || '계약 전 확인'],
@@ -1649,7 +1725,7 @@ const infoRows = isSaleProperty
             <p>가격: {isSaleProperty ? `매매가 ${property.sale_price || property.deposit || '계약 전 확인'}` : `보증금 ${property.deposit || '-'} / 월세 ${property.rent || '-'}`}</p>
             <p>관리비: {maintenanceInfo.display || '계약 전 확인'}</p>
             {maintenanceInfo.includedItems.length > 0 && <p>관리비 포함 항목: {maintenanceInfo.includedItems.join(', ')}</p>}
-            <p>층수: {property.floor_info || '계약 전 확인'}</p>
+            <p>층수: {getPublicFloorInfo(property.floor_info) || '계약 전 확인'}</p>
             <p>방/욕실: {property.room_bath || '계약 전 확인'}</p>
             <p>사용승인일: {property.approval_date || '계약 전 확인'}</p>
             <p>주차: {property.parking || '계약 전 확인'}</p>
@@ -1702,7 +1778,7 @@ const infoRows = isSaleProperty
             <span>🏠 {property.category || '-'}</span>
             <span>📐 {property.area || '-'}</span>
             <span>🚪 {property.room_bath || '-'}</span>
-            <span>🏢 {property.floor_info || '-'}</span>
+            <span>🏢 {getPublicFloorInfo(property.floor_info) || '-'}</span>
           </div>
           <div className="side-actions">
             <a className="primary-btn" href={`tel:${OFFICE.phone}`}>전화상담</a>
@@ -1769,6 +1845,7 @@ function AdminModal({ mode, setMode, isAdmin, setIsAdmin, onClose, properties, r
   const [editingId, setEditingId] = useState(null);
   const [status, setStatus] = useState('');
   const [staffSavedItems, setStaffSavedItems] = useState([]);
+  const [duplicateWarning, setDuplicateWarning] = useState(null);
   const [photoEnhanceLevel, setPhotoEnhanceLevel] = useState('bright');
   const [photoEnhanceMode, setPhotoEnhanceMode] = useState('batch');
   const [photoEnhanceByUrl, setPhotoEnhanceByUrl] = useState({});
@@ -1978,6 +2055,7 @@ setSelectedAddressItem(null);
 
   function startEdit(property) {
     setEditingId(property.id);
+    setDuplicateWarning(null);
     setForm(propertyToForm(property));
     setQuickRoomType(property.category || '원룸');
     setQuickTradeType(property.trade_type || '월세');
@@ -1989,7 +2067,11 @@ setSelectedAddressItem(null);
     setMaintenanceItemsText(maintenance.includedItems.join('\n'));
     const floorText = String(property.floor_info || '');
     setQuickShowUnit(/호/.test(floorText));
-    setQuickUnit(floorText.match(/(\d+\s*호)/)?.[1]?.replace(/\s+/g, '') || '');
+    setQuickUnit(
+      floorText.match(/내부호수\s*:\s*(\d+\s*호?)/)?.[1]?.replace(/\s+/g, '') ||
+      floorText.match(/(\d+\s*호)/)?.[1]?.replace(/\s+/g, '') ||
+      ''
+    );
     setQuickFloor(floorText.match(/(\d+)\s*층/)?.[1] || '');
     setQuickTotalFloor(floorText.match(/총\s*(\d+)\s*층/)?.[1] || '');
     const roomBathMatch = String(property.room_bath || '').match(/방\s*(\d+).*욕실\s*(\d+)|(\d+)\s*\/\s*(\d+)/);
@@ -2031,6 +2113,7 @@ setSelectedAddressItem(null);
     setPostStatusLabel(POST_STATUS_OPTIONS[0].label);
     setPhotoEnhanceByUrl({});
     setPhotoSourceByUrl({});
+    setDuplicateWarning(null);
     setStatus('새 매물 등록 상태입니다.');
   }
 function autoEditPhoto(file, options = {}) {
@@ -2267,9 +2350,10 @@ function reorderPhoto(fromIndex, toIndex) {
     return { ...prev, photosText: next.join('\n') };
   });
 }
-  async function saveProperty(e) {
-    e.preventDefault();
+  async function saveProperty(e, forceDuplicateSave = false) {
+    e?.preventDefault?.();
     setStatus('저장 중입니다.');
+    if (forceDuplicateSave) setDuplicateWarning(null);
 
     const maintenanceAmount = normalizeManwon(form.maintenance_fee);
     const maintenanceItems = linesToArray(maintenanceItemsText);
@@ -2287,6 +2371,10 @@ function reorderPhoto(fromIndex, toIndex) {
       quickFloor ? `${quickFloor}층` : '',
       quickTotalFloor ? `총 ${quickTotalFloor}층` : ''
     ].filter(Boolean).join(' / ');
+    const storedFloorInfo =
+      isStaffMode && quickUnit && !quickShowUnit
+        ? [floorInfo, `내부호수:${quickUnit}`].filter(Boolean).join(' / ')
+        : floorInfo;
     const roomBathText = quickRoomCount || quickBathCount ? `방 ${quickRoomCount || 0} / 욕실 ${quickBathCount || 0}` : '';
     const directionText = `${directionChoice} / 주출입구 기준`;
     const moveInText = moveInChoice === '날짜 직접입력' ? (moveInDate || '날짜협의') : moveInChoice;
@@ -2316,7 +2404,7 @@ function reorderPhoto(fromIndex, toIndex) {
           trade_type: finalTradeType,
           room_bath: finalRoomBath,
           maintenance_fee: maintenanceText,
-          floor_info: floorInfo || form.floor_info,
+          floor_info: storedFloorInfo || form.floor_info,
           convenienceText: [...new Set([...linesToArray(form.convenienceText), ...maintenanceItems, heatingChoice !== '확인필요' ? `난방: ${heatingChoice}` : ''])].join('\n'),
           move_in: moveInText,
           direction: directionText,
@@ -2341,6 +2429,35 @@ function reorderPhoto(fromIndex, toIndex) {
       ...formToPayload(saveForm),
       status: isStaffMode ? staffStatusValue : (saveForm.status || 'published')
     };
+
+    if (!forceDuplicateSave) {
+      const { data: duplicateSource, error: duplicateError } = await supabase
+        .from('properties')
+        .select('*')
+        .order('created_at', { ascending: false });
+      const duplicateList = duplicateError ? properties : (duplicateSource || []);
+      const duplicate = findDuplicateProperty(payload, duplicateList, editingId);
+      if (duplicate) {
+        const targetParts = getPropertyDuplicateParts(payload);
+        const duplicateParts = getPropertyDuplicateParts(duplicate);
+        const hasUnit = Boolean(targetParts.unit && duplicateParts.unit);
+        if (isStaffMode && hasUnit) {
+          setDuplicateWarning(null);
+          setStatus('이미 같은 주소와 같은 호수의 매물이 등록되어 있습니다.\n기존 매물을 확인한 뒤 수정하거나 대표 관리자에게 문의해주세요.');
+          return;
+        }
+        const message = hasUnit
+          ? '동일 주소/동일 호수의 매물이 이미 있습니다.\n기존 매물을 수정하시겠습니까, 그래도 새로 등록하시겠습니까?'
+          : '같은 주소의 매물이 이미 있습니다. 같은 매물인지 확인해주세요.';
+        if (isAdminMode) {
+          setDuplicateWarning({ duplicate, message, hasUnit });
+          setStatus(message);
+          return;
+        }
+        setStatus(message);
+      }
+    }
+
     const request = editingId && canEditExisting
       ? supabase.from('properties').update(payload).eq('id', editingId)
       : supabase.from('properties').insert(payload);
@@ -3075,6 +3192,30 @@ function reorderPhoto(fromIndex, toIndex) {
                     <div><span>주차</span><strong>{[parkingChoice, parkingTotal ? `총 ${parkingTotal}대` : '', parkingPerUnit ? `세대당 ${parkingPerUnit}대` : ''].filter(Boolean).join(' / ')}</strong></div>
                     <div><span>난방/엘리베이터</span><strong>{heatingChoice} / {elevatorChoice}</strong></div>
                     <div><span>게시상태</span><strong>{postStatusLabel}로 저장</strong></div>
+                  </div>
+                </section>
+              )}
+              {isAdminMode && duplicateWarning && (
+                <section className="admin-section-block duplicate-warning-box">
+                  <h4>중복 매물 확인</h4>
+                  <p>{duplicateWarning.message}</p>
+                  <div className="duplicate-warning-actions">
+                    <button
+                      type="button"
+                      className="small-btn"
+                      onClick={() => {
+                        startEdit(duplicateWarning.duplicate);
+                        setDuplicateWarning(null);
+                      }}
+                    >
+                      기존 매물 보기
+                    </button>
+                    <button type="button" className="primary-btn" onClick={() => saveProperty(null, true)}>
+                      새로 등록 계속
+                    </button>
+                    <button type="button" className="small-btn" onClick={() => setDuplicateWarning(null)}>
+                      취소
+                    </button>
                   </div>
                 </section>
               )}

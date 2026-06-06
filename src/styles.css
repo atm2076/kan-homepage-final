@@ -1082,6 +1082,29 @@ img {
   margin-top: 18px;
 }
 
+.duplicate-warning-box {
+  border-color: #f2b8b8;
+  background: #fff7f7;
+}
+
+.duplicate-warning-box h4 {
+  color: #b42318;
+}
+
+.duplicate-warning-box p {
+  margin: 0 0 14px;
+  color: #7a271a;
+  font-weight: 800;
+  line-height: 1.5;
+  white-space: pre-line;
+}
+
+.duplicate-warning-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
 .admin-section-block,
 .admin-details {
   border: 1px solid var(--line);
@@ -1327,6 +1350,7 @@ img {
   color: var(--brown);
   font-weight: 900;
   line-height: 1.6;
+  white-space: pre-line;
 }
 
 .admin-list {
