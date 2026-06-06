@@ -1130,6 +1130,51 @@ img {
   text-align: center;
 }
 
+.photo-enhance-panel {
+  margin-bottom: 14px;
+  padding: 16px;
+  border: 1px solid var(--line);
+  border-radius: 18px;
+  background: #fff;
+}
+
+.photo-enhance-buttons {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.photo-enhance-buttons button {
+  min-height: 48px;
+  border: 1px solid #d8c8b4;
+  border-radius: 14px;
+  background: #fffaf3;
+  color: var(--brown-dark);
+  padding: 10px 12px;
+  font-weight: 900;
+}
+
+.photo-enhance-buttons button.selected {
+  border-color: var(--brown-dark);
+  background: var(--brown-dark);
+  color: #fff;
+  box-shadow: 0 8px 18px rgba(43, 33, 27, 0.18);
+}
+
+.photo-enhance-help {
+  display: grid;
+  gap: 5px;
+  margin-top: 12px;
+  color: var(--muted);
+  font-size: 13px;
+  line-height: 1.5;
+  text-align: left;
+}
+
+.photo-enhance-help strong {
+  color: var(--brown-dark);
+}
+
 .upload-dropzone.dragging {
   border-color: var(--brown);
   background: var(--cream);
@@ -7864,10 +7909,16 @@ button.property-list-item,
   }
 
   .option-button-grid button,
-  .quick-title-keyword-row button {
+  .quick-title-keyword-row button,
+  .photo-enhance-buttons button {
     min-height: 50px;
     padding: 12px 16px;
     font-size: 15px;
+  }
+
+  .photo-enhance-buttons {
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
   }
 
   .option-custom-row {

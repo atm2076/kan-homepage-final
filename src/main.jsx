@@ -128,6 +128,13 @@ const ROOM_BATH_DEFAULTS = {
   '상가/사무실': '방 0 / 욕실 1'
 };
 
+const PHOTO_ENHANCE_LEVELS = [
+  { value: 'none', label: '보정 없음', description: '원본 유지', filter: 'none' },
+  { value: 'natural', label: '1단 자연보정', description: '실물에 가깝게', filter: 'brightness(1.04) contrast(1.04) saturate(1.03)' },
+  { value: 'bright', label: '2단 밝은보정', description: '밝고 깔끔하게', filter: 'brightness(1.08) contrast(1.08) saturate(1.06)' },
+  { value: 'strong', label: '3단 강한보정', description: '어두운 사진 보완', filter: 'brightness(1.14) contrast(1.12) saturate(1.08)' }
+];
+
 const sampleProperties = [
   {
     id: 'sample-1',
@@ -1732,7 +1739,7 @@ function AdminModal({ mode, setMode, isAdmin, setIsAdmin, onClose, properties, r
   const [bulkText, setBulkText] = useState('');
   const [editingId, setEditingId] = useState(null);
   const [status, setStatus] = useState('');
-  const [photoAutoEdit, setPhotoAutoEdit] = useState(true);
+  const [photoEnhanceLevel, setPhotoEnhanceLevel] = useState('bright');
 const [photoWatermark, setPhotoWatermark] = useState(true);
   const [entryMode, setEntryMode] = useState('simple');
 const [quickRoomType, setQuickRoomType] = useState('원룸');
@@ -1944,7 +1951,8 @@ setSelectedAddressItem(null);
     setStatus('새 매물 등록 상태입니다.');
   }
 function autoEditPhoto(file, options = {}) {
-  const { autoEdit = true, watermark = true } = options;
+  const { enhanceLevel = 'bright', watermark = true } = options;
+  const enhanceConfig = PHOTO_ENHANCE_LEVELS.find((level) => level.value === enhanceLevel) || PHOTO_ENHANCE_LEVELS[2];
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
     const img = new Image();
@@ -1967,8 +1975,8 @@ function autoEditPhoto(file, options = {}) {
         canvas.width = width;
         canvas.height = height;
 
-        // 밝기 / 대비 / 채도 자동 보정
-        ctx.filter = autoEdit ? 'brightness(1.08) contrast(1.08) saturate(1.06)' : 'none';
+        // 선택된 강도로 밝기 / 대비 / 채도 보정
+        ctx.filter = enhanceConfig.filter;
         ctx.drawImage(img, 0, 0, width, height);
         ctx.filter = 'none';
 if (watermark) {
@@ -2029,7 +2037,7 @@ ctx.shadowOffsetY = 0;
 const files = await Promise.all(
   originalFiles.map((file) =>
     autoEditPhoto(file, {
-      autoEdit: photoAutoEdit,
+      enhanceLevel: photoEnhanceLevel,
       watermark: photoWatermark,
     })
   )
@@ -2319,9 +2327,9 @@ function reorderPhoto(fromIndex, toIndex) {
         onRemove={removePhoto}
         onMove={movePhoto}
         onReorder={reorderPhoto}
-        autoEditEnabled={photoAutoEdit}
+        enhanceLevel={photoEnhanceLevel}
         watermarkEnabled={photoWatermark}
-        onToggleAutoEdit={setPhotoAutoEdit}
+        onChangeEnhanceLevel={setPhotoEnhanceLevel}
         onToggleWatermark={setPhotoWatermark}
       />
     </section>
@@ -2611,9 +2619,9 @@ function reorderPhoto(fromIndex, toIndex) {
   onRemove={removePhoto}
   onMove={movePhoto}
   onReorder={reorderPhoto}
-  autoEditEnabled={photoAutoEdit}
+  enhanceLevel={photoEnhanceLevel}
   watermarkEnabled={photoWatermark}
-  onToggleAutoEdit={setPhotoAutoEdit}
+  onChangeEnhanceLevel={setPhotoEnhanceLevel}
   onToggleWatermark={setPhotoWatermark}
 />
                 <details className="manual-url-box">
@@ -2816,9 +2824,9 @@ function PhotoUploader({
   onRemove,
   onMove,
   onReorder,
-  autoEditEnabled = true,
+  enhanceLevel = 'bright',
   watermarkEnabled = true,
-  onToggleAutoEdit = () => {},
+  onChangeEnhanceLevel = () => {},
   onToggleWatermark = () => {},
 }) {
   const [dragging, setDragging] = useState(false);
@@ -2831,6 +2839,30 @@ const [dragIndex, setDragIndex] = useState(null);
 
   return (
     <section className="photo-uploader field">
+      <div className="photo-enhance-panel">
+        <div className="option-group-head">
+          <strong>사진 보정 강도</strong>
+        </div>
+        <div className="photo-enhance-buttons">
+          {PHOTO_ENHANCE_LEVELS.map((level) => (
+            <button
+              key={level.value}
+              type="button"
+              className={enhanceLevel === level.value ? 'selected' : ''}
+              onClick={() => onChangeEnhanceLevel(level.value)}
+            >
+              {level.label}
+            </button>
+          ))}
+        </div>
+        <div className="photo-enhance-help">
+          {PHOTO_ENHANCE_LEVELS.map((level) => (
+            <span key={level.value}>
+              <strong>{level.label.replace('보정 없음', '보정 없음').replace('1단 자연보정', '1단').replace('2단 밝은보정', '2단').replace('3단 강한보정', '3단')}:</strong> {level.description}
+            </span>
+          ))}
+        </div>
+      </div>
       <div
         className={`upload-dropzone ${dragging ? 'dragging' : ''}`}
         onDragOver={(e) => {
@@ -2843,15 +2875,6 @@ const [dragIndex, setDragIndex] = useState(null);
         <strong>사진을 여기에 드래그하거나 아래 버튼으로 선택하세요.</strong>
         <p className="muted">여러 장을 한 번에 올릴 수 있습니다. 첫 번째 사진이 대표사진입니다.</p>
         <div className="photo-edit-options">
-  <label>
-    <input
-      type="checkbox"
-      checked={autoEditEnabled}
-      onChange={(e) => onToggleAutoEdit(e.target.checked)}
-    />
-    사진 자동 보정 적용
-  </label>
-
   <label>
     <input
       type="checkbox"
