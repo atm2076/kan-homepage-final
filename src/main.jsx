@@ -2591,6 +2591,7 @@ function optionIcon(label) {
 }
 
 function AddressLedgerSearchSection({
+  title = '2. 주소검색',
   form,
   updateField,
   addressResults,
@@ -2607,7 +2608,7 @@ function AddressLedgerSearchSection({
 }) {
   return (
     <section className="quick-field-section">
-      <h4>2. 주소검색</h4>
+      <h4>{title}</h4>
       <div className="address-search-wrap">
         <div className="address-search-grid">
           <Field
@@ -2752,17 +2753,17 @@ function goStaffStep(nextStep) {
 const selectedAddressLabel = selectedAddressItem ? (selectedAddressItem.roadAddr || selectedAddressItem.jibunAddr || form.address) : '';
 const ledgerPreviewItems = [
   ['사용승인일', form.approval_date],
-  ['주용도', form.main_use],
   ['구조', form.structure],
-  ['지상층수', form.floor_count ? `${form.floor_count}층` : ''],
-  ['지하층수', form.basement_floor_count ? `${form.basement_floor_count}층` : ''],
-  ['총층수 표시', form.total_floor_info || form.floor_info],
-  ['연면적', form.total_area],
-  ['건축면적', form.building_area],
-  ['대지면적', form.land_area],
+  ['총층수', form.total_floor_info || form.floor_info || (form.floor_count ? `지상 ${form.floor_count}층` : '')],
   ['주차대수', form.parking],
   ['건물명', form.building_name],
-  ['면적', form.area]
+  ['면적', form.area || form.total_area || form.building_area],
+  ['주용도', form.main_use],
+  ['지상층수', form.floor_count ? `${form.floor_count}층` : ''],
+  ['지하층수', form.basement_floor_count ? `${form.basement_floor_count}층` : ''],
+  ['연면적', form.total_area],
+  ['건축면적', form.building_area],
+  ['대지면적', form.land_area]
 ].filter(([, value]) => String(value || '').trim());
 
   useEffect(() => {
@@ -3528,6 +3529,7 @@ function reorderPhoto(fromIndex, toIndex) {
                   <div className="staff-step-card">
                     {staffStep === 0 && (
                       <AddressLedgerSearchSection
+                        title="주소검색"
                         form={form}
                         updateField={updateField}
                         addressResults={addressResults}
@@ -3747,6 +3749,7 @@ function reorderPhoto(fromIndex, toIndex) {
     </section>
 
     <AddressLedgerSearchSection
+      title="2. 주소검색"
       form={form}
       updateField={updateField}
       addressResults={addressResults}
@@ -3996,7 +3999,22 @@ function reorderPhoto(fromIndex, toIndex) {
                 <SelectField label="매물종류" value={form.category} onChange={(v) => updateField('category', v)} options={['원룸', '미니투룸', '투룸', '쓰리룸 이상', '다가구 매매', '상가·사무실']} />
 <SelectField label="거래형태" value={form.trade_type} onChange={(v) => updateField('trade_type', v)} options={['월세', '반전세', '전세', '매매', '단기임대']} />
                 </div>
-                <Field label="주소" value={form.address} onChange={(v) => updateField('address', v)} placeholder="경상북도 구미시 진평동 1052-1" />
+                <AddressLedgerSearchSection
+                  title="주소검색"
+                  form={form}
+                  updateField={updateField}
+                  addressResults={addressResults}
+                  setAddressResults={setAddressResults}
+                  addressSearching={addressSearching}
+                  handleAddressSearch={handleAddressSearch}
+                  selectedAddressItem={selectedAddressItem}
+                  setSelectedAddressItem={setSelectedAddressItem}
+                  selectedAddressLabel={selectedAddressLabel}
+                  buildingLedgerSearching={buildingLedgerSearching}
+                  fetchBuildingLedger={fetchBuildingLedger}
+                  ledgerPreviewItems={ledgerPreviewItems}
+                  setStatus={setStatus}
+                />
                {(form.category?.includes('매매') || form.trade_type === '매매') ? (
   <div className="admin-sale-box">
     <h4>매매 수익 정보</h4>
