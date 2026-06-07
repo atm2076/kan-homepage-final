@@ -2805,6 +2805,7 @@ function reorderPhoto(fromIndex, toIndex) {
                           onRemove={removePhoto}
                           onMove={movePhoto}
                           onReorder={reorderPhoto}
+                          showEnhanceControls={false}
                           enhanceMode={photoEnhanceMode}
                           onChangeEnhanceMode={setPhotoEnhanceMode}
                           enhanceLevel={photoEnhanceLevel}
@@ -3557,6 +3558,7 @@ function PhotoUploader({
   onRemove,
   onMove,
   onReorder,
+  showEnhanceControls = true,
   enhanceMode = 'batch',
   onChangeEnhanceMode = () => {},
   enhanceLevel = 'bright',
@@ -3576,6 +3578,7 @@ const [dragIndex, setDragIndex] = useState(null);
 
   return (
     <section className="photo-uploader field">
+      {showEnhanceControls && (
       <div className="photo-enhance-panel">
         <div className="option-group-head">
           <strong>사진 보정 방식</strong>
@@ -3619,6 +3622,7 @@ const [dragIndex, setDragIndex] = useState(null);
           ))}
         </div>
       </div>
+      )}
       <div
         className={`upload-dropzone ${dragging ? 'dragging' : ''}`}
         onDragOver={(e) => {
