@@ -2604,8 +2604,12 @@ function AddressLedgerSearchSection({
   buildingLedgerSearching,
   fetchBuildingLedger,
   ledgerPreviewItems,
+  status,
   setStatus
 }) {
+  const visibleStatus = status && (status.includes('주소') || status.includes('건축물대장'));
+  const isPositiveStatus = status?.includes('완료') || status?.includes('자동 입력') || status?.includes('선택했습니다');
+
   return (
     <section className="quick-field-section">
       <h4>{title}</h4>
@@ -2655,10 +2659,16 @@ function AddressLedgerSearchSection({
             <span>{selectedAddressItem ? '선택한 주소' : '주소 검색 결과를 선택하면 건축물대장 조회가 가능합니다.'}</span>
             {selectedAddressItem && <strong>{selectedAddressLabel}</strong>}
           </div>
-          <button type="button" className="address-search-button ledger-button" onClick={fetchBuildingLedger} disabled={buildingLedgerSearching || !selectedAddressItem}>
+          <button type="button" className="address-search-button ledger-button" onClick={() => fetchBuildingLedger()} disabled={buildingLedgerSearching || !selectedAddressItem}>
             {buildingLedgerSearching ? '대장조회중...' : '건축물대장 조회'}
           </button>
         </div>
+
+        {visibleStatus && (
+          <p className={`ledger-status-message ${isPositiveStatus ? 'ok' : 'warn'}`}>
+            {status}
+          </p>
+        )}
 
         {selectedAddressItem && ledgerPreviewItems.length > 0 && (
           <div className="ledger-preview-grid" aria-label="건축물대장 자동 입력 항목">
@@ -2716,6 +2726,7 @@ const [quickRoomType, setQuickRoomType] = useState('원룸');
 const [addressSearching, setAddressSearching] = useState(false);
   const [selectedAddressItem, setSelectedAddressItem] = useState(null);
 const [buildingLedgerSearching, setBuildingLedgerSearching] = useState(false);
+  const [detailFieldsOpen, setDetailFieldsOpen] = useState(false);
   const [quickTitleKeyword, setQuickTitleKeyword] = useState('');
   const adminPassword = import.meta.env.VITE_ADMIN_PASSWORD || ['3', '8', '8', '3'].join('');
   const staffPassword = import.meta.env.VITE_STAFF_PASSWORD || ['0', '0', '0', '0'].join('');
@@ -2753,12 +2764,12 @@ function goStaffStep(nextStep) {
 const selectedAddressLabel = selectedAddressItem ? (selectedAddressItem.roadAddr || selectedAddressItem.jibunAddr || form.address) : '';
 const ledgerPreviewItems = [
   ['사용승인일', form.approval_date],
+  ['주용도', form.main_use],
   ['구조', form.structure],
   ['총층수', form.total_floor_info || form.floor_info || (form.floor_count ? `지상 ${form.floor_count}층` : '')],
   ['주차대수', form.parking],
   ['건물명', form.building_name],
   ['면적', form.area || form.total_area || form.building_area],
-  ['주용도', form.main_use],
   ['지상층수', form.floor_count ? `${form.floor_count}층` : ''],
   ['지하층수', form.basement_floor_count ? `${form.basement_floor_count}층` : ''],
   ['연면적', form.total_area],
@@ -2850,17 +2861,22 @@ const ledgerPreviewItems = [
     }
   }
   async function fetchBuildingLedger(addressItem = selectedAddressItem) {
-    if (!addressItem) {
+    const isClickEvent = addressItem && typeof addressItem.preventDefault === 'function';
+    if (isClickEvent) addressItem.preventDefault();
+
+    const targetAddressItem = isClickEvent ? selectedAddressItem : (addressItem || selectedAddressItem);
+
+    if (!targetAddressItem) {
       setStatus('먼저 주소검색 후 주소를 선택해주세요.');
       return;
     }
 
-    const jibunText = addressItem.jibunAddr || '';
+    const jibunText = targetAddressItem.jibunAddr || '';
     const lotMatch = jibunText.match(/(산\s*)?(\d+)(?:-(\d+))?\s*$/);
-    const admCd = addressItem.admCd;
-    const lnbrMnnm = addressItem.lnbrMnnm || lotMatch?.[2];
-    const lnbrSlno = addressItem.lnbrSlno || lotMatch?.[3] || '0';
-    const mtYn = addressItem.mtYn || (lotMatch?.[1] ? '1' : '0');
+    const admCd = targetAddressItem.admCd;
+    const lnbrMnnm = targetAddressItem.lnbrMnnm || lotMatch?.[2];
+    const lnbrSlno = targetAddressItem.lnbrSlno || lotMatch?.[3] || '0';
+    const mtYn = targetAddressItem.mtYn || (lotMatch?.[1] ? '1' : '0');
 
     if (!admCd || !lnbrMnnm) {
       setStatus('건축물대장 조회에 필요한 법정동/번지 정보가 부족합니다.');
@@ -2886,9 +2902,26 @@ const ledgerPreviewItems = [
       }
 
       const s = data.summary;
-      const groundFloors = String(s.지상층수 || '').trim();
-      const basementFloors = String(s.지하층수 || '').trim();
-      const parkingSpaces = String(s.주차대수 || '').trim();
+      const ledgerText = (...keys) => {
+        const value = keys.map((key) => s?.[key]).find((item) => item !== undefined && item !== null && String(item).trim() !== '');
+        return String(value || '').trim();
+      };
+      const withAreaUnit = (value) => {
+        const text = String(value || '').trim();
+        if (!text) return '';
+        return /㎡|평|m2|m²/i.test(text) ? text : `${text}㎡`;
+      };
+      const approvalDate = ledgerText('사용승인일', 'useAprDay', 'approval_date');
+      const mainUse = ledgerText('주용도', 'mainPurpsCdNm', 'main_use');
+      const structure = ledgerText('구조', 'strctCdNm', 'structure');
+      const groundFloors = ledgerText('지상층수', 'grndFlrCnt', 'floor_count');
+      const basementFloors = ledgerText('지하층수', 'ugrndFlrCnt', 'basement_floor_count');
+      const totalArea = withAreaUnit(ledgerText('연면적', 'totArea', 'total_area'));
+      const buildingArea = withAreaUnit(ledgerText('건축면적', 'archArea', 'building_area'));
+      const landArea = withAreaUnit(ledgerText('대지면적', 'platArea', 'land_area'));
+      const areaValue = withAreaUnit(ledgerText('전용면적', 'area')) || totalArea || buildingArea || '';
+      const buildingName = ledgerText('건물명', '건물명칭', 'bldNm', 'building_name');
+      const parkingSpaces = ledgerText('주차대수', 'parking');
       const quickTotalFloorValue = groundFloors.replace(/[^0-9.]/g, '') || groundFloors;
       const parkingValue = parkingSpaces.replace(/[^0-9.]/g, '') || parkingSpaces;
       const hasParkingCount = Boolean(parkingValue && parkingValue !== '0');
@@ -2901,7 +2934,7 @@ const ledgerPreviewItems = [
         quickTotalFloorValue ? `총 ${quickTotalFloorValue}층` : '',
         basementFloors && basementFloors !== '0' ? `지하 ${basementFloors}층` : ''
       ].filter(Boolean).join(' / ');
-      const areaValue = s.전용면적 || s.연면적 || s.건축면적 || '';
+      const parkingText = hasParkingCount ? `총 ${parkingValue}대` : '';
 
       if (quickTotalFloorValue) setQuickTotalFloor(quickTotalFloorValue);
       if (hasParkingCount) {
@@ -2911,24 +2944,25 @@ const ledgerPreviewItems = [
 
       setForm((prev) => ({
         ...prev,
-        approval_date: s.사용승인일 || prev.approval_date,
-        main_use: s.주용도 || prev.main_use,
-        structure: s.구조 || prev.structure,
+        approval_date: approvalDate || prev.approval_date,
+        main_use: mainUse || prev.main_use,
+        structure: structure || prev.structure,
         floor_count: groundFloors || prev.floor_count,
         basement_floor_count: basementFloors || prev.basement_floor_count,
         total_floor_info: totalFloorInfo || prev.total_floor_info,
         floor_info: publicFloorInfo || totalFloorInfo || prev.floor_info,
-        total_area: s.연면적 || prev.total_area,
-        building_area: s.건축면적 || prev.building_area,
-        land_area: s.대지면적 || prev.land_area,
-        parking: hasParkingCount ? `총 ${parkingValue}대` : prev.parking,
-        building_name: s.건물명 || s.건물명칭 || prev.building_name,
+        total_area: totalArea || prev.total_area,
+        building_area: buildingArea || prev.building_area,
+        land_area: landArea || prev.land_area,
+        parking: parkingText || prev.parking,
+        building_name: buildingName || prev.building_name,
         area: areaValue || prev.area
       }));
 
-      setStatus(`건축물대장 조회 완료: ${s.건물명 || s.주용도 || '건축물'} 정보를 자동 입력했습니다.`);
+      setDetailFieldsOpen(true);
+      setStatus(`건축물대장 정보가 자동 입력되었습니다. ${buildingName || mainUse || '상세정보'} 값을 확인해주세요.`);
     } catch (error) {
-      setStatus('건축물대장 서버 연결 중 오류가 발생했습니다.');
+      setStatus(`건축물대장 서버 연결 중 오류가 발생했습니다: ${error.message || '알 수 없는 오류'}`);
     } finally {
       setBuildingLedgerSearching(false);
     }
@@ -2981,6 +3015,7 @@ const ledgerPreviewItems = [
     setPostStatusLabel(property.status === 'published' ? '공개중' : property.status === 'hold' ? '비공개' : '임시저장');
     setAddressResults([]);
     setSelectedAddressItem(null);
+    setDetailFieldsOpen(true);
     setStatus('선택한 매물을 수정 중입니다.');
   }
 
@@ -3016,6 +3051,7 @@ const ledgerPreviewItems = [
     setAdminDetailTab('public');
     setAddressResults([]);
     setSelectedAddressItem(null);
+    setDetailFieldsOpen(false);
     setStatus('새 매물 등록 상태입니다.');
   }
 function autoEditPhoto(file, options = {}) {
@@ -3542,6 +3578,7 @@ function reorderPhoto(fromIndex, toIndex) {
                         buildingLedgerSearching={buildingLedgerSearching}
                         fetchBuildingLedger={fetchBuildingLedger}
                         ledgerPreviewItems={ledgerPreviewItems}
+                        status={status}
                         setStatus={setStatus}
                       />
                     )}
@@ -3762,6 +3799,7 @@ function reorderPhoto(fromIndex, toIndex) {
       buildingLedgerSearching={buildingLedgerSearching}
       fetchBuildingLedger={fetchBuildingLedger}
       ledgerPreviewItems={ledgerPreviewItems}
+      status={status}
       setStatus={setStatus}
     />
 
@@ -4013,6 +4051,7 @@ function reorderPhoto(fromIndex, toIndex) {
                   buildingLedgerSearching={buildingLedgerSearching}
                   fetchBuildingLedger={fetchBuildingLedger}
                   ledgerPreviewItems={ledgerPreviewItems}
+                  status={status}
                   setStatus={setStatus}
                 />
                {(form.category?.includes('매매') || form.trade_type === '매매') ? (
@@ -4147,25 +4186,35 @@ function reorderPhoto(fromIndex, toIndex) {
               )}
 
               {isAdminMode && (
-              <details className="admin-details" open={Boolean(editingId)}>
+              <details className="admin-details" open={detailFieldsOpen || Boolean(editingId)} onToggle={(event) => setDetailFieldsOpen(event.currentTarget.open)}>
                 <summary>3. 상세정보 더 입력하기</summary>
                 <div className="two-cols">
                   <Field label="면적" value={form.area} onChange={(v) => updateField('area', v)} placeholder="30㎡" />
-                  <Field label="층수" value={form.floor_info} onChange={(v) => updateField('floor_info', v)} placeholder="2층 / 총 4층" />
+                  <Field
+                    label="총층수"
+                    value={form.total_floor_info || form.floor_info}
+                    onChange={(v) => setForm((prev) => ({ ...prev, total_floor_info: v, floor_info: v }))}
+                    placeholder="지상 4층 / 지하 1층"
+                  />
                 </div>
                 <div className="three-cols">
                   <Field label="방향" value={form.direction} onChange={(v) => updateField('direction', v)} placeholder="남향" />
                   <Field label="방/욕실" value={form.room_bath} onChange={(v) => updateField('room_bath', v)} placeholder="1/1" />
                   <Field label="주차" value={form.parking} onChange={(v) => updateField('parking', v)} placeholder="8대" />
                 </div>
-<div className="two-cols">
-  <Field label="건물명" value={form.building_name || ''} onChange={(v) => updateField('building_name', v)} placeholder="예: 칸빌" />
-  <Field label="입주" value={form.move_in} onChange={(v) => updateField('move_in', v)} placeholder="즉시" />
-</div>
-<div className="two-cols">
-  <Field label="사용승인일" value={form.approval_date} onChange={(v) => updateField('approval_date', v)} placeholder="2007년 10월 25일" />
-  <Field label="구조" value={form.structure} onChange={(v) => updateField('structure', v)} placeholder="철근콘크리트구조" />
-</div>
+                <div className="two-cols">
+                  <Field label="건물명" value={form.building_name || ''} onChange={(v) => updateField('building_name', v)} placeholder="예: 칸빌" />
+                  <Field label="입주" value={form.move_in} onChange={(v) => updateField('move_in', v)} placeholder="즉시" />
+                </div>
+                <div className="three-cols">
+                  <Field label="사용승인일" value={form.approval_date} onChange={(v) => updateField('approval_date', v)} placeholder="2007년 10월 25일" />
+                  <Field label="구조" value={form.structure} onChange={(v) => updateField('structure', v)} placeholder="철근콘크리트구조" />
+                  <Field label="주용도" value={form.main_use} onChange={(v) => updateField('main_use', v)} placeholder="다가구주택" />
+                </div>
+                <div className="two-cols">
+                  <Field label="지상층수" value={form.floor_count} onChange={(v) => updateField('floor_count', v)} placeholder="4" />
+                  <Field label="지하층수" value={form.basement_floor_count} onChange={(v) => updateField('basement_floor_count', v)} placeholder="0" />
+                </div>
 
 {(form.category?.includes('매매') || form.trade_type === '매매') && (
   <div className="admin-sale-box">

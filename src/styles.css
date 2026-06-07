@@ -7827,6 +7827,27 @@ button.property-list-item,
   gap: 8px;
 }
 
+.ledger-status-message {
+  margin: 10px 0 0;
+  padding: 10px 12px;
+  border-radius: 12px;
+  font-size: 13px;
+  font-weight: 800;
+  line-height: 1.45;
+}
+
+.ledger-status-message.ok {
+  background: #eefaf1;
+  border: 1px solid #b7e1c1;
+  color: #146c2e;
+}
+
+.ledger-status-message.warn {
+  background: #fff1f1;
+  border: 1px solid #f2b8b8;
+  color: #b42318;
+}
+
 .ledger-preview-grid div {
   padding: 10px 12px;
   border: 1px solid #dbe6f2;
