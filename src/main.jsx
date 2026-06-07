@@ -2606,7 +2606,7 @@ function reorderPhoto(fromIndex, toIndex) {
 
               {isStaffMode && (
                 <div className="notice warning compact-notice">
-                  직원이 저장한 매물은 검수대기로 저장되며, 대표 승인 후 손님용 홈페이지와 지도에 노출됩니다.
+                  직원이 저장한 매물은 검수대기로 저장되며, 검토 완료 후 손님용 홈페이지와 지도에 노출됩니다.
                 </div>
               )}
 
