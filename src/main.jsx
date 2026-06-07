@@ -2761,6 +2761,22 @@ const staffWizardSteps = [
 function goStaffStep(nextStep) {
   setStaffStep(Math.max(0, Math.min(staffWizardSteps.length - 1, nextStep)));
 }
+
+function formatLedgerDate(value) {
+  const text = String(value || '').trim();
+  const digits = text.replace(/\D/g, '');
+
+  if (digits.length !== 8) return text;
+
+  const year = digits.slice(0, 4);
+  const month = Number(digits.slice(4, 6));
+  const day = Number(digits.slice(6, 8));
+
+  if (!month || !day) return text;
+
+  return `${year}년 ${month}월 ${day}일`;
+}
+
 const selectedAddressLabel = selectedAddressItem ? (selectedAddressItem.roadAddr || selectedAddressItem.jibunAddr || form.address) : '';
 const ledgerPreviewItems = [
   ['사용승인일', form.approval_date],
@@ -2769,7 +2785,7 @@ const ledgerPreviewItems = [
   ['총층수', form.total_floor_info || form.floor_info || (form.floor_count ? `지상 ${form.floor_count}층` : '')],
   ['주차대수', form.parking],
   ['건물명', form.building_name],
-  ['면적', form.area || form.total_area || form.building_area],
+  ['전용면적', form.area],
   ['지상층수', form.floor_count ? `${form.floor_count}층` : ''],
   ['지하층수', form.basement_floor_count ? `${form.basement_floor_count}층` : ''],
   ['연면적', form.total_area],
@@ -2911,7 +2927,7 @@ const ledgerPreviewItems = [
         if (!text) return '';
         return /㎡|평|m2|m²/i.test(text) ? text : `${text}㎡`;
       };
-      const approvalDate = ledgerText('사용승인일', 'useAprDay', 'approval_date');
+      const approvalDate = formatLedgerDate(ledgerText('사용승인일', 'useAprDay', 'approval_date'));
       const mainUse = ledgerText('주용도', 'mainPurpsCdNm', 'main_use');
       const structure = ledgerText('구조', 'strctCdNm', 'structure');
       const groundFloors = ledgerText('지상층수', 'grndFlrCnt', 'floor_count');
@@ -2919,7 +2935,7 @@ const ledgerPreviewItems = [
       const totalArea = withAreaUnit(ledgerText('연면적', 'totArea', 'total_area'));
       const buildingArea = withAreaUnit(ledgerText('건축면적', 'archArea', 'building_area'));
       const landArea = withAreaUnit(ledgerText('대지면적', 'platArea', 'land_area'));
-      const areaValue = withAreaUnit(ledgerText('전용면적', 'area')) || totalArea || buildingArea || '';
+      const exclusiveArea = withAreaUnit(ledgerText('전용면적', '전유부전용면적', '전유면적', 'exclusive_area'));
       const buildingName = ledgerText('건물명', '건물명칭', 'bldNm', 'building_name');
       const parkingSpaces = ledgerText('주차대수', 'parking');
       const quickTotalFloorValue = groundFloors.replace(/[^0-9.]/g, '') || groundFloors;
@@ -2956,7 +2972,7 @@ const ledgerPreviewItems = [
         land_area: landArea || prev.land_area,
         parking: parkingText || prev.parking,
         building_name: buildingName || prev.building_name,
-        area: areaValue || prev.area
+        area: exclusiveArea || ''
       }));
 
       setDetailFieldsOpen(true);
