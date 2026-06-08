@@ -1113,7 +1113,7 @@ function App() {
   }
 
   return (
-    <div className={isAdminRoute ? 'admin-app-mode' : undefined}>
+ <div className={isAdminRoute && adminOpen ? 'admin-app-mode' : undefined}>
     <Header
   portalMode={portalMode}
   isAdminRoute={isAdminRoute}
