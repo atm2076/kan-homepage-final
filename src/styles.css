@@ -9968,3 +9968,28 @@ button.property-list-item,
 .property-card-actions a:active {
   color: #fff !important;
 }
+/* 긴급수정: 손님용 매물 카드 전화/문자 버튼 글씨 */
+.property-card-actions a,
+.customer-property-card .property-card-actions a,
+.property-list-item .property-card-actions a {
+  color: #ffffff !important;
+  background-color: #183a63 !important;
+  font-weight: 900 !important;
+  text-align: center !important;
+  opacity: 1 !important;
+}
+
+/* 문자 버튼 방문/클릭 상태도 흰색 유지 */
+.property-card-actions a:link,
+.property-card-actions a:visited,
+.property-card-actions a:hover,
+.property-card-actions a:active {
+  color: #ffffff !important;
+}
+
+/* 관리자/직원 모드에서는 전화·문자 버튼 숨김 */
+.admin-app-mode .property-card-actions,
+.admin-app-mode .customer-property-card .property-card-actions,
+.admin-app-mode .floating-buttons {
+  display: none !important;
+}
