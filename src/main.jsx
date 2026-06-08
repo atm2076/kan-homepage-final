@@ -3887,6 +3887,42 @@ updated_by: isStaffMode ? (currentStaff?.name || saveForm.staff_name || '직원'
                   </div>
                 </section>
               )}
+              {isStaffMode && staffView === 'mine' && (
+                <section className="admin-list staff-my-list">
+                  <h3>내가 올린 매물</h3>
+
+                  <p className="muted">
+                    {currentStaff?.name || '직원'} · 담당자 코드 {currentStaff?.code || '-'}
+                  </p>
+
+                  {myStaffProperties.length ? (
+                    myStaffProperties.map((property) => (
+                      <div className="admin-list-item" key={property.id}>
+                        <div className="admin-item-title">
+                          <strong>{property.title || '제목 없는 매물'}</strong>
+
+                 <em className={`status-chip status-${property.status || 'pending'}`}>
+{STATUS_LABELS[property.status || 'pending'] || property.status} </em>
+
+</div>
+
+<span>
+  {property.address || '주소 미입력'}
+  {' · '}
+  {(property.category?.includes('매매') || property.trade_type === '매매')
+    ? `매매가 ${property.sale_price || '-'}`
+    : `${property.deposit || '-'} / ${property.rent || '-'}`}
+</span>
+                      </div>
+                    ))
+                  ) : (
+                    <div className="empty-box">
+                      이 담당자 코드로 등록된 매물이 아직 없습니다.
+                    </div>
+                  )}
+                </section>
+              )}
+
               {entryMode === 'simple' && !isStaffMode && (
   <section className="admin-section-block priority-block">
     <h4>{isAdminMode ? '간단 매물 등록' : '직원 간단 등록'}</h4>
