@@ -2704,6 +2704,7 @@ function AdminModal({ mode, setMode, isAdmin, setIsAdmin, onClose, properties, r
   const [editingId, setEditingId] = useState(null);
   const [status, setStatus] = useState('');
   const [staffSavedItems, setStaffSavedItems] = useState([]);
+  const [staffProperties, setStaffProperties] = useState([]);
   const [duplicateWarning, setDuplicateWarning] = useState(null);
   const [adminDetailProperty, setAdminDetailProperty] = useState(null);
   const [adminDetailTab, setAdminDetailTab] = useState('public');
@@ -2760,7 +2761,7 @@ const quickMissingItems = [
 
 const quickReady = quickMissingItems.length === 0;
   const myStaffProperties = isStaffMode && currentStaff?.code
-  ? properties.filter((item) => String(item.staff_code || '') === String(currentStaff.code))
+ ? staffProperties.filter((item) => String(item.staff_code || '') === String(currentStaff.code))
   : [];
 const staffWizardSteps = [
   '주소검색',
@@ -2848,8 +2849,27 @@ const ledgerPreviewItems = [
     url.searchParams.set(nextMode, '1');
     window.history.replaceState(null, '', `${url.pathname}${url.search}${url.hash}`);
   }
+async function loadStaffProperties(staffCode) {
+if (!isSupabaseReady || !staffCode) {
+setStaffProperties([]);
+return;
+}
 
-  function login(e) {
+const { data, error } = await supabase
+.from('properties')
+.select('*')
+.eq('staff_code', staffCode)
+.order('created_at', { ascending: false });
+
+if (error) {
+setStaffProperties([]);
+setStatus(`내 매물 불러오기 실패: ${error.message}`);
+return;
+}
+
+setStaffProperties(data || []);
+}
+    async function login(e) {
     e.preventDefault();
     const expectedPassword = isStaffMode ? staffPassword : adminPassword;
    if (password === expectedPassword) {
@@ -2863,6 +2883,7 @@ const ledgerPreviewItems = [
       name: form.staff_name.trim(),
       code: form.staff_code.trim()
     });
+    await loadStaffProperties(form.staff_code.trim());
     setStaffView('register');
   } else {
     setCurrentStaff(null);
@@ -3490,10 +3511,13 @@ const request = editingId && canEditExisting
       ]);
     }
     setStatus(isStaffMode ? '임시저장 완료되었습니다. 대표 검수 후 홈페이지에 노출됩니다.' : (editingId ? '수정 완료되었습니다.' : '등록 완료되었습니다.'));
-    resetForm();
-    await reload();
-  }
+   resetForm();
+await reload();
 
+if (isStaffMode && currentStaff?.code) {
+  await loadStaffProperties(currentStaff.code);
+}
+}
   async function changePropertyStatus(id, nextStatus) {
     if (!canEditExisting) {
       setStatus('대표 관리자만 공개상태를 변경할 수 있습니다.');
