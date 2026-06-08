@@ -1127,13 +1127,6 @@ function App() {
       setFilters={setFilters}
       setSelected={setSelected}
     />
-     <Hero
-  keyword={keyword}
-  setKeyword={setKeyword}
-  setCategory={setCategory}
-  setFilters={setFilters}
-       setSelected={setSelected}
-/>
       <main className="page-shell">
         {!isSupabaseReady && <SetupNotice />}
         {error && <ErrorNotice message={error} />}
