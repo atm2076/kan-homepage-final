@@ -3775,18 +3775,23 @@ function reorderPhoto(fromIndex, toIndex) {
     }}
   >
     다음
-  </button>
-) : (
-  <button
-    key="staff-submit-button"
-    className="primary-btn"
-    type="submit"
-    onClick={(e) => {
-      e.stopPropagation();
-    }}
-  >
-    등록하기
-  </button>
+<button
+  key="staff-submit-button"
+  className="primary-btn"
+  type="submit"
+  disabled={!quickReady}
+  aria-disabled={!quickReady}
+  title={
+    !quickReady
+      ? `필수 확인 필요: ${quickMissingItems.join(', ')}`
+      : '대표 검수대기로 등록'
+  }
+  onClick={(e) => {
+    e.stopPropagation();
+  }}
+>
+  {quickReady ? '등록하기' : '필수값 입력 필요'}
+</button>
 )}
                   </div>
                 </section>
