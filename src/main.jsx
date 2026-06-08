@@ -2714,6 +2714,8 @@ function AdminModal({ mode, setMode, isAdmin, setIsAdmin, onClose, properties, r
 const [photoWatermark, setPhotoWatermark] = useState(true);
   const [entryMode, setEntryMode] = useState('detail');
   const [staffStep, setStaffStep] = useState(0);
+    const [currentStaff, setCurrentStaff] = useState(null);
+  const [staffView, setStaffView] = useState('register');
 const [quickRoomType, setQuickRoomType] = useState('원룸');
   const [quickTradeType, setQuickTradeType] = useState('월세');
   const [maintenanceType, setMaintenanceType] = useState('관리비별도');
@@ -2757,6 +2759,9 @@ const quickMissingItems = [
 ].filter(Boolean);
 
 const quickReady = quickMissingItems.length === 0;
+  const myStaffProperties = isStaffMode && currentStaff?.code
+  ? properties.filter((item) => String(item.staff_code || '') === String(currentStaff.code))
+  : [];
 const staffWizardSteps = [
   '주소검색',
   '호수선택',
@@ -2847,10 +2852,25 @@ const ledgerPreviewItems = [
   function login(e) {
     e.preventDefault();
     const expectedPassword = isStaffMode ? staffPassword : adminPassword;
-    if (password === expectedPassword) {
-      setIsAdmin(true);
-      setStatus(isStaffMode ? '직원용 관리자 모드로 들어왔습니다.' : '대표 관리자 모드로 들어왔습니다.');
-    } else {
+   if (password === expectedPassword) {
+  if (isStaffMode && (!form.staff_name.trim() || !form.staff_code.trim())) {
+    setStatus('담당자 이름과 담당자 코드를 입력해주세요.');
+    return;
+  }
+
+  if (isStaffMode) {
+    setCurrentStaff({
+      name: form.staff_name.trim(),
+      code: form.staff_code.trim()
+    });
+    setStaffView('register');
+  } else {
+    setCurrentStaff(null);
+  }
+
+  setIsAdmin(true);
+  setStatus(isStaffMode ? `${form.staff_name.trim()}님 직원용 관리자 모드로 들어왔습니다.` : '대표 관리자 모드로 들어왔습니다.');
+} else {
       setStatus('비밀번호가 맞지 않습니다.');
     }
   }
@@ -3394,10 +3414,10 @@ function reorderPhoto(fromIndex, toIndex) {
     const payload = {
   ...formToPayload(saveForm),
   status: isStaffMode ? staffStatusValue : (saveForm.status || 'published'),
-  staff_name: saveForm.staff_name || (isStaffMode ? '직원' : ''),
-  staff_code: saveForm.staff_code || (isStaffMode ? 'staff' : ''),
-  created_by: editingId ? (saveForm.created_by || '') : (isStaffMode ? (saveForm.staff_name || '직원') : '대표'),
-  updated_by: isStaffMode ? (saveForm.staff_name || '직원') : '대표',
+  staff_name: isStaffMode ? (currentStaff?.name || saveForm.staff_name || '직원') : (saveForm.staff_name || ''),
+staff_code: isStaffMode ? (currentStaff?.code || saveForm.staff_code || 'staff') : (saveForm.staff_code || ''),
+created_by: editingId ? (saveForm.created_by || currentStaff?.name || '') : (isStaffMode ? (currentStaff?.name || saveForm.staff_name || '직원') : '대표'),
+updated_by: isStaffMode ? (currentStaff?.name || saveForm.staff_name || '직원') : '대표',
   updated_at: new Date().toISOString()
 };
 
@@ -3572,7 +3592,24 @@ function reorderPhoto(fromIndex, toIndex) {
                   직원이 저장한 매물은 검수대기로 저장되며, 검토 완료 후 손님용 홈페이지와 지도에 노출됩니다.
                 </div>
               )}
-
+              {isStaffMode && (
+                <div className="entry-mode-tabs">
+                  <button
+                    type="button"
+                    className={staffView === 'register' ? 'active' : ''}
+                    onClick={() => setStaffView('register')}
+                  >
+                    새 매물 등록
+                  </button>
+                  <button
+                    type="button"
+                    className={staffView === 'mine' ? 'active' : ''}
+                    onClick={() => setStaffView('mine')}
+                  >
+                    내가 올린 매물
+                  </button>
+                </div>
+              )}
               {isAdminMode && (
               <section className="admin-section-block priority-block">
                 <h4>0. 매물자료 일괄입력</h4>
@@ -3615,8 +3652,8 @@ function reorderPhoto(fromIndex, toIndex) {
   </button>
 </div>
 )}
-              {isStaffMode && (
-                <section className="staff-step-register">
+               {isStaffMode && staffView === 'register' && (
+                  <section className="staff-step-register">
                   <div className="staff-step-head">
                     <div>
                       <span className="staff-step-count">{staffStep + 1}/10</span>
