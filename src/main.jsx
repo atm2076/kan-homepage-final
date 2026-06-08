@@ -1112,9 +1112,21 @@ function App() {
     if (target) target.scrollIntoView({ behavior: 'smooth', block: 'start' });
   }
 
-  return (
-    <div className={isAdminRoute ? 'admin-app-mode' : undefined}>
-      <Header />
+ return (
+  <div className={isAdminRoute ? 'admin-app-mode' : undefined}>
+    <Header
+      portalMode={portalMode}
+      isAdminRoute={isAdminRoute}
+      onOpenAdmin={() => setAdminOpen(true)}
+    />
+
+    <Hero
+      keyword={keyword}
+      setKeyword={setKeyword}
+      setCategory={setCategory}
+      setFilters={setFilters}
+      setSelected={setSelected}
+    />
      <Hero
   keyword={keyword}
   setKeyword={setKeyword}
@@ -1171,16 +1183,7 @@ function App() {
           setMode={setPortalMode}
           isAdmin={isAdmin}
           setIsAdmin={setIsAdmin}
-          onClose={() => {
-            if (isAdminRoute) {
-              const url = new URL(window.location.href);
-              url.searchParams.delete('admin');
-              url.searchParams.delete('staff');
-              window.history.replaceState(null, '', `${url.pathname}${url.search}${url.hash}`);
-              setPortalMode('');
-            }
-            setAdminOpen(false);
-          }}
+         onClose={() => setAdminOpen(false)}
           properties={properties}
           reload={loadProperties}
         />
@@ -1189,7 +1192,7 @@ function App() {
   );
 }
 
-function Header() {
+function Header({ portalMode, isAdminRoute, onOpenAdmin }) {
   return (
    <header className="site-header">
   <div className="top-contact">
@@ -1209,7 +1212,13 @@ function Header() {
       <a href="#properties">원룸/투룸</a>
       <a href="#property-detail">매물상세</a>
       <a href={OFFICE.blog} target="_blank" rel="noreferrer">블로그</a>
-      <a href="#request">매물의뢰</a>
+     {isAdminRoute ? (
+  <button type="button" onClick={onOpenAdmin}>
+    {portalMode === 'staff' ? '직원 등록 열기' : '관리자 모드 열기'}
+  </button>
+) : (
+  <a href="#request">매물의뢰</a>
+)}
     </nav>
   </div>
 </header>
