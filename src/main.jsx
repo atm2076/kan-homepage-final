@@ -3759,65 +3759,51 @@ function reorderPhoto(fromIndex, toIndex) {
                     )}
                   </div>
 
-                  <div className="staff-step-actions">
-                    <button type="button" className="secondary-btn" onClick={() => goStaffStep(staffStep - 1)} disabled={staffStep === 0}>
+                                   <div className="staff-step-actions">
+                    <button
+                      type="button"
+                      className="secondary-btn"
+                      onClick={() => goStaffStep(staffStep - 1)}
+                      disabled={staffStep === 0}
+                    >
                       이전
-                   {staffStep < 9 ? (
-  <button
-    key="staff-next-button"
-    type="button"
-    className="primary-btn"
-    onClick={(e) => {
-      e.preventDefault();
-      e.stopPropagation();
-      goStaffStep(staffStep + 1);
-    }}
-  >
-    다음
-  </button>
-) : (
-  <button
-    key="staff-submit-button"
-    className="primary-btn"
-    type="submit"
-    disabled={!quickReady}
-    aria-disabled={!quickReady}
-    title={
-      !quickReady
-        ? `필수 확인 필요: ${quickMissingItems.join(', ')}`
-        : '대표 검수대기로 등록'
-    }
-    onClick={(e) => {
-      e.stopPropagation();
-    }}
-  >
-    {quickReady ? '등록하기' : '필수값 입력 필요'}
-  </button>
-)}
-  >
-    다음
-<button
-  key="staff-submit-button"
-  className="primary-btn"
-  type="submit"
-  disabled={!quickReady}
-  aria-disabled={!quickReady}
-  title={
-    !quickReady
-      ? `필수 확인 필요: ${quickMissingItems.join(', ')}`
-      : '대표 검수대기로 등록'
-  }
-  onClick={(e) => {
-    e.stopPropagation();
-  }}
->
-  {quickReady ? '등록하기' : '필수값 입력 필요'}
-</button>
-)}
+                    </button>
+
+                    {staffStep < 9 ? (
+                      <button
+                        key="staff-next-button"
+                        type="button"
+                        className="primary-btn"
+                        onClick={(e) => {
+                          e.preventDefault();
+                          e.stopPropagation();
+                          goStaffStep(staffStep + 1);
+                        }}
+                      >
+                        다음
+                      </button>
+                    ) : (
+                      <button
+                        key="staff-submit-button"
+                        className="primary-btn"
+                        type="submit"
+                        disabled={!quickReady}
+                        aria-disabled={!quickReady}
+                        title={
+                          !quickReady
+                            ? `필수 확인 필요: ${quickMissingItems.join(', ')}`
+                            : '대표 검수대기로 등록'
+                        }
+                        onClick={(e) => {
+                          e.stopPropagation();
+                        }}
+                      >
+                        {quickReady ? '등록하기' : '필수값 입력 필요'}
+                      </button>
+                    )}
                   </div>
                 </section>
               )}
-
               {entryMode === 'simple' && !isStaffMode && (
   <section className="admin-section-block priority-block">
     <h4>{isAdminMode ? '간단 매물 등록' : '직원 간단 등록'}</h4>
