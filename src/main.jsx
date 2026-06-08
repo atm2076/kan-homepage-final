@@ -145,7 +145,11 @@ badgesText: '',
   staff_memo: '',
   ad_visibility: '공개',
   internal_tags: '',
-
+  staff_name: '',
+  staff_code: '',
+  created_by: '',
+  updated_by: '',
+  updated_at: '',
   photosText: '',
   map_image: '',
   map_link: '',
@@ -265,6 +269,11 @@ const PUBLIC_PROPERTY_COLUMNS = [
   'education',
   'is_featured',
   'status',
+    'staff_name',
+  'staff_code',
+  'created_by',
+  'updated_by',
+  'updated_at',
   'created_at'
 ].join(',');
 const ROOM_BATH_DEFAULTS = {
@@ -3383,9 +3392,14 @@ function reorderPhoto(fromIndex, toIndex) {
     }
 
     const payload = {
-      ...formToPayload(saveForm),
-      status: isStaffMode ? staffStatusValue : (saveForm.status || 'published')
-    };
+  ...formToPayload(saveForm),
+  status: isStaffMode ? staffStatusValue : (saveForm.status || 'published'),
+  staff_name: saveForm.staff_name || (isStaffMode ? '직원' : ''),
+  staff_code: saveForm.staff_code || (isStaffMode ? 'staff' : ''),
+  created_by: editingId ? (saveForm.created_by || '') : (isStaffMode ? (saveForm.staff_name || '직원') : '대표'),
+  updated_by: isStaffMode ? (saveForm.staff_name || '직원') : '대표',
+  updated_at: new Date().toISOString()
+};
 
     if (!forceDuplicateSave) {
       const { data: duplicateSource, error: duplicateError } = await supabase
@@ -3507,11 +3521,43 @@ function reorderPhoto(fromIndex, toIndex) {
             </button>
           </div>
         ) : !isAdmin ? (
-          <form className="login-box" onSubmit={login}>
+             <form className="login-box" onSubmit={login}>
             <label>{isStaffMode ? '직원용 비밀번호' : '대표 관리자 비밀번호'}</label>
-            <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} placeholder="비밀번호 입력" />
-            <button className="primary-btn" type="submit">{isStaffMode ? '직원용 관리자 들어가기' : '대표 관리자 들어가기'}</button>
-            <p className="status-text">{status || '접속 권한을 확인합니다. 관리자 비밀번호를 입력해주세요.'}</p>
+
+            {isStaffMode && (
+              <>
+                <label>담당자 이름</label>
+                <input
+                  type="text"
+                  value={form.staff_name}
+                  onChange={(e) => updateField('staff_name', e.target.value)}
+                  placeholder="예: 김실장"
+                />
+
+                <label>담당자 코드</label>
+                <input
+                  type="text"
+                  value={form.staff_code}
+                  onChange={(e) => updateField('staff_code', e.target.value)}
+                  placeholder="예: 1001"
+                />
+              </>
+            )}
+
+            <input
+              type="password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              placeholder="비밀번호 입력"
+            />
+
+            <button className="primary-btn" type="submit">
+              {isStaffMode ? '직원용 관리자 들어가기' : '대표 관리자 들어가기'}
+            </button>
+
+            <p className="status-text">
+              {status || '접속 권한을 확인합니다. 관리자 비밀번호를 입력해주세요.'}
+            </p>
           </form>
         ) : (
           <div className="admin-grid simple-admin-grid">
