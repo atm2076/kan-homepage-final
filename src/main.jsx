@@ -3761,15 +3761,31 @@ function reorderPhoto(fromIndex, toIndex) {
                     <button type="button" className="secondary-btn" onClick={() => goStaffStep(staffStep - 1)} disabled={staffStep === 0}>
                       이전
                     </button>
-                    {staffStep < 9 ? (
-                      <button type="button" className="primary-btn" onClick={() => goStaffStep(staffStep + 1)}>
-                        다음
-                      </button>
-                    ) : (
-                      <button className="primary-btn" type="submit">
-                        등록하기
-                      </button>
-                    )}
+                   {staffStep < 9 ? (
+  <button
+    key="staff-next-button"
+    type="button"
+    className="primary-btn"
+    onClick={(e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      goStaffStep(staffStep + 1);
+    }}
+  >
+    다음
+  </button>
+) : (
+  <button
+    key="staff-submit-button"
+    className="primary-btn"
+    type="submit"
+    onClick={(e) => {
+      e.stopPropagation();
+    }}
+  >
+    등록하기
+  </button>
+)}
                   </div>
                 </section>
               )}
