@@ -9993,3 +9993,16 @@ button.property-list-item,
 .admin-app-mode .floating-buttons {
   display: none !important;
 }
+/* 관리자/직원 주소에서는 매물 카드 전화·문자 버튼 완전 숨김 */
+#root .admin-app-mode .property-card-actions,
+#root .admin-app-mode .customer-property-card .property-card-actions,
+#root .admin-app-mode .property-list-item .property-card-actions,
+#root .admin-app-mode .floating-buttons {
+  display: none !important;
+  visibility: hidden !important;
+  height: 0 !important;
+  min-height: 0 !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  overflow: hidden !important;
+}
