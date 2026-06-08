@@ -32,7 +32,7 @@ const defaultFilters = {
   saleMax: ''
 };
 
-const CUSTOMER_PROPERTY_TYPES = ['전체', '원룸', '미니투룸', '투룸', '쓰리룸 이상', '상가/사무실', '다가구매매', '원룸건물매매'];
+const CUSTOMER_PROPERTY_TYPES = ['전체', '원룸', '미니투룸', '투룸', '쓰리룸 이상', '아파트', '상가/사무실', '토지', '다가구매매', '원룸건물매매'];
 const CUSTOMER_TRADE_TYPES = ['월세', '전세', '반전세', '매매', '단기'];
 const CUSTOMER_POPULAR_KEYWORDS = [
   '구미원룸',
@@ -168,7 +168,7 @@ const OPTION_PRESETS = {
   educationText: ['편의점 인근', '버스 이용 편리', '공단 출퇴근 동선', '마트 인근', '식당가 인근', '병원 인근', '학교 인근', '주차 편리', '조용한 주거지']
 };
 
-const QUICK_PROPERTY_TYPES = ['원룸', '미니투룸', '투룸', '쓰리룸 이상', '상가/사무실', '다가구매매', '원룸건물매매'];
+const QUICK_PROPERTY_TYPES = ['원룸', '미니투룸', '투룸', '쓰리룸 이상', '아파트', '상가/사무실', '토지', '다가구매매', '원룸건물매매'];
 const QUICK_TRADE_TYPES = ['월세', '전세', '반전세', '매매'];
 const MAINTENANCE_TYPES = ['관리비포함', '관리비별도', '관리비없음', '확인필요'];
 const MAINTENANCE_ITEMS = ['인터넷', '유선방송', '공용전기', '수도요금', '공용청소비', '관리용역비', '승강기유지비', '주차비'];
@@ -272,7 +272,9 @@ const ROOM_BATH_DEFAULTS = {
   미니투룸: '방 1 / 욕실 1',
   투룸: '방 2 / 욕실 1',
   '쓰리룸 이상': '방 3 / 욕실 1',
-  '상가/사무실': '방 0 / 욕실 1'
+  '상가/사무실': '방 0 / 욕실 1',
+  아파트: '방 0 / 욕실 0',
+  토지: '방 0 / 욕실 0'
 };
 
 const PHOTO_ENHANCE_LEVELS = [
@@ -3620,7 +3622,7 @@ function reorderPhoto(fromIndex, toIndex) {
                         <ButtonChoiceGroup
                           label="매물종류"
                           value={quickRoomType}
-                          options={['원룸', '미니투룸', '투룸', '쓰리룸 이상']}
+                          options={['원룸', '미니투룸', '투룸', '쓰리룸 이상', '상가/사무실', '아파트', '토지']}
                           onChange={(type) => {
                             setQuickRoomType(type);
                             updateField('category', type);
