@@ -3027,9 +3027,22 @@ const ledgerPreviewItems = [
     setStatus(`일괄입력 ${Object.keys(parsed).length}개 항목을 자동 채웠습니다. 사진 확인 후 저장을 누르세요.`);
   }
 
-  function startEdit(property) {
-    setEditingId(property.id);
-    setDuplicateWarning(null);
+function startEdit(property) {
+  if (
+    isStaffMode &&
+    (
+      !currentStaff?.code ||
+      String(property.staff_code || '') !== String(currentStaff.code)
+    )
+  ) {
+    setStatus('본인이 등록한 매물만 수정할 수 있습니다.');
+    return;
+  }
+
+  setEditingId(property.id);
+  setStaffView('register');
+setStaffStep(0);
+  setDuplicateWarning(null);
     setAdminDetailProperty(property);
     setAdminDetailTab('public');
     setForm(propertyToForm(property));
@@ -3448,12 +3461,18 @@ updated_by: isStaffMode ? (currentStaff?.name || saveForm.staff_name || '직원'
         setStatus(message);
       }
     }
+    
+const request = editingId && canEditExisting
+  ? supabase.from('properties').update(payload).eq('id', editingId)
+  : editingId && isStaffMode && currentStaff?.code
+    ? supabase
+        .from('properties')
+        .update(payload)
+        .eq('id', editingId)
+        .eq('staff_code', currentStaff.code)
+    : supabase.from('properties').insert(payload);
 
-    const request = editingId && canEditExisting
-      ? supabase.from('properties').update(payload).eq('id', editingId)
-      : supabase.from('properties').insert(payload);
-
-    const { error } = await request;
+   const { error } = await request;
     if (error) {
       setStatus(`저장 실패: ${error.message}`);
       return;
@@ -3913,6 +3932,15 @@ updated_by: isStaffMode ? (currentStaff?.name || saveForm.staff_name || '직원'
     ? `매매가 ${property.sale_price || '-'}`
     : `${property.deposit || '-'} / ${property.rent || '-'}`}
 </span>
+                        <div>
+  <button
+    type="button"
+    className="small-btn"
+    onClick={() => startEdit(property)}
+  >
+    수정
+  </button>
+</div>
                       </div>
                     ))
                   ) : (
