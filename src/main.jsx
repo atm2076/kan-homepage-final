@@ -4726,8 +4726,119 @@ if (isStaffMode && currentStaff?.code) {
     </div>
   );
 }
+function toTextList(value) {
+  if (Array.isArray(value)) return value.filter(Boolean);
 
+  return String(value || '')
+    .split(/\n|,/)
+    .map((item) => item.trim())
+    .filter(Boolean);
+}
+
+function getDaangnPrice(property) {
+  const isSale =
+    property.category?.includes('매매') ||
+    property.trade_type === '매매';
+
+  if (isSale) {
+    return `매매 ${property.sale_price || '가격협의'}만원`;
+  }
+
+  if (property.trade_type === '전세') {
+    return `전세 ${property.deposit || '가격협의'}만원`;
+  }
+
+  return `보증금 ${property.deposit || '-'}만원 / 월세 ${property.rent || '-'}만원`;
+}
+
+function buildDaangnAd(property) {
+  const propertyType = [
+    property.category,
+    property.trade_type
+  ].filter(Boolean).join(' ');
+
+  const price = getDaangnPrice(property);
+
+  const options = toTextList(property.convenience)
+    .slice(0, 12)
+    .join(', ');
+
+  const titleBase =
+    property.title ||
+    `${property.address || '구미'} ${propertyType}`;
+
+  const title = `${titleBase}｜${price}`.slice(0, 60);
+
+  const body = [
+    `🏠 ${propertyType || '구미 부동산 매물'}`,
+    `📍 ${property.address || '구미시'}`,
+    `💰 ${price}`,
+    `관리비: ${property.maintenance_fee || '확인 필요'}`,
+    '',
+    property.summary || '',
+    '',
+    `구조: ${property.room_bath || property.structure || '확인 필요'}`,
+    `면적: ${property.area || '확인 필요'}`,
+    `층수: ${property.floor_info || property.total_floor_info || '확인 필요'}`,
+    `방향: ${property.direction || '확인 필요'}`,
+    `입주가능일: ${property.move_in || '협의 가능'}`,
+    `주차: ${property.parking || '확인 필요'}`,
+    options ? `옵션: ${options}` : '',
+    property.location_description
+      ? `생활권: ${property.location_description}`
+      : '',
+    '',
+    '✅ 실사진 직접 확인 매물',
+    '✅ 허위매물 없이 확인 후 안내드립니다.',
+    '',
+    `문의: ${OFFICE.phone}`,
+    '',
+    '【중개대상물 표시·광고 사항】',
+    `중개대상물 종류: ${property.category || '확인 필요'}`,
+    `거래형태: ${property.trade_type || '확인 필요'}`,
+    `소재지: ${property.address || '확인 필요'}`,
+    `거래가격: ${price}`,
+    `관리비: ${property.maintenance_fee || '확인 필요'}`,
+    `면적: ${property.area || '확인 필요'}`,
+    `총층수/해당층: ${property.total_floor_info || property.floor_info || '확인 필요'}`,
+    `방향: ${property.direction || '확인 필요'}`,
+    `입주가능일: ${property.move_in || '협의 가능'}`,
+    `주차: ${property.parking || '확인 필요'}`,
+    `사용승인일: ${property.approval_date || '확인 필요'}`,
+    '',
+    `상호명: ${OFFICE.name}`,
+    `소재지: ${OFFICE.address}`,
+    `대표공인중개사: ${OFFICE.broker}`,
+    `등록번호: ${OFFICE.regNo}`,
+    `연락처: ${OFFICE.phone} / ${OFFICE.tel}`
+  ]
+    .filter((line) => line !== '')
+    .join('\n');
+
+  return { title, body };
+}
+
+async function copyAdvertisementText(text) {
+  try {
+    await navigator.clipboard.writeText(text);
+    return true;
+  } catch {
+    const textarea = document.createElement('textarea');
+    textarea.value = text;
+    textarea.style.position = 'fixed';
+    textarea.style.opacity = '0';
+    document.body.appendChild(textarea);
+    textarea.select();
+
+    const copied = document.execCommand('copy');
+    document.body.removeChild(textarea);
+    return copied;
+  }
+}
 function AdminPropertyTabs({ property, activeTab, setActiveTab }) {
+  const [daangnOpen, setDaangnOpen] = useState(false);
+  const [copyStatus, setCopyStatus] = useState('');
+
   if (!property) {
     return <div className="admin-property-tabs empty-box">관리할 매물을 선택하면 공개정보와 비공개정보를 탭으로 확인할 수 있습니다.</div>;
   }
@@ -4792,13 +4903,136 @@ function AdminPropertyTabs({ property, activeTab, setActiveTab }) {
       )}
 
       {activeTab === 'ad' && (
-        <div className="admin-detail-panel">
-          <InfoLine label="게시 상태" value={STATUS_LABELS[property.status || 'pending'] || property.status} />
-          <InfoLine label="광고 노출 여부" value={property.ad_visibility || '공개'} />
-          <InfoLine label="추천 매물" value={property.is_featured ? '추천 표시' : '일반 매물'} />
-          <InfoLine label="배지" value={(property.badges || []).join(', ')} />
+  <div className="admin-detail-panel">
+    <InfoLine
+      label="게시 상태"
+      value={STATUS_LABELS[property.status || 'pending'] || property.status}
+    />
+    <InfoLine
+      label="광고 노출 여부"
+      value={property.ad_visibility || '공개'}
+    />
+    <InfoLine
+      label="추천 매물"
+      value={property.is_featured ? '추천 표시' : '일반 매물'}
+    />
+    <InfoLine
+      label="배지"
+      value={(property.badges || []).join(', ')}
+    />
+
+    <button
+      type="button"
+      className="primary-btn"
+      style={{ marginTop: '16px' }}
+      onClick={() => {
+        setDaangnOpen((prev) => !prev);
+        setCopyStatus('');
+      }}
+    >
+      {daangnOpen ? '당근 광고 닫기' : '당근용 광고 만들기'}
+    </button>
+
+    {daangnOpen && (() => {
+      const daangnAd = buildDaangnAd(property);
+
+      return (
+        <div
+          style={{
+            marginTop: '16px',
+            padding: '16px',
+            border: '1px solid #ead5b8',
+            borderRadius: '16px',
+            background: '#fffaf3'
+          }}
+        >
+          <strong>당근 광고 제목</strong>
+
+          <textarea
+            readOnly
+            value={daangnAd.title}
+            rows={2}
+            style={{
+              width: '100%',
+              boxSizing: 'border-box',
+              marginTop: '8px',
+              padding: '12px',
+              borderRadius: '10px'
+            }}
+          />
+
+          <button
+            type="button"
+            className="small-btn"
+            onClick={async () => {
+              const copied = await copyAdvertisementText(daangnAd.title);
+              setCopyStatus(copied ? '제목 복사 완료' : '복사 실패');
+            }}
+          >
+            제목 복사
+          </button>
+
+          <strong style={{ display: 'block', marginTop: '18px' }}>
+            당근 광고 본문
+          </strong>
+
+          <textarea
+            readOnly
+            value={daangnAd.body}
+            rows={22}
+            style={{
+              width: '100%',
+              boxSizing: 'border-box',
+              marginTop: '8px',
+              padding: '12px',
+              borderRadius: '10px',
+              lineHeight: '1.6'
+            }}
+          />
+
+          <div
+            style={{
+              display: 'flex',
+              gap: '8px',
+              flexWrap: 'wrap',
+              marginTop: '10px'
+            }}
+          >
+            <button
+              type="button"
+              className="small-btn"
+              onClick={async () => {
+                const copied = await copyAdvertisementText(daangnAd.body);
+                setCopyStatus(copied ? '본문 복사 완료' : '복사 실패');
+              }}
+            >
+              본문 복사
+            </button>
+
+            <button
+              type="button"
+              className="primary-btn"
+              onClick={async () => {
+                const copied = await copyAdvertisementText(
+                  `${daangnAd.title}\n\n${daangnAd.body}`
+                );
+                setCopyStatus(
+                  copied ? '제목과 본문 전체 복사 완료' : '복사 실패'
+                );
+              }}
+            >
+              전체 복사
+            </button>
+          </div>
+
+          {copyStatus && (
+            <p className="status-text">{copyStatus}</p>
+          )}
         </div>
-      )}
+      );
+    })()}
+  </div>
+)}
     </section>
   );
 }
