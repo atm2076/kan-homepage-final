@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+  <title>칸 광고 연동기</title>
+
+  <link rel="stylesheet" href="popup.css">
+</head>
+
+<body>
+  <main class="popup-container">
+
+```
+<header class="popup-header">
+  <div class="brand-mark">칸</div>
+
+  <div>
+    <h1>칸 광고 연동기</h1>
+    <p>매물 하나로 여러 광고를 준비합니다.</p>
+  </div>
+</header>
+
+<section class="property-section">
+  <p class="section-label">현재 선택 매물</p>
+
+  <div id="propertySummary" class="property-summary">
+    홈페이지에서 선택한 매물이 없습니다.
+  </div>
+
+  <button id="openHomepageButton" class="secondary-button" type="button">
+    칸 홈페이지 열기
+  </button>
+</section>
+
+<section class="channel-section">
+  <p class="section-label">광고 매체 선택</p>
+
+  <label class="channel-card">
+    <input
+      id="daangnChannel"
+      type="checkbox"
+      value="daangn"
+      checked
+    >
+
+    <span class="channel-content">
+      <strong>당근</strong>
+      <small>매물등록 자동입력 준비</small>
+    </span>
+  </label>
+
+  <label class="channel-card">
+    <input
+      id="naverBlogChannel"
+      type="checkbox"
+      value="naver-blog"
+    >
+
+    <span class="channel-content">
+      <strong>네이버 블로그</strong>
+      <small>제목·본문·매물정보 작성 준비</small>
+    </span>
+  </label>
+
+  <label class="channel-card">
+    <input
+      id="instagramChannel"
+      type="checkbox"
+      value="instagram"
+    >
+
+    <span class="channel-content">
+      <strong>인스타그램</strong>
+      <small>게시문구·해시태그 작성 준비</small>
+    </span>
+  </label>
+</section>
+
+<button id="sendButton" class="primary-button" type="button">
+  선택 매체로 전송
+</button>
+
+<p id="statusMessage" class="status-message" aria-live="polite">
+  홈페이지에서 매물을 선택해 주세요.
+</p>
+```
+
+  </main>
+
+  <script src="popup.js"></script>
+
+</body>
+</html>
