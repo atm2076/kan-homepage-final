@@ -5343,6 +5343,28 @@ const [blogOpen, setBlogOpen] = useState(false);
 const [copyStatus, setCopyStatus] = useState('');
   const [helperCopyStatus, setHelperCopyStatus] = useState('');
 const [blogCopyStatus, setBlogCopyStatus] = useState('');
+useEffect(() => {
+if (!property || activeTab !== 'ad') return;
+
+const {
+private_memo,
+real_unit,
+entrance_password,
+key_location,
+owner_name,
+owner_phone,
+client_info,
+request_method,
+staff_memo,
+internal_tags,
+...advertisingProperty
+} = property;
+
+window.localStorage.setItem(
+'kanAdConnectorProperty',
+JSON.stringify(advertisingProperty)
+);
+}, [property, activeTab]);
 
   if (!property) {
     return <div className="admin-property-tabs empty-box">관리할 매물을 선택하면 공개정보와 비공개정보를 탭으로 확인할 수 있습니다.</div>;
