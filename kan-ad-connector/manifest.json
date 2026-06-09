@@ -12,7 +12,7 @@
 ],
 "host_permissions": [
 "https://kan-homepage-final.vercel.app/*",
-"https://*.daangn.com//*",
+"https://*.daangn.com/*",
 "https://blog.naver.com/*",
 "https://m.blog.naver.com/*",
 "https://www.instagram.com/*"
