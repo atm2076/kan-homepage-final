@@ -11,8 +11,8 @@
 "clipboardWrite"
 ],
 "host_permissions": [
-"https://kan-homepage-final.vercel.app/*",
-"https://*.daangn.com/*",
+"https://kan-homepage-final.vercel.app//*",
+"https://.daangn.com//*",
 "https://blog.naver.com/*",
 "https://m.blog.naver.com/*",
 "https://www.instagram.com/*"
@@ -23,5 +23,16 @@
 },
 "background": {
 "service_worker": "background.js"
+},
+"content_scripts": [
+{
+"matches": [
+"https://.daangn.com//*"
+],
+"js": [
+"daangn-content.js"
+],
+"run_at": "document_idle"
 }
+]
 }
