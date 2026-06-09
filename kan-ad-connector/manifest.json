@@ -1,0 +1,27 @@
+{
+"manifest_version": 3,
+"name": "칸공인중개사 광고 연동기",
+"version": "1.0.0",
+"description": "칸공인중개사 홈페이지의 매물 정보를 당근, 네이버 블로그, 인스타그램 광고 작성에 연결합니다.",
+"permissions": [
+"activeTab",
+"scripting",
+"storage",
+"tabs",
+"clipboardWrite"
+],
+"host_permissions": [
+"https://kan-homepage-final.vercel.app/*",
+"https://*.daangn.com/*",
+"https://blog.naver.com/*",
+"https://m.blog.naver.com/*",
+"https://www.instagram.com/*"
+],
+"action": {
+"default_title": "칸 광고 연동기",
+"default_popup": "popup.html"
+},
+"background": {
+"service_worker": "background.js"
+}
+}
