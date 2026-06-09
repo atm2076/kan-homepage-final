@@ -4817,7 +4817,220 @@ function buildDaangnAd(property) {
 
   return { title, body };
 }
+function buildNaverBlogAd(property) {
+  const address = String(property.address || '경상북도 구미시').trim();
 
+  const neighborhood =
+    address
+      .split(/\s+/)
+      .find((word) => /[동읍면리]$/.test(word)) || '구미';
+
+  const category = String(property.category || '원룸').trim();
+  const tradeType = String(property.trade_type || '월세').trim();
+
+  const roomType =
+    category
+      .replace(/월세|전세|반전세|매매|단기임대|단기/g, '')
+      .trim() || '원룸';
+
+  const price = getDaangnPrice(property);
+
+  const rawMaintenance = String(
+    property.maintenance_fee || ''
+  ).trim();
+
+  const maintenance = !rawMaintenance
+    ? '확인 필요'
+    : /^\d+(\.\d+)?$/.test(rawMaintenance)
+      ? `${rawMaintenance}만원`
+      : rawMaintenance;
+
+  const options = toTextList(property.convenience).slice(0, 15);
+  const safety = toTextList(property.safety).slice(0, 8);
+  const living = toTextList(property.education).slice(0, 8);
+  const badges = toTextList(property.badges).slice(0, 3);
+
+  const photos = Array.isArray(property.photos)
+    ? property.photos
+    : toTextList(property.photos);
+
+  const photoPlaces = [
+    '건물 외관과 주차공간',
+    '현관과 신발장',
+    '방 전체 구조',
+    '침실과 수납공간',
+    '주방과 싱크대',
+    '욕실 내부',
+    '세탁공간과 베란다',
+    '채광과 창문',
+    '주요 옵션',
+    '생활공간 전체'
+  ];
+
+  const photoCaptions =
+    photos.length > 0
+      ? photos.map((_, index) => {
+          const place =
+            photoPlaces[index] || `내부 공간 ${index + 1}`;
+
+          return `${index + 1}. 구미 ${neighborhood} ${roomType} ${place}`;
+        })
+      : ['사진 등록 후 사진 수에 맞춰 설명을 작성해주세요.'];
+
+  const isRentalRoom =
+    /(원룸|미니투룸|투룸|쓰리룸)/.test(roomType) &&
+    !/매매/.test(`${tradeType} ${category}`);
+
+  const title = [
+    '구미',
+    neighborhood,
+    roomType,
+    tradeType,
+    price,
+    badges.join(' ')
+  ]
+    .filter(Boolean)
+    .join(' ')
+    .replace(/\s+/g, ' ')
+    .trim()
+    .slice(0, 100);
+
+  const hubLinkBlock = isRentalRoom
+    ? [
+        '',
+        '📌 구미 원룸 월세를 여러 지역으로 비교해보고 싶다면?',
+        '인의동, 진평동, 구평동, 인동, 공단 인근 매물도 함께 비교해보실 수 있습니다.',
+        '👉 구미 원룸 월세 전체 안내 보러가기',
+        OFFICE.blog
+      ]
+    : [];
+
+  const legalNotice =
+    property.legal_notice ||
+    [
+      '【중개대상물 표시·광고 사항】',
+      `중개대상물 종류: ${category || '확인 필요'}`,
+      `거래형태: ${tradeType || '확인 필요'}`,
+      `소재지: ${address || '확인 필요'}`,
+      `거래가격: ${price}`,
+      `관리비: ${maintenance}`,
+      `면적: ${property.area || '확인 필요'}`,
+      `해당층/총층: ${
+        property.floor_info ||
+        property.total_floor_info ||
+        '확인 필요'
+      }`,
+      `방/욕실: ${property.room_bath || '확인 필요'}`,
+      `방향: ${property.direction || '확인 필요'}`,
+      `입주가능일: ${property.move_in || '협의 가능'}`,
+      `주차: ${property.parking || '확인 필요'}`,
+      `사용승인일: ${property.approval_date || '확인 필요'}`,
+      '',
+      `상호명: ${OFFICE.name}`,
+      `중개사무소 소재지: ${OFFICE.address}`,
+      `대표공인중개사: ${OFFICE.broker}`,
+      `등록번호: ${OFFICE.regNo}`,
+      `연락처: ${OFFICE.phone} / ${OFFICE.tel}`
+    ].join('\n');
+
+  const body = [
+    `구미 ${neighborhood} ${roomType} ${tradeType} 매물입니다.`,
+    `${price}, 관리비 ${maintenance} 조건입니다.`,
+    property.summary ||
+      '실사진을 직접 확인한 매물로 자세하게 안내해드립니다.',
+    '',
+    '━━━━━━━━━━━━━━━━━━',
+    '🏠 매물 기본정보',
+    '━━━━━━━━━━━━━━━━━━',
+    `지역: ${address}`,
+    `매물종류: ${roomType}`,
+    `거래형태: ${tradeType}`,
+    `가격: ${price}`,
+    `관리비: ${maintenance}`,
+    `관리비 포함 항목: ${
+      property.maintenance_includes || '확인 필요'
+    }`,
+    `면적: ${property.area || '확인 필요'}`,
+    `층수: ${
+      property.floor_info ||
+      property.total_floor_info ||
+      '확인 필요'
+    }`,
+    `방/욕실: ${property.room_bath || '확인 필요'}`,
+    `방향: ${property.direction || '확인 필요'}`,
+    `입주가능일: ${property.move_in || '협의 가능'}`,
+    `주차: ${property.parking || '확인 필요'}`,
+    '',
+    '━━━━━━━━━━━━━━━━━━',
+    '⭐ 매물 핵심정리',
+    '━━━━━━━━━━━━━━━━━━',
+    property.description ||
+      property.summary ||
+      '현장에서 직접 확인한 실사진 매물입니다.',
+    '',
+    '━━━━━━━━━━━━━━━━━━',
+    '📍 위치와 생활권',
+    '━━━━━━━━━━━━━━━━━━',
+    property.location_description ||
+      '구미 주요 생활권과 출퇴근 동선을 확인해주세요.',
+    living.length
+      ? living.map((item) => `✓ ${item}`).join('\n')
+      : '',
+    ...hubLinkBlock,
+    '',
+    '━━━━━━━━━━━━━━━━━━',
+    '🛋 옵션과 내부 상태',
+    '━━━━━━━━━━━━━━━━━━',
+    options.length
+      ? options.map((item) => `✓ ${item}`).join('\n')
+      : '옵션은 상담 시 확인해주세요.',
+    safety.length
+      ? safety.map((item) => `✓ ${item}`).join('\n')
+      : '',
+    '',
+    '━━━━━━━━━━━━━━━━━━',
+    '📷 사진별 설명',
+    '━━━━━━━━━━━━━━━━━━',
+    photoCaptions.join('\n\n'),
+    '',
+    '━━━━━━━━━━━━━━━━━━',
+    '🙋 이런 분께 추천드립니다',
+    '━━━━━━━━━━━━━━━━━━',
+    property.recommended_for ||
+      [
+        `✓ 구미 ${neighborhood}에서 방을 찾는 분`,
+        '✓ 출퇴근이 편리한 매물을 찾는 분',
+        '✓ 실사진으로 확인한 매물을 찾는 분'
+      ].join('\n'),
+    '',
+    '━━━━━━━━━━━━━━━━━━',
+    '📞 문의 및 방 보기',
+    '━━━━━━━━━━━━━━━━━━',
+    '실사진을 직접 확인한 매물입니다.',
+    '현재 공실 여부와 입주 가능일은 상담 시 다시 확인해드립니다.',
+    `전화·문자 문의: ${OFFICE.phone}`,
+    '',
+    legalNotice
+  ]
+    .filter((line) => line !== '')
+    .join('\n');
+
+  const rawTags = [
+    '#구미부동산',
+    `#구미${roomType.replace(/\s+/g, '')}`,
+    `#${neighborhood}${roomType.replace(/\s+/g, '')}`,
+    `#구미${neighborhood}${roomType.replace(/\s+/g, '')}`,
+    `#구미${tradeType.replace(/\s+/g, '')}`,
+    isRentalRoom ? '#구미원룸' : '',
+    isRentalRoom ? '#구미원룸월세' : '',
+    isRentalRoom ? '#구미자취방' : '',
+    '#칸공인중개사'
+  ].filter(Boolean);
+
+  const tags = [...new Set(rawTags)].join(' ');
+
+  return { title, body, tags };
+}
 async function copyAdvertisementText(text) {
   try {
     await navigator.clipboard.writeText(text);
@@ -4837,7 +5050,10 @@ async function copyAdvertisementText(text) {
 }
 function AdminPropertyTabs({ property, activeTab, setActiveTab }) {
   const [daangnOpen, setDaangnOpen] = useState(false);
-  const [copyStatus, setCopyStatus] = useState('');
+const [blogOpen, setBlogOpen] = useState(false);
+
+const [copyStatus, setCopyStatus] = useState('');
+const [blogCopyStatus, setBlogCopyStatus] = useState('');
 
   if (!property) {
     return <div className="admin-property-tabs empty-box">관리할 매물을 선택하면 공개정보와 비공개정보를 탭으로 확인할 수 있습니다.</div>;
@@ -5031,6 +5247,201 @@ function AdminPropertyTabs({ property, activeTab, setActiveTab }) {
         </div>
       );
     })()}
+        <div
+      style={{
+        marginTop: '20px',
+        paddingTop: '20px',
+        borderTop: '1px solid #e5e7eb'
+      }}
+    >
+      <button
+        type="button"
+        className="primary-btn"
+        onClick={() => {
+          setBlogOpen((prev) => !prev);
+          setBlogCopyStatus('');
+        }}
+      >
+        {blogOpen
+          ? '네이버 블로그 광고 닫기'
+          : '네이버 블로그용 만들기'}
+      </button>
+
+      {blogOpen && (() => {
+        const blogAd = buildNaverBlogAd(property);
+
+        return (
+          <div
+            style={{
+              marginTop: '16px',
+              padding: '16px',
+              border: '1px solid #b9dfc5',
+              borderRadius: '16px',
+              background: '#f5fff8'
+            }}
+          >
+            <strong>네이버 블로그 제목</strong>
+
+            <textarea
+              readOnly
+              value={blogAd.title}
+              rows={2}
+              style={{
+                width: '100%',
+                boxSizing: 'border-box',
+                marginTop: '8px',
+                padding: '12px',
+                borderRadius: '10px'
+              }}
+            />
+
+            <button
+              type="button"
+              className="small-btn"
+              onClick={async () => {
+                const copied =
+                  await copyAdvertisementText(blogAd.title);
+
+                setBlogCopyStatus(
+                  copied
+                    ? '블로그 제목 복사 완료'
+                    : '복사 실패'
+                );
+              }}
+            >
+              제목 복사
+            </button>
+
+            <strong
+              style={{
+                display: 'block',
+                marginTop: '18px'
+              }}
+            >
+              네이버 블로그 본문
+            </strong>
+
+            <textarea
+              readOnly
+              value={blogAd.body}
+              rows={30}
+              style={{
+                width: '100%',
+                boxSizing: 'border-box',
+                marginTop: '8px',
+                padding: '12px',
+                borderRadius: '10px',
+                lineHeight: '1.6'
+              }}
+            />
+
+            <button
+              type="button"
+              className="small-btn"
+              onClick={async () => {
+                const copied =
+                  await copyAdvertisementText(blogAd.body);
+
+                setBlogCopyStatus(
+                  copied
+                    ? '블로그 본문 복사 완료'
+                    : '복사 실패'
+                );
+              }}
+            >
+              본문 복사
+            </button>
+
+            <strong
+              style={{
+                display: 'block',
+                marginTop: '18px'
+              }}
+            >
+              네이버 블로그 태그
+            </strong>
+
+            <textarea
+              readOnly
+              value={blogAd.tags}
+              rows={4}
+              style={{
+                width: '100%',
+                boxSizing: 'border-box',
+                marginTop: '8px',
+                padding: '12px',
+                borderRadius: '10px'
+              }}
+            />
+
+            <div
+              style={{
+                display: 'flex',
+                gap: '8px',
+                flexWrap: 'wrap',
+                marginTop: '10px'
+              }}
+            >
+              <button
+                type="button"
+                className="small-btn"
+                onClick={async () => {
+                  const copied =
+                    await copyAdvertisementText(blogAd.tags);
+
+                  setBlogCopyStatus(
+                    copied
+                      ? '블로그 태그 복사 완료'
+                      : '복사 실패'
+                  );
+                }}
+              >
+                태그 복사
+              </button>
+
+              <button
+                type="button"
+                className="primary-btn"
+                onClick={async () => {
+                  const copied =
+                    await copyAdvertisementText(
+                      `${blogAd.title}\n\n${blogAd.body}\n\n${blogAd.tags}`
+                    );
+
+                  setBlogCopyStatus(
+                    copied
+                      ? '블로그 전체 원고 복사 완료'
+                      : '복사 실패'
+                  );
+                }}
+              >
+                전체 복사
+              </button>
+
+              <button
+                type="button"
+                className="small-btn"
+                onClick={() => {
+                  window.open(
+                    'https://blog.naver.com/atm750',
+                    '_blank',
+                    'noopener,noreferrer'
+                  );
+                }}
+              >
+                네이버 블로그 열기
+              </button>
+            </div>
+
+            {blogCopyStatus && (
+              <p className="status-text">
+                {blogCopyStatus}
+              </p>
+            )}
+          </div>
+        );
+      })()}
+    </div>
   </div>
 )}
     </section>
