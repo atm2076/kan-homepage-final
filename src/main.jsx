@@ -4817,6 +4817,293 @@ function buildDaangnAd(property) {
 
   return { title, body };
 }
+function buildDaangnRegistrationHelper(property) {
+  const allText = [
+    property.category,
+    property.trade_type,
+    property.summary,
+    property.description,
+    property.structure,
+    property.elevator,
+    property.parking,
+    ...(Array.isArray(property.convenience)
+      ? property.convenience
+      : []),
+    ...(Array.isArray(property.safety)
+      ? property.safety
+      : [])
+  ]
+    .filter(Boolean)
+    .join(' ');
+
+  const normalizeMoney = (value) => {
+    const text = String(value || '').trim();
+
+    if (!text) return '확인 필요';
+
+    return /^\d+(\.\d+)?$/.test(text)
+      ? `${text}만원`
+      : text;
+  };
+
+  const roomBathText = String(
+    property.room_bath || ''
+  );
+
+  const roomMatch = roomBathText.match(/방\s*(\d+)/);
+  const bathMatch = roomBathText.match(/욕실\s*(\d+)/);
+
+  const rooms = roomMatch
+    ? `${roomMatch[1]}개`
+    : '확인 필요';
+
+  const baths = bathMatch
+    ? `${bathMatch[1]}개`
+    : '확인 필요';
+
+  const maintenanceItems = toTextList(
+    property.maintenance_includes
+  );
+
+  const options = toTextList(
+    property.convenience
+  );
+
+  const hasOption = (keyword) =>
+    options.some((item) =>
+      String(item).includes(keyword)
+    ) || allText.includes(keyword);
+
+  const maintenanceFee = normalizeMoney(
+    property.maintenance_fee
+  );
+
+  const tradeType =
+    property.trade_type || '확인 필요';
+
+  const category =
+    property.category || '확인 필요';
+
+  const isSale =
+    String(category).includes('매매') ||
+    tradeType === '매매';
+
+  const priceItems = isSale
+    ? [
+        ['거래유형', '매매'],
+        [
+          '매매가격',
+          normalizeMoney(property.sale_price)
+        ]
+      ]
+    : [
+        ['거래유형', tradeType],
+        [
+          '보증금',
+          normalizeMoney(property.deposit)
+        ],
+        [
+          '월세',
+          tradeType === '전세'
+            ? '해당 없음'
+            : normalizeMoney(property.rent)
+        ]
+      ];
+
+  const maintenanceStatus = (keyword) => {
+    const matched = maintenanceItems.some(
+      (item) => String(item).includes(keyword)
+    );
+
+    return matched
+      ? '관리비 포함'
+      : '사용량만큼 또는 확인 필요';
+  };
+
+  const sections = [
+    {
+      title: '1. 기본정보',
+      items: [
+        ['주소', property.address || '확인 필요'],
+        ['매물 종류', category],
+        [
+          '건축물 용도',
+          property.main_use || '확인 필요'
+        ],
+        [
+          '전용면적',
+          property.area || '확인 필요'
+        ],
+        ['공급면적', '확인 필요']
+      ]
+    },
+    {
+      title: '2. 가격',
+      items: priceItems
+    },
+    {
+      title: '3. 매물정보',
+      items: [
+        [
+          '사용승인일',
+          property.approval_date || '확인 필요'
+        ],
+        ['방 수', rooms],
+        ['욕실 수', baths],
+        [
+          '총층',
+          property.floor_count ||
+          property.total_floor_info ||
+          '확인 필요'
+        ],
+        [
+          '해당층',
+          property.floor_info || '확인 필요'
+        ],
+        [
+          '방향',
+          property.direction || '확인 필요'
+        ],
+        ['대출 가능 여부', '확인 필요'],
+        [
+          '반려동물',
+          allText.includes('반려동물 가능')
+            ? '가능'
+            : '확인 필요'
+        ]
+      ]
+    },
+    {
+      title: '4. 시설정보',
+      items: [
+        [
+          '복층',
+          allText.includes('복층')
+            ? '해당'
+            : '해당 없음 또는 확인 필요'
+        ],
+        [
+          '옥탑',
+          allText.includes('옥탑')
+            ? '해당'
+            : '해당 없음 또는 확인 필요'
+        ],
+        [
+          '엘리베이터',
+          hasOption('엘리베이터') ||
+          String(property.elevator || '').includes('있음')
+            ? '있음'
+            : '없음 또는 확인 필요'
+        ],
+        [
+          '세탁기',
+          hasOption('세탁기') ? '있음' : '확인 필요'
+        ],
+        [
+          '냉장고',
+          hasOption('냉장고') ? '있음' : '확인 필요'
+        ],
+        [
+          '에어컨',
+          hasOption('에어컨') ? '있음' : '확인 필요'
+        ],
+        [
+          '전자레인지',
+          hasOption('전자레인지')
+            ? '있음'
+            : '확인 필요'
+        ],
+        [
+          '가스레인지',
+          hasOption('가스레인지')
+            ? '있음'
+            : '확인 필요'
+        ],
+        [
+          '인덕션',
+          hasOption('인덕션') ? '있음' : '확인 필요'
+        ],
+        [
+          '침대',
+          hasOption('침대') ? '있음' : '확인 필요'
+        ]
+      ]
+    },
+    {
+      title: '5. 관리비',
+      items: [
+        ['공용 관리비', maintenanceFee],
+        [
+          '관리비 포함 항목',
+          maintenanceItems.length
+            ? maintenanceItems.join(', ')
+            : '확인 필요'
+        ],
+        ['전기료', maintenanceStatus('전기')],
+        ['수도료', maintenanceStatus('수도')],
+        ['가스비', maintenanceStatus('가스')],
+        ['난방비', maintenanceStatus('난방')],
+        ['인터넷비', maintenanceStatus('인터넷')],
+        ['TV·유선방송', maintenanceStatus('유선')]
+      ]
+    },
+    {
+      title: '6. 상세정보',
+      items: [
+        [
+          '입주가능일',
+          property.move_in || '협의 가능'
+        ],
+        [
+          '위치 한줄평',
+          property.location_description ||
+          '확인 필요'
+        ],
+        [
+          '상세 설명',
+          property.description ||
+          property.summary ||
+          '확인 필요'
+        ],
+        [
+          '주차',
+          property.parking || '확인 필요'
+        ]
+      ]
+    },
+    {
+      title: '7. 사진',
+      items: [
+        [
+          '등록된 사진',
+          Array.isArray(property.photos)
+            ? `${property.photos.length}장`
+            : '확인 필요'
+        ],
+        ['평면도', '등록 여부 확인 필요']
+      ]
+    }
+  ];
+
+  const copyText = sections
+    .map((section) => {
+      const lines = section.items.map(
+        ([label, value]) =>
+          `${label}: ${value}`
+      );
+
+      return [
+        `[${section.title}]`,
+        ...lines
+      ].join('\n');
+    })
+    .join('\n\n');
+
+  return {
+    sections,
+    copyText
+  };
+}
 function buildNaverBlogAd(property) {
   const address = String(property.address || '경상북도 구미시').trim();
 
@@ -5050,9 +5337,11 @@ async function copyAdvertisementText(text) {
 }
 function AdminPropertyTabs({ property, activeTab, setActiveTab }) {
   const [daangnOpen, setDaangnOpen] = useState(false);
+  const [daangnHelperOpen, setDaangnHelperOpen] = useState(false);
 const [blogOpen, setBlogOpen] = useState(false);
 
 const [copyStatus, setCopyStatus] = useState('');
+  const [helperCopyStatus, setHelperCopyStatus] = useState('');
 const [blogCopyStatus, setBlogCopyStatus] = useState('');
 
   if (!property) {
@@ -5247,6 +5536,189 @@ const [blogCopyStatus, setBlogCopyStatus] = useState('');
         </div>
       );
     })()}
+    <div
+  style={{
+    marginTop: '20px',
+    paddingTop: '20px',
+    borderTop: '1px solid #e5e7eb'
+  }}
+>
+  <button
+    type="button"
+    className="primary-btn"
+    onClick={() => {
+      setDaangnHelperOpen((prev) => !prev);
+      setHelperCopyStatus('');
+    }}
+  >
+    {daangnHelperOpen
+      ? '당근 등록 도우미 닫기'
+      : '당근 등록 도우미'}
+  </button>
+
+  {daangnHelperOpen && (() => {
+    const helper =
+      buildDaangnRegistrationHelper(property);
+
+    return (
+      <div
+        style={{
+          marginTop: '16px',
+          padding: '16px',
+          border: '1px solid #f1c89a',
+          borderRadius: '16px',
+          background: '#fff9f2'
+        }}
+      >
+        <div
+          style={{
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+            gap: '10px',
+            flexWrap: 'wrap'
+          }}
+        >
+          <strong>당근 매물등록 입력값</strong>
+
+          <button
+            type="button"
+            className="primary-btn"
+            onClick={async () => {
+              const copied =
+                await copyAdvertisementText(
+                  helper.copyText
+                );
+
+              setHelperCopyStatus(
+                copied
+                  ? '당근 등록내용 전체 복사 완료'
+                  : '복사 실패'
+              );
+            }}
+          >
+            전체 복사
+          </button>
+        </div>
+
+        {helper.sections.map((section) => (
+          <div
+            key={section.title}
+            style={{
+              marginTop: '16px',
+              padding: '14px',
+              border: '1px solid #eadfd2',
+              borderRadius: '12px',
+              background: '#ffffff'
+            }}
+          >
+            <div
+              style={{
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'center',
+                gap: '8px',
+                marginBottom: '8px'
+              }}
+            >
+              <strong>{section.title}</strong>
+
+              <button
+                type="button"
+                className="small-btn"
+                onClick={async () => {
+                  const sectionText = [
+                    `[${section.title}]`,
+                    ...section.items.map(
+                      ([label, value]) =>
+                        `${label}: ${value}`
+                    )
+                  ].join('\n');
+
+                  const copied =
+                    await copyAdvertisementText(
+                      sectionText
+                    );
+
+                  setHelperCopyStatus(
+                    copied
+                      ? `${section.title} 복사 완료`
+                      : '복사 실패'
+                  );
+                }}
+              >
+                단계 복사
+              </button>
+            </div>
+
+            {section.items.map(
+              ([label, value]) => (
+                <div
+                  key={`${section.title}-${label}`}
+                  style={{
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    alignItems: 'center',
+                    gap: '10px',
+                    padding: '9px 0',
+                    borderTop: '1px solid #f0f0f0'
+                  }}
+                >
+                  <div style={{ minWidth: 0 }}>
+                    <strong
+                      style={{
+                        display: 'block',
+                        fontSize: '13px'
+                      }}
+                    >
+                      {label}
+                    </strong>
+
+                    <span
+                      style={{
+                        display: 'block',
+                        marginTop: '3px',
+                        fontSize: '14px',
+                        wordBreak: 'break-word'
+                      }}
+                    >
+                      {String(value || '확인 필요')}
+                    </span>
+                  </div>
+
+                  <button
+                    type="button"
+                    className="small-btn"
+                    onClick={async () => {
+                      const copied =
+                        await copyAdvertisementText(
+                          String(value || '확인 필요')
+                        );
+
+                      setHelperCopyStatus(
+                        copied
+                          ? `${label} 복사 완료`
+                          : '복사 실패'
+                      );
+                    }}
+                  >
+                    복사
+                  </button>
+                </div>
+              )
+            )}
+          </div>
+        ))}
+
+        {helperCopyStatus && (
+          <p className="status-text">
+            {helperCopyStatus}
+          </p>
+        )}
+      </div>
+    );
+  })()}
+</div>
         <div
       style={{
         marginTop: '20px',
