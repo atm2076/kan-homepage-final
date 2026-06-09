@@ -1,0 +1,187 @@
+* {
+  box-sizing: border-box;
+  }
+
+body {
+width: 380px;
+min-height: 520px;
+margin: 0;
+background: #f4f6f8;
+color: #1f2937;
+font-family: Arial, "Noto Sans KR", sans-serif;
+}
+
+button,
+input {
+font: inherit;
+}
+
+button {
+cursor: pointer;
+}
+
+.popup-container {
+padding: 18px;
+}
+
+.popup-header {
+display: flex;
+align-items: center;
+gap: 12px;
+margin-bottom: 18px;
+}
+
+.brand-mark {
+display: flex;
+width: 48px;
+height: 48px;
+flex-shrink: 0;
+align-items: center;
+justify-content: center;
+border-radius: 14px;
+background: #17396b;
+color: #ffffff;
+font-size: 22px;
+font-weight: 800;
+}
+
+.popup-header h1 {
+margin: 0 0 5px;
+font-size: 20px;
+line-height: 1.25;
+}
+
+.popup-header p {
+margin: 0;
+color: #6b7280;
+font-size: 13px;
+line-height: 1.4;
+}
+
+.property-section,
+.channel-section {
+margin-bottom: 16px;
+}
+
+.section-label {
+margin: 0 0 9px;
+color: #374151;
+font-size: 13px;
+font-weight: 700;
+}
+
+.property-summary {
+min-height: 76px;
+margin-bottom: 10px;
+padding: 13px;
+border: 1px solid #d9dee7;
+border-radius: 12px;
+background: #ffffff;
+color: #4b5563;
+font-size: 13px;
+line-height: 1.55;
+white-space: pre-line;
+}
+
+.secondary-button,
+.primary-button {
+width: 100%;
+border: 0;
+border-radius: 11px;
+font-weight: 700;
+}
+
+.secondary-button {
+padding: 11px 13px;
+border: 1px solid #cbd5e1;
+background: #ffffff;
+color: #17396b;
+}
+
+.secondary-button:hover {
+background: #f8fafc;
+}
+
+.channel-section {
+display: grid;
+gap: 9px;
+}
+
+.channel-section .section-label {
+margin-bottom: 0;
+}
+
+.channel-card {
+display: flex;
+align-items: center;
+gap: 11px;
+padding: 12px;
+border: 1px solid #d9dee7;
+border-radius: 12px;
+background: #ffffff;
+cursor: pointer;
+}
+
+.channel-card:hover {
+border-color: #9ca3af;
+}
+
+.channel-card:has(input:checked) {
+border-color: #17396b;
+background: #f0f5ff;
+}
+
+.channel-card input {
+width: 18px;
+height: 18px;
+flex-shrink: 0;
+accent-color: #17396b;
+}
+
+.channel-content {
+display: flex;
+flex-direction: column;
+gap: 3px;
+}
+
+.channel-content strong {
+font-size: 14px;
+}
+
+.channel-content small {
+color: #6b7280;
+font-size: 12px;
+}
+
+.primary-button {
+padding: 14px;
+background: #17396b;
+color: #ffffff;
+font-size: 15px;
+}
+
+.primary-button:hover {
+background: #102d58;
+}
+
+.primary-button:disabled {
+cursor: not-allowed;
+background: #9ca3af;
+}
+
+.status-message {
+min-height: 20px;
+margin: 11px 0 0;
+color: #6b7280;
+font-size: 12px;
+line-height: 1.45;
+text-align: center;
+}
+
+.status-message.success {
+color: #087443;
+}
+
+.status-message.error {
+color: #c62828;
+}
