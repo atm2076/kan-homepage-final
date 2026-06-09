@@ -3817,7 +3817,7 @@ if (isStaffMode && currentStaff?.code) {
                           onRemove={removePhoto}
                           onMove={movePhoto}
                           onReorder={reorderPhoto}
-                          showEnhanceControls={false}
+                          showEnhanceControls={true}
                           enhanceMode={photoEnhanceMode}
                           onChangeEnhanceMode={setPhotoEnhanceMode}
                           enhanceLevel={photoEnhanceLevel}
