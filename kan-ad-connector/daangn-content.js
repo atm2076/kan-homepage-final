@@ -691,6 +691,93 @@ const result = {
   filled: [],
   missing: []
 };
+const tradeType = normalizeText(
+getValue(property, [
+"trade_type",
+"tradeType",
+"transactionType"
+])
+);
+
+const targetTrade =
+tradeType.includes("매매")
+? "매매"
+: tradeType.includes("전세")
+? "전세"
+: "월세";
+
+const tradeControls = Array.from(
+document.querySelectorAll(
+"input[type='checkbox'], input[type='radio']"
+)
+);
+
+const tradeControl = tradeControls.find(
+function (control) {
+const label =
+(
+control.labels &&
+control.labels.length > 0
+)
+? control.labels[0]
+: control.closest("label") ||
+control.parentElement;
+
+const labelText = normalizeText(
+  label
+    ? label.innerText ||
+      label.textContent ||
+      ""
+    : ""
+);
+
+let parent = control.parentElement;
+let sectionText = "";
+let depth = 0;
+
+while (parent && depth < 6) {
+  const currentText = normalizeText(
+    parent.innerText ||
+    parent.textContent ||
+    ""
+  );
+
+  if (
+    currentText.includes("거래 유형") ||
+    currentText.includes("거래유형")
+  ) {
+    sectionText = currentText;
+    break;
+  }
+
+  parent = parent.parentElement;
+  depth += 1;
+}
+
+return (
+  labelText.includes(targetTrade) &&
+  (
+    sectionText.includes("거래 유형") ||
+    sectionText.includes("거래유형")
+  )
+);
+
+}
+);
+
+if (
+tradeControl &&
+!tradeControl.checked
+) {
+tradeControl.click();
+result.filled.push("거래유형");
+
+setTimeout(function () {
+autoFillProperty(property);
+}, 700);
+
+return result;
+}
 
 const address = getValue(property, [
   "address",
