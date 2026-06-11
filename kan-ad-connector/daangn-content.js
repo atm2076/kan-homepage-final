@@ -1195,28 +1195,52 @@ const status = document.getElementById(
 button.addEventListener(
   "click",
   function () {
-    const result =
+    status.textContent =
+      "자동입력 실행 중입니다. 거래유형 선택 후 나머지 항목을 다시 확인합니다.";
+
+    const firstResult =
       autoFillProperty(property);
 
-    if (result.filled.length > 0) {
-      status.textContent =
-        "자동입력 " +
-        result.filled.length +
-        "개: " +
-        result.filled.join(", ") +
-        (
-          result.missing.length > 0
-            ? " / 현재 화면에서 못 찾음: " +
-              result.missing.join(", ")
-            : ""
-        ) +
-        ". 내용을 확인해 주세요.";
-    } else {
-      status.textContent =
-        "현재 화면에서 입력 가능한 항목을 " +
-        "찾지 못했습니다. 입력칸이 보이는 " +
-        "단계에서 다시 눌러주세요.";
-    }
+    setTimeout(function () {
+      const secondResult =
+        autoFillProperty(property);
+
+      const filled = Array.from(
+        new Set(
+          firstResult.filled.concat(
+            secondResult.filled
+          )
+        )
+      );
+
+      const missing = Array.from(
+        new Set(
+          firstResult.missing.concat(
+            secondResult.missing
+          )
+        )
+      ).filter(function (name) {
+        return filled.indexOf(name) === -1;
+      });
+
+      if (filled.length > 0) {
+        status.textContent =
+          "자동입력 " +
+          filled.length +
+          "개: " +
+          filled.join(", ") +
+          (
+            missing.length > 0
+              ? " / 현재 화면에서 못 찾음: " +
+                missing.join(", ")
+              : ""
+          ) +
+          ". 내용을 확인해 주세요.";
+      } else {
+        status.textContent =
+          "현재 화면에서 입력 가능한 항목을 찾지 못했습니다. 입력칸이 보이는 단계에서 다시 눌러주세요.";
+      }
+    }, 900);
   }
 );
 
