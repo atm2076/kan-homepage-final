@@ -844,16 +844,20 @@ const body = createAdBody(property);
 fillField(
   "주소",
   {
-    words: [
-      "매물 주소",
-      "도로명 주소",
-      "도로명주소",
-      "지번 주소",
-      "지번주소",
-      "주소 검색",
-      "주소를 입력",
-      "주소"
-    ],
+   words: [
+  "주소를 입력하세요",
+  "주소 입력",
+  "주소 검색어",
+  "주소 검색창",
+  "매물 주소",
+  "도로명 주소",
+  "도로명주소",
+  "지번 주소",
+  "지번주소",
+  "주소 검색",
+  "주소를 입력",
+  "주소"
+],
     negativeWords: [
       "집주인 전화번호",
       "전화번호",
@@ -865,8 +869,8 @@ fillField(
     ],
     rejectTelephone: true,
     rejectMultiline: true,
-    strictDirect: true,
-    minimumScore: 100
+  strictDirect: false,
+minimumScore: 40
   },
   address,
   "input, [role='textbox']",
@@ -881,7 +885,9 @@ fillField(
       "전용면적",
       "전용 면적",
       "전용면적 입력",
-      "전용 면적 입력"
+      "전용 면적 입력",
+      "m²",
+"㎡"
     ],
     negativeWords: [
       "공급면적",
@@ -905,7 +911,9 @@ fillField(
       "공급 면적",
       "계약면적",
       "계약 면적",
-      "연면적"
+      "연면적",
+      "m²",
+"㎡"
     ],
     negativeWords: [
       "전용면적",
@@ -995,7 +1003,10 @@ fillField(
     words: [
       "관리비",
       "월 관리비",
-      "관리비 입력"
+      "관리비 입력",
+      "공용",
+"공용 관리비",
+"공용관리비",
     ],
     negativeWords: [
       "보증금",
