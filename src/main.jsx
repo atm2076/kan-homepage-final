@@ -3047,7 +3047,89 @@ setStaffProperties(data || []);
     setForm((prev) => ({ ...prev, ...parsed }));
     setStatus(`일괄입력 ${Object.keys(parsed).length}개 항목을 자동 채웠습니다. 사진 확인 후 저장을 누르세요.`);
   }
+// 당근 업로드용 CSV 다운로드 함수
+function handleDaangnExcelDownload() {
+  const payload = typeof formToPayload === 'function' ? formToPayload(form) : form;
 
+  const headers = [
+    '매물종류',
+    '거래유형',
+    '주소',
+    '매매가',
+    '보증금',
+    '월세',
+    '관리비',
+    '전용면적',
+    '공급면적',
+    '층수',
+    '방향',
+    '주차',
+    '입주가능일',
+    '사용승인일',
+    '방욕실',
+    '제목',
+    '상세설명'
+  ];
+
+  const escapeCSV = (value) => {
+    if (value === null || value === undefined) return '';
+
+    const text = String(value);
+
+    if (text.includes(',') || text.includes('"') || text.includes('\n')) {
+      return `"${text.replace(/"/g, '""')}"`;
+    }
+
+    return text;
+  };
+
+  const rowData = [
+    payload.category || form.category || '',
+    payload.trade_type || form.trade_type || '',
+    payload.address || form.address || '',
+    payload.sale_price || form.sale_price || '',
+    payload.deposit || form.deposit || '',
+    payload.rent || form.rent || '',
+    payload.maintenance_fee || form.maintenance_fee || '',
+    payload.area || form.area || '',
+    payload.total_area || form.total_area || '',
+    payload.floor_info || form.floor_info || '',
+    payload.direction || form.direction || '',
+    payload.parking || form.parking || '',
+    payload.move_in || form.move_in || '',
+    payload.approval_date || form.approval_date || '',
+    payload.room_bath || form.room_bath || '',
+    payload.title || form.title || '',
+    payload.description || form.description || ''
+  ].map(escapeCSV);
+
+  const csvContent = '\uFEFF' + headers.join(',') + '\n' + rowData.join(',');
+
+  const today = new Date();
+  const yyyy = today.getFullYear();
+  const mm = String(today.getMonth() + 1).padStart(2, '0');
+  const dd = String(today.getDate()).padStart(2, '0');
+  const filename = `daangn-property-${yyyy}${mm}${dd}.csv`;
+
+  const blob = new Blob([csvContent], {
+    type: 'text/csv;charset=utf-8;'
+  });
+
+  const link = document.createElement('a');
+  const url = URL.createObjectURL(blob);
+
+  link.href = url;
+  link.download = filename;
+  link.style.display = 'none';
+
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+
+  URL.revokeObjectURL(url);
+
+  setStatus('당근 업로드용 CSV 파일을 다운로드했습니다.');
+}
 function startEdit(property) {
   if (
     isStaffMode &&
@@ -4371,11 +4453,30 @@ if (isStaffMode && currentStaff?.code) {
       <strong>{form.parking || '확인 필요'}</strong>
     </div>
 
-    <div>
-      <span>사진</span>
-      <strong>{photoUrls.length}장</strong>
-    </div>
-  </div>
+ <div>
+  <span>사진</span>
+  <strong>{photoUrls.length}장</strong>
+</div>
+</div>
+
+<div style={{ textAlign: 'right', marginTop: '14px' }}>
+  <button
+    type="button"
+    onClick={handleDaangnExcelDownload}
+    style={{
+      backgroundColor: '#FF7E36',
+      color: 'white',
+      padding: '8px 16px',
+      borderRadius: '4px',
+      border: 'none',
+      cursor: 'pointer',
+      fontWeight: 'bold'
+    }}
+  >
+    당근 엑셀 다운로드
+  </button>
+</div>
+
 </section>
               )}
               {isAdminMode && (
