@@ -1113,12 +1113,18 @@ function App() {
     return CUSTOMER_PROPERTY_TYPES;
   }, [properties]);
 
-  const filtered = useMemo(() => {
+   const filtered = useMemo(() => {
     return properties.filter((item) => matchesCustomerFilters(item, keyword, category, filters));
-}, [properties, keyword, category, filters]);
+  }, [properties, keyword, category, filters]);
 
- const isManagementMode = isAdminRoute && isAdmin;
-const isOwnerAdmin = portalMode === 'admin' && isAdmin;
+  function selectProperty(property) {
+    setSelected(property);
+    const target = document.getElementById('property-detail');
+    if (target) target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }
+
+  const isManagementMode = isAdminRoute && isAdmin;
+  const isOwnerAdmin = portalMode === 'admin' && isAdmin;
 
 function handleQuickEditProperty(property) {
   setSelected(property);
