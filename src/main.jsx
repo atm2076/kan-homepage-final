@@ -3048,62 +3048,245 @@ setStaffProperties(data || []);
     setStatus(`일괄입력 ${Object.keys(parsed).length}개 항목을 자동 채웠습니다. 사진 확인 후 저장을 누르세요.`);
   }
 // 당근 업로드용 CSV 다운로드 함수
+// 당근 원본 양식 맞춤 CSV 다운로드 함수
 function handleDaangnExcelDownload() {
   const payload = typeof formToPayload === 'function' ? formToPayload(form) : form;
 
+  const clean = (value) => {
+    if (value === null || value === undefined) return '';
+    return String(value)
+      .replace(/\r?\n+/g, ' / ')
+      .replace(/\s+/g, ' ')
+      .trim();
+  };
+
+  const toManwon = (value) => {
+    const text = clean(value).replaceAll(',', '');
+    if (!text) return '';
+
+    const eokMatch = text.match(/(\d+(?:\.\d+)?)\s*억/);
+    const manMatch = text.match(/(\d+(?:\.\d+)?)\s*만/);
+
+    if (eokMatch) {
+      const eok = Number(eokMatch[1]) * 10000;
+      const man = manMatch ? Number(manMatch[1]) : 0;
+      return String(Math.round(eok + man));
+    }
+
+    const numberMatch = text.match(/\d+(?:\.\d+)?/);
+    return numberMatch ? numberMatch[0] : '';
+  };
+
+  const getRoomBath = () => {
+    const text = clean(payload.room_bath || form.room_bath);
+    const match =
+      text.match(/방\s*(\d+).*욕실\s*(\d+)/) ||
+      text.match(/(\d+)\s*\/\s*(\d+)/);
+
+    return {
+      room: match ? match[1] : '1',
+      bath: match ? match[2] : '1'
+    };
+  };
+
+  const getFloor = () => {
+    const floorText = clean(payload.floor_info || form.floor_info);
+    const totalText = clean(payload.total_floor_info || form.total_floor_info);
+
+    const floorMatch = floorText.match(/(\d+)\s*층/);
+    const totalMatch =
+      floorText.match(/총\s*(\d+)\s*층/) ||
+      totalText.match(/지상\s*(\d+)\s*층/) ||
+      totalText.match(/총\s*(\d+)\s*층/);
+
+    return {
+      floor: floorMatch ? floorMatch[1] : '',
+      totalFloor: totalMatch ? totalMatch[1] : ''
+    };
+  };
+
+  const getYear = () => {
+    const text = clean(payload.approval_date || form.approval_date);
+    const match = text.match(/(19|20)\d{2}/);
+    return match ? match[0] : '';
+  };
+
+  const getMaintenanceType = () => {
+    const text = clean(payload.maintenance_fee || form.maintenance_fee);
+
+    if (!text) return '확인 필요';
+    if (text.includes('없음')) return '관리비 없음';
+    return '정액 관리비';
+  };
+
+  const getMaintenanceItems = () => {
+    const direct = clean(payload.maintenance_includes || form.maintenance_includes || maintenanceItemsText);
+    if (direct) return direct;
+
+    const text = clean(payload.maintenance_fee || form.maintenance_fee);
+    const match = text.match(/포함 항목:\s*([^)]+)/);
+    if (match) return clean(match[1]);
+
+    return '';
+  };
+
+  const getParking = () => {
+    const text = clean(payload.parking || form.parking);
+
+    if (text.includes('불가')) return '불가능';
+    if (text.includes('가능') || text.includes('대')) return '가능';
+    return '확인 필요';
+  };
+
+  const getDirection = () => {
+    const text = clean(payload.direction || form.direction)
+      .replace('/ 주출입구 기준', '')
+      .replace('주출입구 기준', '')
+      .trim();
+
+    return text || '주출입구';
+  };
+
+  const getOptions = () => {
+    const convenience = Array.isArray(payload.convenience)
+      ? payload.convenience
+      : linesToArray(form.convenienceText);
+
+    return convenience
+      .map((item) => clean(item).replace(/^난방:\s*/, ''))
+      .filter(Boolean)
+      .join(', ');
+  };
+
+  const getPropertyType = () => {
+    const text = clean(payload.category || form.category || '');
+
+    if (text.includes('미니투룸')) return '미니투룸';
+    if (text.includes('투룸')) return '투룸';
+    if (text.includes('상가')) return '상가';
+    if (text.includes('토지')) return '토지';
+    if (text.includes('다가구') || text.includes('원룸건물')) return '다가구';
+    if (text.includes('아파트')) return '아파트';
+    return '원룸';
+  };
+
+  const getTradeType = () => {
+    const text = clean(payload.trade_type || form.trade_type || '');
+
+    if (text.includes('매매')) return '매매';
+    if (text.includes('전세')) return '전세';
+    if (text.includes('단기')) return '단기';
+    return '월세';
+  };
+
+  const roomBath = getRoomBath();
+  const floor = getFloor();
+  const tradeType = getTradeType();
+
+  const priceValue =
+    tradeType === '매매'
+      ? toManwon(payload.sale_price || form.sale_price)
+      : toManwon(payload.deposit || form.deposit);
+
+  const monthlyRentValue =
+    tradeType === '월세' || tradeType === '단기'
+      ? toManwon(payload.rent || form.rent)
+      : '';
+
+  const description = [
+    payload.title || form.title,
+    payload.summary || form.summary,
+    payload.description || form.description,
+    payload.location_description || form.location_description,
+    payload.recommended_for || form.recommended_for,
+    payload.investment_point || form.investment_point,
+    payload.risk_note || form.risk_note
+  ]
+    .map(clean)
+    .filter(Boolean)
+    .join(' / ');
+
   const headers = [
-    '매물종류',
+    '매물유형',
     '거래유형',
+    '보증금/매매가(만원)',
+    '월세(만원)',
     '주소',
-    '매매가',
-    '보증금',
-    '월세',
-    '관리비',
-    '전용면적',
-    '공급면적',
-    '층수',
-    '방향',
-    '주차',
+    '상세주소',
+    '면적(㎡)',
+    '방 수',
+    '욕실 수',
+    '층',
+    '총 층',
+    '향',
     '입주가능일',
-    '사용승인일',
-    '방욕실',
-    '제목',
-    '상세설명'
+    '관리비 유형',
+    '총 관리비(만원)',
+    '관리비 포함항목',
+    '관리비 기준',
+    '관리비 실비근거',
+    '관리비 확인일자 사유',
+    '주차',
+    '반려동물',
+    '대출',
+    '옵션',
+    '건축년도',
+    '매물 설명',
+    '메모',
+    '토지 지목',
+    '용도지역',
+    '권리금(만원)',
+    '건물용도'
+  ];
+
+  const rowData = [
+    getPropertyType(),
+    tradeType,
+    priceValue,
+    monthlyRentValue,
+    clean(payload.address || form.address),
+    clean(payload.real_unit || form.real_unit || quickUnit),
+    toManwon(payload.area || form.area),
+    roomBath.room,
+    roomBath.bath,
+    floor.floor,
+    floor.totalFloor,
+    getDirection(),
+    clean(payload.move_in || form.move_in) || '즉시입주',
+    getMaintenanceType(),
+    toManwon(payload.maintenance_fee || form.maintenance_fee),
+    getMaintenanceItems(),
+    '직접 월 기재',
+    '세대별 사용량 또는 계약 내용 기준',
+    '확인 필요',
+    getParking(),
+    '확인 필요',
+    '확인 필요',
+    getOptions(),
+    getYear(),
+    description,
+    clean(payload.private_memo || form.private_memo),
+    clean(payload.land_category || form.land_category),
+    clean(payload.zoning || form.zoning),
+    toManwon(payload.premium || form.premium),
+    clean(payload.main_use || form.main_use)
   ];
 
   const escapeCSV = (value) => {
-    if (value === null || value === undefined) return '';
+    const text = clean(value);
 
-    const text = String(value);
-
-    if (text.includes(',') || text.includes('"') || text.includes('\n')) {
+    if (text.includes(',') || text.includes('"')) {
       return `"${text.replace(/"/g, '""')}"`;
     }
 
     return text;
   };
 
-  const rowData = [
-    payload.category || form.category || '',
-    payload.trade_type || form.trade_type || '',
-    payload.address || form.address || '',
-    payload.sale_price || form.sale_price || '',
-    payload.deposit || form.deposit || '',
-    payload.rent || form.rent || '',
-    payload.maintenance_fee || form.maintenance_fee || '',
-    payload.area || form.area || '',
-    payload.total_area || form.total_area || '',
-    payload.floor_info || form.floor_info || '',
-    payload.direction || form.direction || '',
-    payload.parking || form.parking || '',
-    payload.move_in || form.move_in || '',
-    payload.approval_date || form.approval_date || '',
-    payload.room_bath || form.room_bath || '',
-    payload.title || form.title || '',
-    payload.description || form.description || ''
-  ].map(escapeCSV);
-
-  const csvContent = '\uFEFF' + headers.join(',') + '\n' + rowData.join(',');
+  const csvContent =
+    '\uFEFF' +
+    headers.map(escapeCSV).join(',') +
+    '\n' +
+    rowData.map(escapeCSV).join(',');
 
   const today = new Date();
   const yyyy = today.getFullYear();
@@ -3128,8 +3311,9 @@ function handleDaangnExcelDownload() {
 
   URL.revokeObjectURL(url);
 
-  setStatus('당근 업로드용 CSV 파일을 다운로드했습니다.');
+  setStatus('당근 원본 양식에 맞춘 CSV 파일을 다운로드했습니다.');
 }
+
 function startEdit(property) {
   if (
     isStaffMode &&
