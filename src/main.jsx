@@ -2743,6 +2743,7 @@ const [addressSearching, setAddressSearching] = useState(false);
 const [buildingLedgerSearching, setBuildingLedgerSearching] = useState(false);
   const [detailFieldsOpen, setDetailFieldsOpen] = useState(false);
   const [quickTitleKeyword, setQuickTitleKeyword] = useState('');
+  const [publishTab, setPublishTab] = useState('');
   const adminPassword = import.meta.env.VITE_ADMIN_PASSWORD || ['3', '8', '8', '3'].join('');
   const staffPassword = import.meta.env.VITE_STAFF_PASSWORD || ['0', '0', '0', '0'].join('');
   const isStaffMode = mode === 'staff';
@@ -3313,7 +3314,249 @@ function handleDaangnExcelDownload() {
 
   setStatus('당근 원본 양식에 맞춘 CSV 파일을 다운로드했습니다.');
 }
+function compactPublishText(value) {
+  return String(value || '').replace(/\s+/g, ' ').trim();
+}
 
+function getPublishDong(address) {
+  const text = compactPublishText(address)
+    .replace('경상북도', '')
+    .replace('구미시', '')
+    .trim();
+
+  const match = text.match(/([가-힣0-9]+(?:동|읍|면|리))/);
+  return match ? match[1] : '';
+}
+
+function getPublishPropertyType(data) {
+  const category = compactPublishText(data.category || quickRoomType || '원룸');
+  const cleaned = category
+    .replace(/월세|전세|반전세|매매|단기임대|단기/g, '')
+    .trim();
+
+  return cleaned || category || '원룸';
+}
+
+function formatPublishMoney(value) {
+  const text = compactPublishText(value);
+  return text ? normalizeManwon(text) : '-';
+}
+
+function getPublishPriceText(data) {
+  const tradeType = compactPublishText(data.trade_type || quickTradeType || '월세');
+
+  if (tradeType.includes('매매')) {
+    return `매매가 ${formatPublishMoney(data.sale_price || data.deposit)}`;
+  }
+
+  if (tradeType.includes('전세') && !tradeType.includes('반전세')) {
+    return `전세금 ${formatPublishMoney(data.deposit)}`;
+  }
+
+  if (tradeType.includes('반전세')) {
+    return `반전세 ${formatPublishMoney(data.deposit)} / 월세 ${formatPublishMoney(data.rent)}`;
+  }
+
+  return `보증금 ${formatPublishMoney(data.deposit)} / 월세 ${formatPublishMoney(data.rent)}`;
+}
+
+function makePublishTag(value) {
+  return String(value || '')
+    .replace(/[#\s]/g, '')
+    .replace(/[^0-9A-Za-z가-힣_]/g, '');
+}
+
+function getPublishSnapshot() {
+  const category = isStaffMode ? quickRoomType : (form.category || quickRoomType || '원룸');
+  const tradeType = isStaffMode ? quickTradeType : (form.trade_type || quickTradeType || '월세');
+
+  const floorInfo = isStaffMode
+    ? [
+        quickShowUnit && quickUnit ? quickUnit : '',
+        quickFloor ? `${quickFloor}층` : '',
+        quickTotalFloor ? `총 ${quickTotalFloor}층` : ''
+      ].filter(Boolean).join(' / ')
+    : form.floor_info;
+
+  const moveInText = isStaffMode
+    ? (moveInChoice === '날짜 직접입력' ? (moveInDate || '날짜협의') : moveInChoice)
+    : form.move_in;
+
+  const parkingText = isStaffMode
+    ? [
+        parkingTotal ? `총 ${parkingTotal}대` : '',
+        parkingPerUnit ? `세대당 ${parkingPerUnit}대` : '',
+        parkingChoice,
+        parkingMemo
+      ].filter(Boolean).join(' / ')
+    : form.parking;
+
+  const directionText = isStaffMode
+    ? `${directionChoice} / 주출입구 기준`
+    : form.direction;
+
+  const maintenanceText = isStaffMode
+    ? maintenanceType
+    : form.maintenance_fee;
+
+  return {
+    ...form,
+    category,
+    trade_type: tradeType,
+    floor_info: floorInfo || form.floor_info,
+    move_in: moveInText || form.move_in,
+    parking: parkingText || form.parking,
+    direction: directionText || form.direction,
+    maintenance_fee: maintenanceText || form.maintenance_fee,
+    room_bath: form.room_bath || ROOM_BATH_DEFAULTS[category] || '',
+    photos: linesToArray(form.photosText)
+  };
+}
+
+function buildPublishTags(data, extraTags = []) {
+  const dong = getPublishDong(data.address);
+  const propertyType = getPublishPropertyType(data);
+  const tradeType = compactPublishText(data.trade_type || '월세');
+
+  const seeds = [
+    '구미원룸',
+    tradeType.includes('월세') ? '구미원룸월세' : '',
+    `구미${propertyType}`,
+    dong ? `${dong}${propertyType}` : '',
+    dong ? `구미${dong}${propertyType}` : '',
+    `${propertyType}${tradeType}`,
+    '구미부동산',
+    '칸공인중개사',
+    ...extraTags
+  ];
+
+  return [...new Set(seeds.map(makePublishTag).filter(Boolean))]
+    .map((tag) => `#${tag}`)
+    .join(' ');
+}
+
+function buildBlogPublishData() {
+  const data = getPublishSnapshot();
+  const dong = getPublishDong(data.address);
+  const locationTitle = dong ? `구미 ${dong}` : '구미';
+  const propertyType = getPublishPropertyType(data);
+  const tradeType = compactPublishText(data.trade_type || '월세');
+  const priceText = getPublishPriceText(data);
+  const photos = Array.isArray(data.photos) ? data.photos : linesToArray(data.photosText);
+  const options = [
+    ...linesToArray(data.convenienceText),
+    ...linesToArray(data.safetyText),
+    ...linesToArray(data.educationText)
+  ].filter(Boolean);
+
+  const title = `${locationTitle} ${propertyType} ${tradeType}｜추천 매물`;
+
+  const body = [
+    title,
+    '',
+    '안녕하세요. 칸공인중개사사무소입니다.',
+    `${locationTitle}에서 바로 안내 가능한 ${propertyType} ${tradeType} 추천 매물입니다.`,
+    '',
+    '■ 매물 핵심정보',
+    `- 가격: ${priceText}`,
+    `- 관리비: ${data.maintenance_fee || '확인 필요'}`,
+    `- 면적: ${data.area || '확인 필요'}`,
+    `- 층수: ${data.floor_info || '확인 필요'}`,
+    `- 방향: ${data.direction || '확인 필요'}`,
+    `- 주차: ${data.parking || '확인 필요'}`,
+    `- 입주가능일: ${data.move_in || '즉시입주 협의'}`,
+    `- 방/욕실: ${data.room_bath || '확인 필요'}`,
+    '',
+    '■ 옵션',
+    options.length ? options.join(', ') : '옵션 확인 필요',
+    '',
+    '■ 위치설명',
+    data.location_description || data.address || '위치 상담 시 상세 안내',
+    '',
+    '■ 상세설명',
+    data.description || data.summary || '실사진 확인 후 빠르게 안내드립니다.',
+    '',
+    '■ 사진 URL',
+    photos.length ? photos.map((url, index) => `${index + 1}. ${url}`).join('\n') : '사진 URL 없음',
+    '',
+    '■ 중개사무소 정보',
+    '칸공인중개사사무소',
+    '대표: 정점식',
+    '등록번호: 제47190-2023-00014',
+    '주소: 경상북도 구미시 인의동 991-4번지 4층',
+    '연락처: 010-5323-3883 / 054-474-0367'
+  ].join('\n');
+
+  return {
+    title,
+    body,
+    tags: buildPublishTags(data, ['구미방구하기', '구미자취방'])
+  };
+}
+
+function buildInstagramPublishData() {
+  const data = getPublishSnapshot();
+  const dong = getPublishDong(data.address);
+  const locationTitle = dong ? `구미 ${dong}` : '구미';
+  const propertyType = getPublishPropertyType(data);
+  const tradeType = compactPublishText(data.trade_type || '월세');
+  const priceText = getPublishPriceText(data);
+  const photos = Array.isArray(data.photos) ? data.photos : linesToArray(data.photosText);
+
+  const body = [
+    `🔥 ${locationTitle} ${propertyType} ${tradeType}`,
+    priceText,
+    `📍 위치: ${data.address || locationTitle}`,
+    `📐 면적: ${data.area || '확인 필요'}`,
+    `🏢 층수: ${data.floor_info || '확인 필요'}`,
+    `🚗 주차: ${data.parking || '확인 필요'}`,
+    `🗓 입주: ${data.move_in || '즉시입주 협의'}`,
+    data.summary ? `✨ ${data.summary}` : '✨ 실사진 확인 매물, 빠른 안내 가능합니다.',
+    `문의 ${OFFICE.phone}`
+  ].join('\n');
+
+  return {
+    body,
+    tags: buildPublishTags(data, ['구미월세', '구미방구하기', '구미자취방']),
+    photos: photos.join('\n')
+  };
+}
+
+function handleCopy(label, text) {
+  const copyText = String(text || '').trim();
+
+  if (!copyText) {
+    setStatus(`${label} 내용이 없습니다.`);
+    return;
+  }
+
+  if (navigator.clipboard && window.isSecureContext) {
+    navigator.clipboard.writeText(copyText)
+      .then(() => setStatus(`${label} 복사 완료했습니다.`))
+      .catch(() => setStatus(`${label} 복사에 실패했습니다. 내용을 직접 선택해서 복사해주세요.`));
+    return;
+  }
+
+  const textarea = document.createElement('textarea');
+  textarea.value = copyText;
+  textarea.style.position = 'fixed';
+  textarea.style.left = '-9999px';
+  document.body.appendChild(textarea);
+  textarea.focus();
+  textarea.select();
+
+  try {
+    document.execCommand('copy');
+    setStatus(`${label} 복사 완료했습니다.`);
+  } catch (error) {
+    setStatus(`${label} 복사에 실패했습니다. 내용을 직접 선택해서 복사해주세요.`);
+  } finally {
+    document.body.removeChild(textarea);
+  }
+}
+
+const blogPublishData = buildBlogPublishData();
+const instagramPublishData = buildInstagramPublishData();
 function startEdit(property) {
   if (
     isStaffMode &&
@@ -4643,22 +4886,98 @@ if (isStaffMode && currentStaff?.code) {
 </div>
 </div>
 
-<div style={{ textAlign: 'right', marginTop: '14px' }}>
-  <button
-    type="button"
-    onClick={handleDaangnExcelDownload}
-    style={{
-      backgroundColor: '#FF7E36',
-      color: 'white',
-      padding: '8px 16px',
-      borderRadius: '4px',
-      border: 'none',
-      cursor: 'pointer',
-      fontWeight: 'bold'
-    }}
-  >
-    당근 엑셀 다운로드
-  </button>
+<div style={{ marginTop: '14px' }}>
+  <div style={{ display: 'flex', gap: '8px', justifyContent: 'flex-end', flexWrap: 'wrap' }}>
+    <button
+      type="button"
+      onClick={handleDaangnExcelDownload}
+      style={{ backgroundColor: '#FF7E36', color: 'white', padding: '8px 14px', borderRadius: '4px', border: 'none', cursor: 'pointer', fontWeight: 'bold' }}
+    >
+      당근
+    </button>
+
+    <button
+      type="button"
+      onClick={() => setPublishTab(publishTab === 'blog' ? '' : 'blog')}
+      style={{ backgroundColor: '#173f73', color: 'white', padding: '8px 14px', borderRadius: '4px', border: 'none', cursor: 'pointer', fontWeight: 'bold' }}
+    >
+      블로그
+    </button>
+
+    <button
+      type="button"
+      onClick={() => setPublishTab(publishTab === 'instagram' ? '' : 'instagram')}
+      style={{ backgroundColor: '#222', color: 'white', padding: '8px 14px', borderRadius: '4px', border: 'none', cursor: 'pointer', fontWeight: 'bold' }}
+    >
+      인스타
+    </button>
+
+    <button
+      type="button"
+      onClick={() => setPublishTab(publishTab === 'all' ? '' : 'all')}
+      style={{ backgroundColor: '#0f766e', color: 'white', padding: '8px 14px', borderRadius: '4px', border: 'none', cursor: 'pointer', fontWeight: 'bold' }}
+    >
+      전체
+    </button>
+  </div>
+
+  {publishTab && (
+    <div style={{ marginTop: '14px', padding: '14px', border: '1px solid #d8dee9', borderRadius: '10px', backgroundColor: '#f8fafc' }}>
+      {publishTab === 'all' && (
+        <div style={{ marginBottom: '14px', textAlign: 'right' }}>
+          <button
+            type="button"
+            onClick={handleDaangnExcelDownload}
+            style={{ backgroundColor: '#FF7E36', color: 'white', padding: '8px 14px', borderRadius: '4px', border: 'none', cursor: 'pointer', fontWeight: 'bold' }}
+          >
+            당근 CSV 다운로드
+          </button>
+        </div>
+      )}
+
+      {(publishTab === 'blog' || publishTab === 'all') && (
+        <section style={{ marginBottom: '16px' }}>
+          <h4>블로그 발행자료</h4>
+
+          <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', marginBottom: '8px' }}>
+            <button type="button" onClick={() => handleCopy('블로그 제목', blogPublishData.title)}>제목 복사</button>
+            <button type="button" onClick={() => handleCopy('블로그 본문', blogPublishData.body)}>본문 복사</button>
+            <button type="button" onClick={() => handleCopy('블로그 태그', blogPublishData.tags)}>태그 복사</button>
+          </div>
+
+          <label style={{ display: 'block', fontWeight: 'bold', marginTop: '8px' }}>제목</label>
+          <textarea readOnly value={blogPublishData.title} rows={2} style={{ width: '100%', padding: '8px' }} />
+
+          <label style={{ display: 'block', fontWeight: 'bold', marginTop: '8px' }}>본문</label>
+          <textarea readOnly value={blogPublishData.body} rows={12} style={{ width: '100%', padding: '8px' }} />
+
+          <label style={{ display: 'block', fontWeight: 'bold', marginTop: '8px' }}>태그</label>
+          <textarea readOnly value={blogPublishData.tags} rows={3} style={{ width: '100%', padding: '8px' }} />
+        </section>
+      )}
+
+      {(publishTab === 'instagram' || publishTab === 'all') && (
+        <section>
+          <h4>인스타 발행자료</h4>
+
+          <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', marginBottom: '8px' }}>
+            <button type="button" onClick={() => handleCopy('인스타 문구', instagramPublishData.body)}>문구 복사</button>
+            <button type="button" onClick={() => handleCopy('인스타 태그', instagramPublishData.tags)}>태그 복사</button>
+            <button type="button" onClick={() => handleCopy('사진 URL', instagramPublishData.photos)}>사진 URL 복사</button>
+          </div>
+
+          <label style={{ display: 'block', fontWeight: 'bold', marginTop: '8px' }}>문구</label>
+          <textarea readOnly value={instagramPublishData.body} rows={8} style={{ width: '100%', padding: '8px' }} />
+
+          <label style={{ display: 'block', fontWeight: 'bold', marginTop: '8px' }}>태그</label>
+          <textarea readOnly value={instagramPublishData.tags} rows={3} style={{ width: '100%', padding: '8px' }} />
+
+          <label style={{ display: 'block', fontWeight: 'bold', marginTop: '8px' }}>사진 URL</label>
+          <textarea readOnly value={instagramPublishData.photos} rows={5} style={{ width: '100%', padding: '8px' }} />
+        </section>
+      )}
+    </div>
+  )}
 </div>
 
 </section>
