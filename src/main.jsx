@@ -1117,11 +1117,63 @@ function App() {
     return properties.filter((item) => matchesCustomerFilters(item, keyword, category, filters));
 }, [properties, keyword, category, filters]);
 
-  function selectProperty(property) {
-    setSelected(property);
-    const target = document.getElementById('property-detail');
-    if (target) target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+ const isManagementMode = isAdminRoute && isAdmin;
+const isOwnerAdmin = portalMode === 'admin' && isAdmin;
+
+function handleQuickEditProperty(property) {
+  setSelected(property);
+  setAdminOpen(true);
+  alert('관리자 화면에서 해당 매물의 수정 버튼을 눌러 이어서 수정하세요.');
+}
+
+async function handleQuickHoldProperty(property) {
+  if (!isSupabaseReady) {
+    alert('Supabase 연결 전에는 상태 변경이 되지 않습니다.');
+    return;
   }
+
+  const ok = window.confirm('이 매물을 보류 상태로 바꿀까요?');
+  if (!ok) return;
+
+  const { error } = await supabase
+    .from('properties')
+    .update({ status: 'hold' })
+    .eq('id', property.id);
+
+  if (error) {
+    alert(`보류 처리 실패: ${error.message}`);
+    return;
+  }
+
+  await loadProperties();
+}
+
+async function handleQuickDeleteProperty(property) {
+  if (!isOwnerAdmin) {
+    alert('삭제는 대표 관리자만 가능합니다.');
+    return;
+  }
+
+  if (!isSupabaseReady) {
+    alert('Supabase 연결 전에는 삭제가 되지 않습니다.');
+    return;
+  }
+
+  const ok = window.confirm('이 매물을 삭제할까요? 삭제 후 복구가 어렵습니다.');
+  if (!ok) return;
+
+  const { error } = await supabase
+    .from('properties')
+    .delete()
+    .eq('id', property.id);
+
+  if (error) {
+    alert(`삭제 실패: ${error.message}`);
+    return;
+  }
+
+  await loadProperties();
+}
 
   return (
  <div className={isAdminRoute && adminOpen ? 'admin-app-mode' : undefined}>
@@ -1158,6 +1210,11 @@ function App() {
               filterSheetOpen={filterSheetOpen}
               setFilterSheetOpen={setFilterSheetOpen}
               onSelect={selectProperty}
+                isManagementMode={isManagementMode}
+  isOwnerAdmin={isOwnerAdmin}
+  onEditProperty={handleQuickEditProperty}
+  onHoldProperty={handleQuickHoldProperty}
+  onDeleteProperty={handleQuickDeleteProperty}
             />
             <PropertyDetail
               property={selected || filtered[0]}
@@ -1849,7 +1906,12 @@ function CustomerListingSection({
   setFilters,
   filterSheetOpen,
   setFilterSheetOpen,
-  onSelect
+  onSelect,
+  isManagementMode = false,
+  isOwnerAdmin = false,
+  onEditProperty,
+  onHoldProperty,
+  onDeleteProperty
 }) {
   const resetAll = () => {
     setCategory('전체');
@@ -1910,12 +1972,17 @@ function CustomerListingSection({
           </div>
           <div className="customer-property-grid">
             {properties.map((property) => (
-              <PropertyListItem
-                key={property.id}
-                property={property}
-                active={selected?.id === property.id}
-                onClick={() => onSelect(property)}
-              />
+             <PropertyListItem
+  key={property.id}
+  property={property}
+  active={selected?.id === property.id}
+  onClick={() => onSelect(property)}
+  isManagementMode={isManagementMode}
+  isOwnerAdmin={isOwnerAdmin}
+  onEdit={onEditProperty}
+  onHold={onHoldProperty}
+  onDelete={onDeleteProperty}
+/>
             ))}
             {!properties.length && <div className="empty-box">검색 조건에 맞는 매물이 없습니다.</div>}
           </div>
@@ -2040,7 +2107,7 @@ function ErrorNotice({ message }) {
     </div>
   );
 }
-function PropertyListItem({ property, active, onClick }) {
+function PropertyListItem({ property, active, onClick, isManagementMode = false, isOwnerAdmin = false, onEdit, onHold, onDelete }) {
   const cover =
     property.photos?.[0] ||
     'https://images.unsplash.com/photo-1564013799919-ab600027ffc6?auto=format&fit=crop&w=1200&q=80';
@@ -2146,9 +2213,27 @@ function PropertyListItem({ property, active, onClick }) {
         </div>
       </button>
       <div className="property-card-actions">
-        <a href={`tel:${OFFICE.phone}`}>전화</a>
-        <a href={`sms:${OFFICE.phone}?body=${inquiryBody}`}>문자</a>
-      </div>
+  {isManagementMode ? (
+    <>
+      <button type="button" onClick={(e) => { e.stopPropagation(); onEdit?.(property); }}>
+        수정
+      </button>
+      <button type="button" onClick={(e) => { e.stopPropagation(); onHold?.(property); }}>
+        보류
+      </button>
+      {isOwnerAdmin && (
+        <button type="button" onClick={(e) => { e.stopPropagation(); onDelete?.(property); }}>
+          삭제
+        </button>
+      )}
+    </>
+  ) : (
+    <>
+      <a href={`tel:${OFFICE.phone}`}>전화</a>
+      <a href={`sms:${OFFICE.phone}?body=${inquiryBody}`}>문자</a>
+    </>
+  )}
+</div>
     </article>
   );
 }
