@@ -9264,77 +9264,51 @@ button.property-list-item,
 
 .customer-map-view {
   position: relative;
-  width: 100vw;
-  height: min(840px, calc(100vh - 18px));
-  min-height: 680px;
-  margin: 36px 0 36px calc(50% - 50vw);
-  overflow: hidden;
-  border-top: 1px solid #d9e3ee;
-  border-bottom: 1px solid #d9e3ee;
-  background: #eaf1f8;
+  width: min(1440px, calc(100vw - 48px));
+  margin: 36px auto;
+  display: grid;
+  grid-template-columns: minmax(320px, 380px) minmax(0, 1fr);
+  grid-template-areas: "panel map";
+  gap: 18px;
+  align-items: stretch;
+  overflow: visible;
 }
 
-.customer-map-canvas,
-.customer-real-map,
-.customer-map-fallback {
-  position: absolute;
-  inset: 0;
+.customer-map-canvas {
+  grid-area: map;
+  position: relative;
+  min-height: 760px;
+  overflow: hidden;
+  border: 1px solid #d9e3ee;
+  border-radius: 28px;
+  background: #eef4f8;
+  box-shadow: 0 18px 44px rgba(15, 23, 42, 0.12);
 }
 
 .customer-real-map {
+  position: absolute;
+  inset: 0;
   z-index: 1;
-  background: transparent;
+  width: 100%;
+  height: 100%;
+  background: #eef4f8;
 }
 
+.customer-real-map > div {
+  width: 100% !important;
+  height: 100% !important;
+}
+
+.customer-static-markers,
 .customer-map-fallback {
-  z-index: 0;
-  background:
-    linear-gradient(135deg, #e8f1f7 0%, #f9fbfd 48%, #e5eef8 100%);
-}
-
-.map-road-line {
-  position: absolute;
-  height: 12px;
-  border-radius: 999px;
-  background: rgba(23, 59, 103, 0.12);
-}
-
-.map-road-line.line-a {
-  width: 76%;
-  left: 18%;
-  top: 43%;
-  transform: rotate(-18deg);
-}
-
-.map-road-line.line-b {
-  width: 58%;
-  left: 28%;
-  top: 63%;
-  transform: rotate(14deg);
-}
-
-.map-region-name {
-  position: absolute;
-  color: rgba(23, 59, 103, 0.18);
-  font-size: clamp(40px, 8vw, 108px);
-  font-weight: 900;
-}
-
-.map-region-name.gumi {
-  left: 44%;
-  top: 34%;
-}
-
-.map-region-name.chilgok {
-  left: 24%;
-  top: 67%;
+  display: none;
 }
 
 .customer-map-topbar {
   position: absolute;
   z-index: 6;
-  left: 430px;
-  right: 22px;
+  left: 18px;
+  right: 18px;
   top: 18px;
   display: flex;
   gap: 8px;
@@ -9388,12 +9362,12 @@ button.property-list-item,
 .map-filter-popover {
   position: absolute;
   z-index: 7;
-  left: 430px;
+  left: 18px;
+  right: 18px;
   top: 82px;
   display: flex;
   flex-wrap: wrap;
   gap: 8px;
-  max-width: min(720px, calc(100vw - 460px));
   padding: 12px;
   border: 1px solid #d9e3ee;
   border-radius: 16px;
@@ -9401,18 +9375,12 @@ button.property-list-item,
   box-shadow: 0 14px 34px rgba(15, 23, 42, 0.16);
 }
 
-.customer-static-markers {
-  position: absolute;
-  inset: 0;
-  z-index: 5;
-  pointer-events: none;
-}
-
-.customer-map-marker,
 .customer-map-naver-marker {
   pointer-events: auto;
-  position: absolute;
-  transform: translate(-50%, -50%);
+  position: static;
+  display: inline-flex;
+  align-items: center;
+  transform: none;
   min-height: 36px;
   border: 0;
   border-radius: 999px;
@@ -9425,44 +9393,28 @@ button.property-list-item,
   cursor: pointer;
 }
 
-.customer-map-naver-marker {
-  position: static;
-  display: inline-flex;
-  align-items: center;
-  transform: none;
-}
-
-.customer-map-marker.featured,
 .customer-map-naver-marker.featured {
   background: #0f2c52;
 }
 
-.customer-map-marker.hot,
 .customer-map-naver-marker.hot {
   background: #dc2626;
 }
 
-.customer-map-marker.profit,
 .customer-map-naver-marker.profit {
   background: #6d28d9;
 }
 
-.customer-map-marker.maintenance,
 .customer-map-naver-marker.maintenance {
   background: #0f766e;
 }
 
-.customer-map-marker.active {
-  outline: 4px solid rgba(23, 59, 103, 0.18);
-}
-
 .map-property-panel {
-  position: absolute;
-  z-index: 8;
-  left: 22px;
-  top: 18px;
-  bottom: 18px;
-  width: 386px;
+  grid-area: panel;
+  position: relative;
+  z-index: 2;
+  width: 100%;
+  min-height: 760px;
   display: grid;
   grid-template-rows: minmax(0, 1fr) auto;
   border: 1px solid #d9e3ee;
@@ -9601,8 +9553,16 @@ button.property-list-item,
   }
 
   .customer-map-view {
-    height: 86vh;
-    min-height: 640px;
+    width: min(100% - 24px, 1440px);
+    grid-template-columns: 1fr;
+    grid-template-areas:
+      "panel"
+      "map";
+    gap: 14px;
+  }
+
+  .customer-map-canvas {
+    min-height: 620px;
   }
 
   .customer-map-topbar {
@@ -9619,12 +9579,8 @@ button.property-list-item,
   }
 
   .map-property-panel {
-    left: 12px;
-    right: 12px;
-    top: auto;
-    bottom: 12px;
-    width: auto;
-    max-height: 46vh;
+    min-height: 0;
+    max-height: none;
     border-radius: 20px;
   }
 
@@ -9673,9 +9629,12 @@ button.property-list-item,
   }
 
   .customer-map-view {
-    min-height: 620px;
-    height: 88vh;
+    width: min(100% - 20px, 1440px);
     margin-top: 28px;
+  }
+
+  .customer-map-canvas {
+    min-height: 560px;
   }
 
   .customer-map-topbar {
@@ -9693,12 +9652,6 @@ button.property-list-item,
     min-height: 38px;
     padding: 0 10px;
     font-size: 12px;
-  }
-
-  .customer-map-marker {
-    min-height: 32px;
-    padding: 0 9px;
-    font-size: 11px;
   }
 
   .map-property-panel h2 {
@@ -10005,84 +9958,4 @@ button.property-list-item,
   margin: 0 !important;
   padding: 0 !important;
   overflow: hidden !important;
-}
-/* 1번 하부 큰 지도 최종 보정 */
-.customer-map-view {
-  position: relative !important;
-  width: 100% !important;
-  max-width: 1440px !important;
-  height: 760px !important;
-  min-height: 760px !important;
-  margin: 36px auto !important;
-  overflow: hidden !important;
-  border-radius: 28px !important;
-  border: 1px solid #d9e3ee !important;
-  background: #eef4f8 !important;
-}
-
-/* 실제 지도는 전체 배경으로 깔기 */
-.customer-map-canvas {
-  position: absolute !important;
-  inset: 0 !important;
-  width: 100% !important;
-  height: 100% !important;
-  overflow: hidden !important;
-  background: #eef4f8 !important;
-}
-
-/* 네이버 실제 지도 */
-.customer-real-map {
-  position: absolute !important;
-  inset: 0 !important;
-  width: 100% !important;
-  height: 100% !important;
-  min-width: 100% !important;
-  min-height: 100% !important;
-  z-index: 1 !important;
-}
-
-/* 네이버 지도 내부 첫 박스 강제 확장 */
-.customer-real-map > div {
-  width: 100% !important;
-  height: 100% !important;
-}
-
-/* 가짜 지도 배경 숨김 */
-.customer-map-fallback {
-  display: none !important;
-}
-
-/* 가짜 가격 마커 숨김 */
-.customer-static-markers {
-  display: none !important;
-}
-
-/* 왼쪽 매물 상세 카드 */
-.map-property-panel {
-  position: absolute !important;
-  left: 20px !important;
-  top: 92px !important;
-  bottom: 20px !important;
-  width: 360px !important;
-  z-index: 10 !important;
-}
-
-/* 상단 검색/필터 줄 */
-.customer-map-topbar {
-  position: absolute !important;
-  left: 420px !important;
-  right: 20px !important;
-  top: 18px !important;
-  z-index: 12 !important;
-}
-
-/* 지도 위 실제 네이버 마커 */
-.customer-map-naver-marker {
-  position: relative !important;
-  z-index: 20 !important;
-}
-
-/* 아래쪽 여백 */
-.page-shell {
-  padding-bottom: 40px !important;
 }

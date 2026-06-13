@@ -1718,12 +1718,6 @@ clearMarkers();
     <section className="customer-map-view" id="map-view">
       <div className="customer-map-canvas">
         <div ref={mapElementRef} className="customer-real-map" />
-        <div className="customer-map-fallback" aria-hidden="true">
-          <span className="map-road-line line-a" />
-          <span className="map-road-line line-b" />
-          <span className="map-region-name gumi">구미</span>
-          <span className="map-region-name chilgok">칠곡</span>
-        </div>
         <div className="customer-map-topbar">
           <div className="map-search-inline">
             <span>⌕</span>
@@ -1773,19 +1767,6 @@ clearMarkers();
           </div>
         )}
 
-        <div className="customer-static-markers">
-          {markerItems.map(({ property, point, markerClass }) => (
-            <button
-              key={property.id}
-              type="button"
-              className={`customer-map-marker ${markerClass} ${selectedProperty?.id === property.id ? 'active' : ''}`}
-              style={{ left: `${point.x}%`, top: `${point.y}%` }}
-              onClick={() => onSelect(property)}
-            >
-              <span>{getMapMarkerLabel(property)}</span>
-            </button>
-          ))}
-        </div>
       </div>
 
       <MapPropertyPanel property={selectedProperty} />
