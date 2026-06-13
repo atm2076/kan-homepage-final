@@ -10006,7 +10006,7 @@ button.property-list-item,
   padding: 0 !important;
   overflow: hidden !important;
 }
-/* 아래 큰 지도 위치 보정 */
+/* 1번 하부 큰 지도 최종 보정 */
 .customer-map-view {
   position: relative !important;
   width: 100% !important;
@@ -10017,30 +10017,43 @@ button.property-list-item,
   overflow: hidden !important;
   border-radius: 28px !important;
   border: 1px solid #d9e3ee !important;
-  background: #eaf1f8 !important;
+  background: #eef4f8 !important;
 }
 
-/* 지도 영역 */
+/* 실제 지도는 전체 배경으로 깔기 */
 .customer-map-canvas {
   position: absolute !important;
-  left: 400px !important;
-  right: 0 !important;
-  top: 0 !important;
-  bottom: 0 !important;
-  width: auto !important;
+  inset: 0 !important;
+  width: 100% !important;
   height: 100% !important;
+  overflow: hidden !important;
+  background: #eef4f8 !important;
 }
 
-/* 실제 지도 */
+/* 네이버 실제 지도 */
 .customer-real-map {
   position: absolute !important;
   inset: 0 !important;
+  width: 100% !important;
+  height: 100% !important;
+  min-width: 100% !important;
+  min-height: 100% !important;
+  z-index: 1 !important;
+}
+
+/* 네이버 지도 내부 첫 박스 강제 확장 */
+.customer-real-map > div {
   width: 100% !important;
   height: 100% !important;
 }
 
 /* 가짜 지도 배경 숨김 */
 .customer-map-fallback {
+  display: none !important;
+}
+
+/* 가짜 가격 마커 숨김 */
+.customer-static-markers {
   display: none !important;
 }
 
@@ -10057,10 +10070,16 @@ button.property-list-item,
 /* 상단 검색/필터 줄 */
 .customer-map-topbar {
   position: absolute !important;
-  left: 20px !important;
+  left: 420px !important;
   right: 20px !important;
   top: 18px !important;
   z-index: 12 !important;
+}
+
+/* 지도 위 실제 네이버 마커 */
+.customer-map-naver-marker {
+  position: relative !important;
+  z-index: 20 !important;
 }
 
 /* 아래쪽 여백 */
