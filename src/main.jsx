@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+import React, { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { createRoot } from 'react-dom/client';
 import { supabase, isSupabaseReady } from './supabaseClient';
 import './styles.css';
@@ -1645,8 +1645,12 @@ function CustomerMapView({ properties, selected, onSelect, keyword, setKeyword, 
     markerClass: getCustomerMarkerClass(property)
   })), [properties]);
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     let mounted = true;
+    let resizeObserver = null;
+    let resizeFrame = null;
+    const resizeTimers = [];
+    let resizeCustomerMap = () => {};
 
     const clearMarkers = () => {
       markersRef.current.forEach((marker) => marker.setMap(null));
@@ -1668,25 +1672,33 @@ function CustomerMapView({ properties, selected, onSelect, keyword, setKeyword, 
 
         mapRef.current = map;
 
-const resizeCustomerMap = () => {
-  if (!mapElementRef.current) return;
+        resizeCustomerMap = () => {
+          if (!mapElementRef.current) return;
 
-  const width = mapElementRef.current.clientWidth;
-  const height = mapElementRef.current.clientHeight;
+          const width = mapElementRef.current.clientWidth;
+          const height = mapElementRef.current.clientHeight;
 
-  if (width > 0 && height > 0) {
-    map.setSize(new naver.maps.Size(width, height));
-    naver.maps.Event.trigger(map, 'resize');
-    map.setCenter(new naver.maps.LatLng(36.1195, 128.3906));
-  }
-};
+          if (width > 0 && height > 0) {
+            map.setSize(new naver.maps.Size(width, height));
+            naver.maps.Event.trigger(map, 'resize');
+            map.setCenter(new naver.maps.LatLng(36.1195, 128.3906));
+          }
+        };
 
-requestAnimationFrame(resizeCustomerMap);
-setTimeout(resizeCustomerMap, 300);
-setTimeout(resizeCustomerMap, 900);
+        resizeFrame = requestAnimationFrame(resizeCustomerMap);
+        [300, 900, 1500, 2500].forEach((delay) => {
+          resizeTimers.push(setTimeout(resizeCustomerMap, delay));
+        });
 
-clearMarkers();
-   markerItems.forEach(({ property, point, markerClass }) => {
+        if (window.ResizeObserver) {
+          resizeObserver = new ResizeObserver(resizeCustomerMap);
+          resizeObserver.observe(mapElementRef.current);
+        }
+
+        window.addEventListener('resize', resizeCustomerMap);
+
+        clearMarkers();
+        markerItems.forEach(({ property, point, markerClass }) => {
           const marker = new naver.maps.Marker({
             position: new naver.maps.LatLng(point.lat, point.lng),
             map,
@@ -1704,6 +1716,10 @@ clearMarkers();
 
     return () => {
       mounted = false;
+      if (resizeFrame) cancelAnimationFrame(resizeFrame);
+      resizeTimers.forEach((timer) => clearTimeout(timer));
+      if (resizeObserver) resizeObserver.disconnect();
+      window.removeEventListener('resize', resizeCustomerMap);
       clearMarkers();
     };
   }, [markerItems, onSelect]);
