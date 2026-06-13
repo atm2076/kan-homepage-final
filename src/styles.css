@@ -10006,3 +10006,30 @@ button.property-list-item,
   padding: 0 !important;
   overflow: hidden !important;
 }
+.customer-map-view {
+  position: relative !important;
+  width: 100vw !important;
+  height: calc(100vh - 88px) !important;
+  min-height: calc(100vh - 88px) !important;
+  margin: 0 0 0 calc(50% - 50vw) !important;
+  overflow: hidden !important;
+  border-top: 1px solid #d9e3ee;
+  border-bottom: 1px solid #d9e3ee;
+  background: #eaf1f8;
+}
+
+.customer-map-canvas,
+.customer-real-map {
+  position: absolute !important;
+  inset: 0 !important;
+  width: 100% !important;
+  height: 100% !important;
+}
+
+.customer-map-fallback {
+  display: none !important;
+}
+
+.page-shell {
+  padding-bottom: 0 !important;
+}
