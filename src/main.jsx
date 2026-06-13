@@ -1667,9 +1667,26 @@ function CustomerMapView({ properties, selected, onSelect, keyword, setKeyword, 
         });
 
         mapRef.current = map;
-        clearMarkers();
 
-        markerItems.forEach(({ property, point, markerClass }) => {
+const resizeCustomerMap = () => {
+  if (!mapElementRef.current) return;
+
+  const width = mapElementRef.current.clientWidth;
+  const height = mapElementRef.current.clientHeight;
+
+  if (width > 0 && height > 0) {
+    map.setSize(new naver.maps.Size(width, height));
+    naver.maps.Event.trigger(map, 'resize');
+    map.setCenter(new naver.maps.LatLng(36.1195, 128.3906));
+  }
+};
+
+requestAnimationFrame(resizeCustomerMap);
+setTimeout(resizeCustomerMap, 300);
+setTimeout(resizeCustomerMap, 900);
+
+clearMarkers();
+   markerItems.forEach(({ property, point, markerClass }) => {
           const marker = new naver.maps.Marker({
             position: new naver.maps.LatLng(point.lat, point.lng),
             map,
