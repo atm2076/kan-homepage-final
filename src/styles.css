@@ -10006,19 +10006,32 @@ button.property-list-item,
   padding: 0 !important;
   overflow: hidden !important;
 }
+/* 아래 큰 지도 위치 보정 */
 .customer-map-view {
   position: relative !important;
-  width: 100vw !important;
-  height: calc(100vh - 88px) !important;
-  min-height: calc(100vh - 88px) !important;
-  margin: 0 0 0 calc(50% - 50vw) !important;
+  width: 100% !important;
+  max-width: 1440px !important;
+  height: 760px !important;
+  min-height: 760px !important;
+  margin: 36px auto !important;
   overflow: hidden !important;
-  border-top: 1px solid #d9e3ee;
-  border-bottom: 1px solid #d9e3ee;
-  background: #eaf1f8;
+  border-radius: 28px !important;
+  border: 1px solid #d9e3ee !important;
+  background: #eaf1f8 !important;
 }
 
-.customer-map-canvas,
+/* 지도 영역 */
+.customer-map-canvas {
+  position: absolute !important;
+  left: 400px !important;
+  right: 0 !important;
+  top: 0 !important;
+  bottom: 0 !important;
+  width: auto !important;
+  height: 100% !important;
+}
+
+/* 실제 지도 */
 .customer-real-map {
   position: absolute !important;
   inset: 0 !important;
@@ -10026,10 +10039,31 @@ button.property-list-item,
   height: 100% !important;
 }
 
+/* 가짜 지도 배경 숨김 */
 .customer-map-fallback {
   display: none !important;
 }
 
+/* 왼쪽 매물 상세 카드 */
+.map-property-panel {
+  position: absolute !important;
+  left: 20px !important;
+  top: 92px !important;
+  bottom: 20px !important;
+  width: 360px !important;
+  z-index: 10 !important;
+}
+
+/* 상단 검색/필터 줄 */
+.customer-map-topbar {
+  position: absolute !important;
+  left: 20px !important;
+  right: 20px !important;
+  top: 18px !important;
+  z-index: 12 !important;
+}
+
+/* 아래쪽 여백 */
 .page-shell {
-  padding-bottom: 0 !important;
+  padding-bottom: 40px !important;
 }
