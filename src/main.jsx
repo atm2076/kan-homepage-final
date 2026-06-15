@@ -2212,9 +2212,40 @@ function PropertyListItem({ property, active, onClick, isManagementMode = false,
           </div>
 
         {isSale ? (
-          <div className="list-price">
-            <b>매매가 {formatAmount(getSaleDisplay(property).salePrice || property.sale_price || property.deposit)}</b>
-          </div>
+         <div className="list-price">
+  {(() => {
+    const saleDisplay = getSaleDisplay(property);
+
+    const acquisitionPrice =
+      property.acquisition_price ||
+      property.takeover_price ||
+      property.investment_price ||
+      property.investment_amount ||
+      saleDisplay.investment;
+
+    const totalRent =
+      property.total_monthly_rent ||
+      saleDisplay.totalRent;
+
+    const netProfit =
+      property.net_profit ||
+      saleDisplay.netProfit;
+
+    return (
+      <>
+        <b>
+          {acquisitionPrice
+            ? `인수가 ${formatAmount(acquisitionPrice)}`
+            : `매매가 ${formatAmount(saleDisplay.salePrice || property.sale_price || property.deposit)}`}
+        </b>
+
+        {totalRent && <em>월세수입 {formatAmount(totalRent)}</em>}
+        {netProfit && <em>월순수익 {formatAmount(netProfit)}</em>}
+        {property.sale_price && <em>매매가 {formatAmount(property.sale_price)}</em>}
+      </>
+    );
+  })()}
+</div>
         ) : (
           <div className="list-price">
             <b>
@@ -2603,10 +2634,17 @@ const infoRows = isSaleProperty
          <div className="big-price">
   {(property.category?.includes('매매') || property.trade_type === '매매') ? (
    <>
-  <span>투자금 {formatAmount(getSaleDisplay(property).investment)}</span>
-  <strong>총월세 {formatAmount(getSaleDisplay(property).totalRent)}</strong>
-  <em>매매가 {formatAmount(getSaleDisplay(property).salePrice)}</em>
-  <em>월순수익 {formatAmount(getSaleDisplay(property).netProfit)}</em>
+ <span>
+  인수가 {formatAmount(
+    property.acquisition_price ||
+    property.takeover_price ||
+    property.investment_price ||
+    getSaleDisplay(property).investment
+  )}
+</span>
+<strong>월세수입 {formatAmount(getSaleDisplay(property).totalRent)}</strong>
+<em>월순수익 {formatAmount(getSaleDisplay(property).netProfit)}</em>
+<em>매매가 {formatAmount(getSaleDisplay(property).salePrice)}</em>
 </>
   ) : (
     <>
