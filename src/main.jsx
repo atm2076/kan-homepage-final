@@ -1616,11 +1616,24 @@ function getCustomerMarkerClass(property = {}) {
   if (property.is_featured || text.includes('추천')) return 'featured';
   return 'default';
 }
-
 function getMapMarkerLabel(property = {}) {
   if (property.category?.includes('매매') || property.trade_type === '매매') {
-    return formatAmount(property.sale_price || getSaleDisplay(property).salePrice || property.deposit);
+    const saleDisplay = getSaleDisplay(property);
+
+    const acquisitionPrice =
+      property.acquisition_price ||
+      property.takeover_price ||
+      property.investment_price ||
+      property.investment_amount ||
+      saleDisplay.investment;
+
+    if (acquisitionPrice) {
+      return `인수 ${formatAmount(acquisitionPrice)}`;
+    }
+
+    return formatAmount(property.sale_price || saleDisplay.salePrice || property.deposit);
   }
+
   return property.rent ? `월 ${formatAmount(property.rent)}` : '문의';
 }
 
