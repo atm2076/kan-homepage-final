@@ -1043,6 +1043,9 @@ function App() {
   const queryMode = useMemo(() => {
     const params = new URLSearchParams(window.location.search);
     const adminParam = params.get('admin');
+    const adminPaths = ['/admin', '/admin/login', '/dashboard'];
+    const currentPath = window.location.pathname.replace(/\/+$/, '') || '/';
+    if (adminPaths.includes(currentPath)) return 'admin';
     if (adminParam === 'staff') return 'staff';
     if (adminParam === 'owner') return 'admin';
     if (adminParam === '1') return 'admin';
@@ -4303,6 +4306,13 @@ if (isStaffMode && currentStaff?.code) {
             현재 접속: <strong>{accessLabel}</strong>
           </div>
         )}
+        <nav className="admin-menu-strip" aria-label="관리자 메뉴">
+          {['매물등록', '매물관리', '대표검수', '직원관리', '광고연동', '블로그연동'].map((label) => (
+            <a key={label} href={`#admin-${label}`}>
+              {label}
+            </a>
+          ))}
+        </nav>
 
         {!mode ? (
           <div className="mode-choice">

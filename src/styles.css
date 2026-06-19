@@ -1008,6 +1008,37 @@ img {
   font-weight: 950;
 }
 
+.admin-menu-strip {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 0 0 18px;
+  padding: 12px;
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  background: #f8fafc;
+}
+
+.admin-menu-strip a {
+  display: inline-flex;
+  align-items: center;
+  min-height: 38px;
+  padding: 8px 13px;
+  border: 1px solid #d8dee9;
+  border-radius: 10px;
+  background: #fff;
+  color: #1f2937;
+  font-size: 14px;
+  font-weight: 900;
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+.admin-menu-strip a:hover {
+  border-color: var(--brown);
+  color: var(--brown-dark);
+}
+
 .icon-btn {
   width: 44px;
   height: 44px;
