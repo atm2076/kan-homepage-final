@@ -1125,8 +1125,8 @@ function App() {
     if (target) target.scrollIntoView({ behavior: 'smooth', block: 'start' });
   }
 
-  const isManagementMode = isAdminRoute && isAdmin;
-  const isOwnerAdmin = portalMode === 'admin' && isAdmin;
+ const isOwnerAdmin = portalMode === 'admin' && isAdmin;
+const isManagementMode = isOwnerAdmin;
 
 function handleQuickEditProperty(property) {
   setSelected(property);
