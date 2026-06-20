@@ -5936,77 +5936,229 @@ function buildDaangnRegistrationHelper(property) {
 }
 function buildNaverBlogAd(property) {
   const clean = (value) => String(value || '').trim();
+  const compact = (value) => clean(value).replace(/\s+/g, ' ');
+  const toList = (value) => toTextList(value).map(clean).filter(Boolean);
+
   const photos = Array.isArray(property.photos)
-    ? property.photos
-    : toTextList(property.photos);
+    ? property.photos.map(clean).filter(Boolean)
+    : toList(property.photos);
+
   const options = [
-    ...toTextList(property.convenience),
-    ...toTextList(property.safety),
-    ...toTextList(property.education)
+    ...toList(property.convenience),
+    ...toList(property.safety),
+    ...toList(property.education)
   ];
-  const addLine = (label, value) => {
-    const text = clean(value);
-    return text ? `${label}: ${text}` : '';
+
+  const maintenanceItems = toList(property.maintenance_includes);
+
+  const category = clean(property.category) || '부동산 매물';
+  const tradeType = clean(property.trade_type) || '거래형태 확인';
+  const address = clean(property.address) || '구미시 일원';
+  const isSale =
+    category.includes('매매') ||
+    tradeType === '매매';
+
+  const getDong = (value) => {
+    const text = clean(value)
+      .replace('경상북도', '')
+      .replace('경북', '')
+      .replace('구미시', '')
+      .trim();
+
+    const match = text.match(/([가-힣0-9]+(?:동|읍|면|리))/);
+    return match ? match[1] : '';
   };
-  const addSection = (label, value) => {
+
+  const dong = getDong(address);
+  const locationTitle = dong ? `구미 ${dong}` : '구미';
+
+  const moneyText = (value) => {
     const text = clean(value);
-    return text ? [`[${label}]`, text] : [];
+    if (!text) return '';
+    if (text.includes('억') || text.includes('만') || text.includes('원')) return text;
+    if (/^\d+(\.\d+)?$/.test(text.replaceAll(',', ''))) return `${Number(text.replaceAll(',', '')).toLocaleString()}만원`;
+    return text;
   };
-  const bodyLines = [
-    clean(property.title),
+
+  const priceText = isSale
+    ? [
+        property.sale_price ? `매매가 ${moneyText(property.sale_price)}` : '',
+        property.acquisition_price ? `인수가 ${moneyText(property.acquisition_price)}` : '',
+        property.total_monthly_rent ? `총월세 ${moneyText(property.total_monthly_rent)}` : '',
+        property.net_profit ? `월순수익 ${moneyText(property.net_profit)}` : ''
+      ].filter(Boolean).join(' / ') || '가격 상담 시 확인'
+    : [
+        property.deposit ? `보증금 ${moneyText(property.deposit)}` : '',
+        property.rent ? `월세 ${moneyText(property.rent)}` : '',
+        property.maintenance_fee ? `관리비 ${clean(property.maintenance_fee)}` : ''
+      ].filter(Boolean).join(' / ') || '가격 상담 시 확인';
+
+  const titleBenefit = [
+    clean(property.maintenance_fee).includes('포함') ? '관리비포함' : '',
+    clean(property.move_in).includes('즉시') ? '즉시입주' : '',
+    clean(property.parking).includes('가능') ? '주차가능' : '',
+    clean(property.remodeling) ? '리모델링' : ''
+  ].filter(Boolean)[0] || '';
+
+  const generatedTitle = [
+    locationTitle,
+    category,
+    tradeType,
+    isSale
+      ? (property.acquisition_price ? `인수가 ${moneyText(property.acquisition_price)}` : moneyText(property.sale_price))
+      : [moneyText(property.deposit), moneyText(property.rent)].filter(Boolean).join('/'),
+    titleBenefit
+  ].filter(Boolean).join(' ');
+
+  const title = compact(generatedTitle || property.title || `${locationTitle} ${category}`);
+
+  const addInfo = (label, value) => {
+    const text = clean(value);
+    return `- ${label}: ${text || '계약 전 확인'}`;
+  };
+
+  const photoGuide = photos.length
+    ? photos.map((url, index) => {
+        const guide =
+          index === 0 ? '대표사진 또는 외관 사진' :
+          index === 1 ? '방 내부 전체 모습' :
+          index === 2 ? '주방 또는 옵션 사진' :
+          index === 3 ? '욕실 또는 세탁공간' :
+          index === 4 ? '현관/수납/주차 등 추가 사진' :
+          '추가 상세 사진';
+
+        return `사진 ${index + 1}. ${guide}\n${url}`;
+      }).join('\n\n')
+    : '사진은 상담 시 확인 가능합니다.';
+
+  const recommendText = clean(property.recommended_for) ||
+    (isSale
+      ? '구미 수익형 부동산, 다가구주택, 원룸건물 투자를 검토하시는 분께 추천드립니다.'
+      : `${locationTitle}에서 월세 조건, 생활권, 출퇴근 동선을 함께 보고 싶은 분께 추천드립니다.`);
+
+  const optionText = options.length
+    ? options.join(', ')
+    : '옵션 및 내부 상태는 현장 확인 후 안내드립니다.';
+
+  const maintenanceText = maintenanceItems.length
+    ? maintenanceItems.join(', ')
+    : clean(property.maintenance_fee) || '계약 전 확인';
+
+  const body = cleanBlogBodyStart([
+    title,
     '',
-    '[매물 원본 정보]',
-    addLine('매물명', property.title),
-    addLine('카테고리', property.category),
-    addLine('거래형태', property.trade_type),
-    addLine('주소', property.address),
-    addLine('매매가', property.sale_price),
-    addLine('보증금', property.deposit),
-    addLine('월세', property.rent),
-    addLine('총월세', property.total_monthly_rent),
-    addLine('인수가', property.acquisition_price),
-    addLine('관리비', property.maintenance_fee),
-    addLine('면적', property.area),
-    addLine('대지면적', property.land_area),
-    addLine('연면적', property.building_area || property.total_area),
-    addLine('층수', property.total_floor_info || property.floor_info),
-    addLine('방/욕실', property.room_bath),
-    addLine('방향', property.direction),
-    addLine('주차', property.parking),
-    addLine('입주가능일', property.move_in),
-    addLine('사용승인일', property.approval_date),
-    addLine('주용도', property.main_use),
+    `안녕하세요. 구미 원룸·투룸·상가·다가구 매매를 안내하는 칸공인중개사입니다.`,
+    `오늘 소개드릴 매물은 ${locationTitle}에 위치한 ${category} ${tradeType} 매물입니다.`,
+    `${locationTitle} ${category}를 찾고 계신 분들이 가격, 위치, 구조, 관리비 조건을 한 번에 비교해 보실 수 있도록 핵심 내용을 정리해 드립니다.`,
     '',
-    ...addSection('한줄 요약', property.summary),
+    '[매물 핵심 요약]',
+    addInfo('소재지', address),
+    addInfo('매물종류', category),
+    addInfo('거래형태', tradeType),
+    addInfo('가격조건', priceText),
+    addInfo('관리비', property.maintenance_fee),
+    addInfo('면적', property.area),
+    addInfo('층수', property.total_floor_info || property.floor_info),
+    addInfo('방/욕실', property.room_bath),
+    addInfo('방향', property.direction),
+    addInfo('주차', property.parking),
+    addInfo('입주가능일', property.move_in),
+    addInfo('사용승인일', property.approval_date),
     '',
-    ...addSection('상세 설명', property.description),
+    '[위치와 생활권]',
+    clean(property.location_description) ||
+      `${locationTitle} 생활권에 있는 매물입니다. 주변 편의시설, 출퇴근 동선, 대중교통 이용 여부는 상담 시 매물 위치 기준으로 자세히 안내드리겠습니다.`,
+    property.education?.length ? property.education.join(', ') : '',
     '',
-    ...addSection('투자 포인트', property.investment_point),
+    '[구조와 내부 상태]',
+    clean(property.summary) || `${category} 구조의 매물로, 실제 조건은 현장 확인 후 안내드립니다.`,
+    clean(property.description) || '사진과 현장 상태를 기준으로 내부 구조, 옵션, 채광, 소음 여부 등을 확인해 드리겠습니다.',
+    property.room_bath ? `방/욕실 구성은 ${property.room_bath}입니다.` : '',
+    property.area ? `면적은 ${property.area} 기준으로 안내드립니다.` : '',
+    property.floor_info ? `층수 정보는 ${property.floor_info}입니다.` : '',
     '',
-    ...addSection('위치 설명', property.location_description),
+    '[옵션 및 관리비]',
+    `옵션: ${optionText}`,
+    `관리비 포함 항목: ${maintenanceText}`,
+    clean(property.elevator) ? `엘리베이터: ${property.elevator}` : '',
+    clean(property.structure) ? `건물 구조: ${property.structure}` : '',
     '',
-    ...addSection('추천 대상', property.recommended_for),
+    '[주차·입주·방향]',
+    `주차: ${clean(property.parking) || '계약 전 확인'}`,
+    `입주가능일: ${clean(property.move_in) || '계약 전 확인'}`,
+    `방향: ${clean(property.direction) || '계약 전 확인'}`,
     '',
-    ...addSection('참고사항', property.risk_note),
+    '[이런 분께 추천드립니다]',
+    recommendText,
     '',
-    options.length ? '[옵션/생활 정보]' : '',
-    options.join('\n'),
+    isSale ? '[투자 검토 포인트]' : '[임대 검토 포인트]',
+    isSale
+      ? [
+          property.investment_point ? clean(property.investment_point) : '월세수입, 인수가, 융자 조건, 공실 여부를 함께 검토해 볼 수 있는 매물입니다.',
+          property.risk_note ? `참고사항: ${clean(property.risk_note)}` : ''
+        ].filter(Boolean).join('\n')
+      : '보증금, 월세, 관리비, 입주일, 옵션 상태를 함께 비교하시면 실제 월 지출을 판단하기 좋습니다.',
     '',
-    photos.length ? '[사진 URL]' : '',
-    photos.map((url, index) => `${index + 1}. ${url}`).join('\n'),
+    '[사진 안내]',
+    photoGuide,
     '',
-    clean(property.legal_notice)
-  ].filter((line, index, list) => line || list[index - 1]);
-  const rawTags = toTextList(property.internal_tags)
-    .map((tag) => String(tag).trim())
-    .filter(Boolean);
+    '[문의 안내]',
+    '매물은 현장 상황에 따라 계약 진행 여부나 조건이 달라질 수 있습니다.',
+    '방문 전 전화 또는 문자로 매물 가능 여부를 확인해 주시면 빠르게 안내드리겠습니다.',
+    '',
+    `칸공인중개사사무소`,
+    `대표공인중개사: ${OFFICE.broker}`,
+    `문의: ${OFFICE.phone} / ${OFFICE.tel}`,
+    `주소: ${OFFICE.address}`,
+    `등록번호: ${OFFICE.regNo}`,
+    '',
+    '[중개대상물 표시·광고 사항]',
+    addInfo('중개대상물 종류', category),
+    addInfo('거래형태', tradeType),
+    addInfo('소재지', address),
+    addInfo('거래가격', priceText),
+    addInfo('관리비', property.maintenance_fee),
+    addInfo('면적', property.area),
+    addInfo('층수', property.total_floor_info || property.floor_info),
+    addInfo('방/욕실', property.room_bath),
+    addInfo('방향', property.direction),
+    addInfo('입주가능일', property.move_in),
+    addInfo('주차', property.parking),
+    addInfo('사용승인일', property.approval_date),
+    clean(property.legal_notice),
+    '',
+    '※ 위 내용은 등록된 매물 정보를 기준으로 작성되었으며, 세부 조건은 계약 전 현장 및 공부서류 확인 후 최종 안내드립니다.'
+  ].filter((line) => line !== '').join('\n'));
+
+  const makeTag = (value) => String(value || '')
+    .replace(/[#\s]/g, '')
+    .replace(/[^0-9A-Za-z가-힣_]/g, '');
+
+  const tagSeeds = [
+    '구미부동산',
+    '칸공인중개사',
+    dong ? `구미${dong}` : '',
+    dong && category ? `${dong}${category}` : '',
+    category.includes('원룸') ? '구미원룸' : '',
+    category.includes('투룸') ? '구미투룸' : '',
+    category.includes('상가') ? '구미상가임대' : '',
+    isSale ? '구미다가구매매' : '',
+    isSale ? '구미수익형부동산' : '',
+    tradeType.includes('월세') ? '구미월세' : '',
+    `${makeTag(category)}${makeTag(tradeType)}`
+  ];
+
+  const tags = [...new Set(tagSeeds.map(makeTag).filter(Boolean))]
+    .map((tag) => `#${tag}`)
+    .join(' ');
 
   return {
-    title: clean(property.title),
-    body: cleanBlogBodyStart(bodyLines.join('\n')),
-    tags: [...new Set(rawTags)].join(' ')
+    title,
+    body,
+    tags
   };
 }
+
 async function copyAdvertisementText(text) {
   try {
     await navigator.clipboard.writeText(text);
