@@ -5864,6 +5864,10 @@ function buildDaangnRegistrationHelper(property) {
     copyText
   };
 }
+function cleanBlogBodyStart(text) {
+  return String(text || '').trimStart();
+}
+
 function buildNaverBlogAd(property) {
   const clean = (value) => String(value || '').trim();
   const compact = (value) => clean(value).replace(/\s+/g, ' ');
