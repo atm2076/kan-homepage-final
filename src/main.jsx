@@ -3628,86 +3628,16 @@ function buildPublishTags(data, extraTags = []) {
 
 function buildBlogPublishData() {
   const data = getPublishSnapshot();
-  const propertyType = getPublishPropertyType(data);
-  const tradeType = compactPublishText(data.trade_type || '');
-  const hasPrice = [data.sale_price, data.deposit, data.rent].some((value) => compactPublishText(value));
-  const priceText = hasPrice ? getPublishPriceText(data) : '';
-  const photos = Array.isArray(data.photos) ? data.photos : linesToArray(data.photosText);
-  const options = [
-    ...linesToArray(data.convenienceText),
-    ...linesToArray(data.safetyText),
-    ...linesToArray(data.educationText)
-  ].filter(Boolean);
-  const title = compactPublishText(data.title);
-  const addLine = (label, value) => {
-    const text = compactPublishText(value);
-    return text ? `- ${label}: ${text}` : '';
-  };
-  const addSection = (label, value) => {
-    const text = String(value || '').trim();
-    return text ? [`■ ${label}`, text] : [];
-  };
-  const bodyLines = [
-    title,
-    '',
-    '■ 매물 원본 정보',
-    addLine('매물명', data.title),
-    addLine('카테고리', propertyType),
-    addLine('거래형태', tradeType),
-    addLine('주소', data.address),
-    addLine('가격', priceText),
-    addLine('매매가', data.sale_price),
-    addLine('보증금', data.deposit),
-    addLine('월세', data.rent),
-    addLine('총월세', data.total_monthly_rent),
-    addLine('인수가', data.acquisition_price),
-    addLine('대지면적', data.land_area),
-    addLine('연면적', data.building_area || data.total_area),
-    addLine('면적', data.area),
-    addLine('층수', data.total_floor_info || data.floor_info),
-    addLine('방/욕실', data.room_bath),
-    addLine('관리비', data.maintenance_fee),
-    addLine('방향', data.direction),
-    addLine('주차', data.parking),
-    addLine('입주가능일', data.move_in),
-    addLine('사용승인일', data.approval_date),
-    addLine('주용도', data.main_use),
-    '',
-    ...addSection('한줄 요약', data.summary),
-    '',
-    ...addSection('상세 설명', data.description),
-    '',
-    ...addSection('투자 포인트', data.investment_point),
-    '',
-    ...addSection('위치 설명', data.location_description),
-    '',
-    ...addSection('참고사항', data.risk_note),
-    '',
-    options.length ? '■ 옵션' : '',
-    options.length ? options.join(', ') : ''
-  ].filter((line, index, list) => line || list[index - 1]);
 
-  const body = cleanBlogBodyStart([
-    ...bodyLines,
-    '',
-    '■ 사진 URL',
-    photos.length ? photos.map((url, index) => `${index + 1}. ${url}`).join('\n') : '사진 URL 없음',
-    '',
-    '■ 중개사무소 정보',
-    '칸공인중개사사무소',
-    '대표: 정점식',
-    '등록번호: 제47190-2023-00014',
-    '주소: 경상북도 구미시 인의동 991-4번지 4층',
-    '연락처: 010-5323-3883 / 054-474-0367'
-  ].join('\n'));
-
-  return {
-    title,
-    body,
-    tags: buildPublishTags(data, ['구미방구하기', '구미자취방'])
-  };
+  return buildNaverBlogAd({
+    ...data,
+    photos: Array.isArray(data.photos) ? data.photos : linesToArray(data.photosText),
+    convenience: linesToArray(data.convenienceText),
+    safety: linesToArray(data.safetyText),
+    education: linesToArray(data.educationText),
+    maintenance_includes: data.maintenance_includes
+  });
 }
-
 function buildInstagramPublishData() {
   const data = getPublishSnapshot();
   const dong = getPublishDong(data.address);
