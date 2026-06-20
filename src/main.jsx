@@ -267,9 +267,13 @@ const PUBLIC_PROPERTY_COLUMNS = [
   'convenience',
   'safety',
   'education',
-  'is_featured',
+ 'is_featured',
   'status',
-    'staff_name',
+  'latitude',
+ 'longitude',
+ 'geocode_status',
+  'geocoded_at',
+ 'staff_name',
   'staff_code',
   'created_by',
   'updated_by',
@@ -1594,9 +1598,22 @@ const CUSTOMER_MAP_AREAS = [
 ];
 
 function getPropertyMapPoint(property = {}, index = 0) {
+  const lat = Number(property.latitude);
+  const lng = Number(property.longitude);
+
+  if (Number.isFinite(lat) && Number.isFinite(lng)) {
+    return {
+      lat,
+      lng,
+      x: 50,
+      y: 50
+    };
+  }
+
   const text = `${property.address || ''} ${property.title || ''}`;
   const base = CUSTOMER_MAP_AREAS.find((area) => text.includes(area.key)) || CUSTOMER_MAP_AREAS[CUSTOMER_MAP_AREAS.length - 1];
   const offset = ((index % 5) - 2) * 0.004;
+
   return {
     lat: base.lat + offset,
     lng: base.lng + ((index % 3) - 1) * 0.004,
