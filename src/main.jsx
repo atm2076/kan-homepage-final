@@ -5450,7 +5450,6 @@ if (isStaffMode && currentStaff?.code) {
     <p className="muted">사진을 보고 매물을 확인한 뒤 수정 또는 광고올리기를 누르세요.</p>
     <AdminPropertyTabs property={adminDetailProperty} activeTab={adminDetailTab} setActiveTab={setAdminDetailTab} />
 
-```
 {properties.map((property) => {
   const isSale =
     property.category?.includes('매매') ||
@@ -5640,7 +5639,6 @@ if (isStaffMode && currentStaff?.code) {
     </div>
   );
 })}
-```
 
   </div>
 )}
