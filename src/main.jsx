@@ -2916,6 +2916,7 @@ const [buildingLedgerSearching, setBuildingLedgerSearching] = useState(false);
   const [quickTitleKeyword, setQuickTitleKeyword] = useState('');
   const [publishTab, setPublishTab] = useState('');
   const latestFormRef = useRef(form);
+  const [advertisingPropertyId, setAdvertisingPropertyId] = useState(null);
   const adminPassword = import.meta.env.VITE_ADMIN_PASSWORD || ['3', '8', '8', '3'].join('');
   const staffPassword = import.meta.env.VITE_STAFF_PASSWORD || ['0', '0', '0', '0'].join('');
   const isStaffMode = mode === 'staff';
@@ -4230,7 +4231,7 @@ if (isStaffMode && currentStaff?.code) {
           </div>
         )}
         <nav className="admin-menu-strip" aria-label="관리자 메뉴">
-          {['매물등록', '매물관리', '대표검수', '직원관리', '광고연동', '블로그연동'].map((label) => (
+          {['매물등록', '매물관리', '대표검수', '직원관리'].map((label) => (
             <a key={label} href={`#admin-${label}`}>
               {label}
             </a>
@@ -5443,43 +5444,207 @@ if (isStaffMode && currentStaff?.code) {
             )}
 
             {canEditExisting && (
-            <div className="admin-list">
-              <h3>등록 매물</h3>
-              <AdminPropertyTabs property={adminDetailProperty} activeTab={adminDetailTab} setActiveTab={setAdminDetailTab} />
-              {properties.map((property) => (
-                <div className="admin-list-item" key={property.id}>
-                  <div className="admin-item-title">
-                    <strong>{property.title}</strong>
-                    <em className={`status-chip status-${property.status || 'pending'}`}>
-                      {STATUS_LABELS[property.status || 'pending'] || property.status}
-                    </em>
-                    {hasPrivateAdminInfo(property) && (
-                      <button
-                        type="button"
-                        className="memo-icon-button"
-                        title="비공개 메모 보기"
-                        onClick={() => {
-                          setAdminDetailProperty(property);
-                          setAdminDetailTab('memo');
-                        }}
-                      >
-                        메모
-                      </button>
-                    )}
-                  </div>
-                  <span>{(property.category?.includes('매매') || property.trade_type === '매매') ? `매매가 ${formatAmount(property.sale_price)} / 총월세 ${formatAmount(property.total_monthly_rent)}` : `보증금 ${formatAmount(property.deposit)} / 월세 ${formatAmount(property.rent)}`}</span>
-                  <div>
-                    <button onClick={() => { setAdminDetailProperty(property); setAdminDetailTab('public'); }}>상세</button>
-                    <button onClick={() => startEdit(property)}>수정</button>
-                    <button onClick={() => changePropertyStatus(property.id, 'published')}>승인</button>
-                    <button onClick={() => changePropertyStatus(property.id, 'hold')}>보류</button>
-                    <button onClick={() => changePropertyStatus(property.id, 'pending')}>대기</button>
-                    <button onClick={() => deleteProperty(property.id)}>삭제</button>
-                  </div>
-                </div>
-              ))}
+
+  <div className="admin-list">
+    <h3>등록 매물</h3>
+    <p className="muted">사진을 보고 매물을 확인한 뒤 수정 또는 광고올리기를 누르세요.</p>
+    <AdminPropertyTabs property={adminDetailProperty} activeTab={adminDetailTab} setActiveTab={setAdminDetailTab} />
+
+```
+{properties.map((property) => {
+  const isSale =
+    property.category?.includes('매매') ||
+    property.trade_type === '매매';
+
+  const representativePhoto =
+    Array.isArray(property.photos) && property.photos.length
+      ? property.photos[0]
+      : '';
+
+  const isAdvertisingOpen = advertisingPropertyId === property.id;
+
+  const statusText =
+    STATUS_LABELS[property.status || 'pending'] ||
+    property.status ||
+    '임시저장';
+
+  const instagramText = [
+    `🏠 ${property.title || '구미 부동산 매물'}`,
+    `📍 ${property.address || '구미시'}`,
+    isSale
+      ? `💰 매매가 ${formatAmount(property.sale_price)} / 인수가 ${formatAmount(property.acquisition_price)}`
+      : `💰 보증금 ${formatAmount(property.deposit)} / 월세 ${formatAmount(property.rent)}`,
+    property.summary || '',
+    '',
+    '#구미부동산 #구미원룸 #구미투룸 #구미다가구매매 #칸공인중개사'
+  ].filter(Boolean).join('\n');
+
+  const facebookText = [
+    property.title || '구미 부동산 매물 안내',
+    '',
+    `위치: ${property.address || '구미시'}`,
+    isSale
+      ? `매매가: ${formatAmount(property.sale_price)} / 인수가: ${formatAmount(property.acquisition_price)} / 월세수입: ${formatAmount(property.total_monthly_rent)} / 월순수익: ${formatAmount(property.net_profit)}`
+      : `보증금: ${formatAmount(property.deposit)} / 월세: ${formatAmount(property.rent)} / 관리비: ${property.maintenance_fee || '확인 필요'}`,
+    '',
+    property.summary || property.description || '',
+    '',
+    `문의: ${OFFICE.phone}`
+  ].filter(Boolean).join('\n');
+
+  return (
+    <div className="admin-list-item" key={property.id}>
+      <div
+        style={{
+          display: 'grid',
+          gridTemplateColumns: '96px 1fr',
+          gap: '12px',
+          alignItems: 'start'
+        }}
+      >
+        <div>
+          {representativePhoto ? (
+            <img
+              src={representativePhoto}
+              alt="대표사진"
+              style={{
+                width: '96px',
+                height: '82px',
+                objectFit: 'cover',
+                borderRadius: '10px',
+                border: '1px solid #e5e7eb'
+              }}
+            />
+          ) : (
+            <div
+              style={{
+                width: '96px',
+                height: '82px',
+                borderRadius: '10px',
+                border: '1px solid #e5e7eb',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                fontSize: '12px',
+                color: '#64748b',
+                background: '#f8fafc'
+              }}
+            >
+              사진 없음
             </div>
-            )}
+          )}
+        </div>
+
+        <div>
+          <div className="admin-item-title">
+            <strong>{property.title || '제목 미입력 매물'}</strong>
+            <em className={`status-chip status-${property.status || 'pending'}`}>
+              {statusText}
+            </em>
+          </div>
+
+          <p className="muted" style={{ margin: '4px 0 8px' }}>
+            {property.address || '주소 미입력'}
+          </p>
+
+          <span>
+            {isSale
+              ? `매매가 ${formatAmount(property.sale_price)} / 인수가 ${formatAmount(property.acquisition_price)} / 월세수입 ${formatAmount(property.total_monthly_rent)} / 월순수익 ${formatAmount(property.net_profit)}`
+              : `보증금 ${formatAmount(property.deposit)} / 월세 ${formatAmount(property.rent)} / 관리비 ${property.maintenance_fee || '확인 필요'}`}
+          </span>
+
+          <div style={{ marginTop: '10px', display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+            <button type="button" onClick={() => startEdit(property)}>
+              수정
+            </button>
+
+            <button
+              type="button"
+              onClick={() =>
+                setAdvertisingPropertyId(isAdvertisingOpen ? null : property.id)
+              }
+            >
+              광고올리기
+            </button>
+
+            <button
+              type="button"
+              onClick={() => changePropertyStatus(property.id, 'hold')}
+            >
+              보류
+            </button>
+          </div>
+
+          {isAdvertisingOpen && (
+            <div
+              style={{
+                marginTop: '10px',
+                padding: '10px',
+                border: '1px solid #e5e7eb',
+                borderRadius: '10px',
+                background: '#f8fafc',
+                display: 'flex',
+                gap: '8px',
+                flexWrap: 'wrap'
+              }}
+            >
+              <button
+                type="button"
+                onClick={async () => {
+                  const blogAd = buildNaverBlogAd(property);
+                  const copied = await copyAdvertisementText(
+                    `${blogAd.title}\n\n${blogAd.body}\n\n${blogAd.tags}`
+                  );
+                  setStatus(copied ? '네이버 블로그 원고 복사 완료' : '복사 실패');
+                }}
+              >
+                네이버 블로그
+              </button>
+
+              <button
+                type="button"
+                onClick={async () => {
+                  const daangnAd = buildDaangnAd(property);
+                  const copied = await copyAdvertisementText(
+                    `${daangnAd.title}\n\n${daangnAd.body}`
+                  );
+                  setStatus(copied ? '당근 문구 복사 완료' : '복사 실패');
+                }}
+              >
+                당근
+              </button>
+
+              <button
+                type="button"
+                onClick={async () => {
+                  const copied = await copyAdvertisementText(instagramText);
+                  setStatus(copied ? '인스타 문구 복사 완료' : '복사 실패');
+                }}
+              >
+                인스타 문구
+              </button>
+
+              <button
+                type="button"
+                onClick={async () => {
+                  const copied = await copyAdvertisementText(facebookText);
+                  setStatus(copied ? '페이스북 문구 복사 완료' : '복사 실패');
+                }}
+              >
+                페이스북 문구
+              </button>
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+})}
+```
+
+  </div>
+)}
+
           </div>
         )}
       </div>
