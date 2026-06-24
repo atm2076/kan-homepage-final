@@ -1038,6 +1038,31 @@ function getSaleDisplay(property) {
       ''
   };
 }
+function getSaleCardPrimaryPrice(property = {}) {
+  const saleDisplay = getSaleDisplay(property);
+
+  const investmentPrice =
+    property.acquisition_price ||
+    property.takeover_price ||
+    property.investment_price ||
+    property.investment_amount ||
+    saleDisplay.investment;
+
+  if (investmentPrice) {
+    return {
+      label: '\uC778\uC218\uAC00',
+      value: investmentPrice,
+      saleDisplay
+    };
+  }
+
+  return {
+    label: '\uB9E4\uB9E4\uAC00',
+    value: saleDisplay.salePrice || property.sale_price || property.deposit || '',
+    saleDisplay
+  };
+}
+
 function App() {
   const queryMode = useMemo(() => {
     const params = new URLSearchParams(window.location.search);
@@ -2223,6 +2248,7 @@ function PropertyListItem({ property, active, onClick, isManagementMode = false,
   const moveInText = String(property.move_in || '').includes('즉시') ? '즉시입주' : (property.move_in || '입주 협의');
   const maintenanceText = formatMaintenanceFee(property.maintenance_fee);
   const regionText = shortAddress(property.address);
+  const primarySalePrice = isSale ? getSaleCardPrimaryPrice(property) : null;
 
   return (
     <article className={`property-list-item customer-property-card ${active ? 'active' : ''}`}>
@@ -2240,40 +2266,19 @@ function PropertyListItem({ property, active, onClick, isManagementMode = false,
           </div>
 
         {isSale ? (
-         <div className="list-price">
-  {(() => {
-    const saleDisplay = getSaleDisplay(property);
+          <div className="list-price">
+            <b>
+              {primarySalePrice.label} {formatMoney(primarySalePrice.value)}
+            </b>
 
-    const acquisitionPrice =
-      property.acquisition_price ||
-      property.takeover_price ||
-      property.investment_price ||
-      property.investment_amount ||
-      saleDisplay.investment;
-
-    const totalRent =
-      property.total_monthly_rent ||
-      saleDisplay.totalRent;
-
-    const netProfit =
-      property.net_profit ||
-      saleDisplay.netProfit;
-
-    return (
-      <>
-        <b>
-          {acquisitionPrice
-            ? `인수가 ${formatAmount(acquisitionPrice)}`
-            : `매매가 ${formatAmount(saleDisplay.salePrice || property.sale_price || property.deposit)}`}
-        </b>
-
-        {totalRent && <em>월세수입 {formatAmount(totalRent)}</em>}
-        {netProfit && <em>월순수익 {formatAmount(netProfit)}</em>}
-        {property.sale_price && <em>매매가 {formatAmount(property.sale_price)}</em>}
-      </>
-    );
-  })()}
-</div>
+            {primarySalePrice.saleDisplay.totalRent && (
+              <em>월세수입 {formatMoney(primarySalePrice.saleDisplay.totalRent)}</em>
+            )}
+            {primarySalePrice.saleDisplay.netProfit && (
+              <em>월순수입 {formatMoney(primarySalePrice.saleDisplay.netProfit)}</em>
+            )}
+            {primarySalePrice.saleDisplay.salePrice && <em>매매가 {formatMoney(primarySalePrice.saleDisplay.salePrice)}</em>}
+          </div>
         ) : (
           <div className="list-price">
             <b>
