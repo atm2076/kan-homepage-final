@@ -1,7 +1,9 @@
-const CACHE_NAME = 'khan-homepage-pwa-v1';
+const CACHE_NAME = 'khan-homepage-pwa-v2';
 const APP_SHELL = [
   '/',
   '/manifest.json',
+  '/manifest.webmanifest',
+  '/apple-touch-icon.png',
   '/icon-192.png',
   '/icon-512.png'
 ];
