@@ -2518,12 +2518,6 @@ const infoRows = isSaleProperty
             </div>
           </section>
 
-          <section className="content-card">
-            <h2>사진별 설명</h2>
-            <PhotoCaptionList photos={photos} captions={property.photo_captions} />
-            {!linesToArray(property.photo_captions).length && <p className="muted">사진별 설명은 상담 시 추가로 안내드립니다.</p>}
-          </section>
-
           {hasMap && (
             <section id="detail-location" className="content-card">
               <h2>위치 및 주변시설</h2>
