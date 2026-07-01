@@ -172,7 +172,7 @@ const OPTION_PRESETS = {
   educationText: ['편의점 인근', '버스 이용 편리', '공단 출퇴근 동선', '마트 인근', '식당가 인근', '병원 인근', '학교 인근', '주차 편리', '조용한 주거지']
 };
 
-const QUICK_PROPERTY_TYPES = ['원룸', '미니투룸', '투룸', '쓰리룸 이상', '아파트', '상가/사무실', '토지', '다가구매매', '원룸건물매매'];
+const QUICK_PROPERTY_TYPES = ['원룸', '미니투룸', '투룸', '쓰리룸 이상', '아파트', '상가/사무실', '토지', '다가구/원룸건물 매매', '상가건물 매매'];
 const QUICK_TRADE_TYPES = ['월세', '전세', '반전세', '매매'];
 const MAINTENANCE_TYPES = ['관리비포함', '관리비별도', '관리비없음', '확인필요'];
 const MAINTENANCE_ITEMS = ['인터넷', '유선방송', '공용전기', '수도요금', '공용청소비', '관리용역비', '승강기유지비', '주차비'];
@@ -2923,12 +2923,17 @@ const [buildingLedgerSearching, setBuildingLedgerSearching] = useState(false);
   const canEditExisting = isAdminMode && isAdmin;
   const accessLabel = isStaffMode ? '직원용 관리자' : isAdminMode ? '대표 관리자' : '권한 선택';
   const photoUrls = linesToArray(form.photosText);
+const simpleCategory = form.category || quickRoomType;
+const isRevenueBuildingSale = ['다가구/원룸건물 매매', '상가건물 매매', '다가구매매', '원룸건물매매', '상가건물매매']
+  .some((type) => simpleCategory === type || String(simpleCategory || '').includes(type));
+const simpleTradeType = isRevenueBuildingSale ? '매매' : (form.trade_type || quickTradeType);
+const calculatedReturnRate = calculateReturnRate(form.net_profit, form.acquisition_price);
 const quickMissingItems = [
   !isStaffMode && !form.title && '제목',
   !form.address && '주소',
-  quickTradeType === '매매' ? (!form.sale_price && '매매가') : (!form.deposit && '보증금'),
-  quickTradeType !== '매매' && !form.rent && '월세',
-  !(form.room_bath || ROOM_BATH_DEFAULTS[quickRoomType]) && '방/욕실',
+  simpleTradeType === '매매' ? (!form.sale_price && '매매가') : (!form.deposit && (simpleTradeType === '전세' ? '전세금' : '보증금')),
+  simpleTradeType !== '매매' && simpleTradeType !== '전세' && !form.rent && '월세',
+  simpleTradeType !== '매매' && !(form.room_bath || ROOM_BATH_DEFAULTS[quickRoomType]) && '방/욕실',
   photoUrls.length === 0 && '사진',
 ].filter(Boolean);
 
@@ -2991,7 +2996,7 @@ const ledgerPreviewItems = [
   useEffect(() => {
     if (isStaffMode) {
       setEntryMode('simple');
-    } else if (isAdminMode) {
+    } else if (isAdminMode && !['detail', 'simple', 'bulk'].includes(entryMode)) {
       setEntryMode('detail');
     }
     if (!editingId) {
@@ -3003,7 +3008,7 @@ const ledgerPreviewItems = [
         status: isAdminMode ? 'published' : 'pending'
       }));
     }
-  }, [editingId, isAdminMode, isStaffMode, quickRoomType, quickTradeType]);
+  }, [editingId, entryMode, isAdminMode, isStaffMode, quickRoomType, quickTradeType]);
 
   useEffect(() => {
     if (!isStaffMode || editingId) return;
@@ -3013,6 +3018,25 @@ const ledgerPreviewItems = [
     setQuickBathCount(defaults[2]);
     updateField('room_bath', `방 ${defaults[1]} / 욕실 ${defaults[2]}`);
   }, [quickRoomType, isStaffMode, editingId]);
+
+  useEffect(() => {
+    if (!isAdminMode || entryMode !== 'simple') return;
+    setLatestForm((prev) => ({
+      ...prev,
+      move_in: prev.move_in || '즉시입주 협의',
+      maintenance_fee: prev.maintenance_fee || '확인필요',
+      direction: prev.direction || '확인필요',
+      parking: prev.parking || '확인필요',
+      elevator: prev.elevator || '확인필요',
+      approval_date: prev.approval_date || '확인필요'
+    }));
+  }, [isAdminMode, entryMode]);
+
+  useEffect(() => {
+    if (!isAdminMode || entryMode !== 'simple' || !isRevenueBuildingSale) return;
+    if (quickTradeType !== '매매') setQuickTradeType('매매');
+    if (form.trade_type !== '매매') updateField('trade_type', '매매');
+  }, [isAdminMode, entryMode, isRevenueBuildingSale, quickTradeType, form.trade_type]);
 
   function chooseMode(nextMode) {
     setMode(nextMode);
@@ -3082,6 +3106,23 @@ setStaffProperties(data || []);
 
   function updateField(name, value) {
     setLatestForm((prev) => ({ ...prev, [name]: value }));
+  }
+  function calculateReturnRate(netProfit, acquisitionPrice) {
+    const monthlyProfit = Number(String(netProfit || '').replace(/[^0-9.]/g, ''));
+    const takeoverPrice = Number(String(acquisitionPrice || '').replace(/[^0-9.]/g, ''));
+    if (!monthlyProfit || !takeoverPrice) return '';
+    return String(Math.round((monthlyProfit * 12 / takeoverPrice * 100) * 10) / 10);
+  }
+
+  function updateRevenueField(name, value) {
+    setLatestForm((prev) => {
+      const next = { ...prev, [name]: value };
+      const previousRate = calculateReturnRate(prev.net_profit, prev.acquisition_price);
+      if (!prev.return_rate || prev.return_rate === previousRate) {
+        next.return_rate = calculateReturnRate(next.net_profit, next.acquisition_price);
+      }
+      return next;
+    });
   }
   async function handleAddressSearch() {
     const keyword = form.address?.trim();
@@ -4319,6 +4360,13 @@ if (isStaffMode && currentStaff?.code) {
                 </div>
               )}
               {isAdminMode && (
+                <div className="entry-mode-tabs" aria-label="입력 모드 선택">
+                  <button type="button" className={entryMode === 'detail' ? 'active' : ''} onClick={() => setEntryMode('detail')}>상세입력</button>
+                  <button type="button" className={entryMode === 'simple' ? 'active' : ''} onClick={() => setEntryMode('simple')}>간단입력</button>
+                  <button type="button" className={entryMode === 'bulk' ? 'active' : ''} onClick={() => setEntryMode('bulk')}>일괄입력</button>
+                </div>
+              )}
+              {isAdminMode && entryMode === 'bulk' && (
               <section className="admin-section-block priority-block">
                 <h4>0. 매물자료 일괄입력</h4>
                 <TextArea
@@ -4341,25 +4389,6 @@ if (isStaffMode && currentStaff?.code) {
                 <p className="muted">사진은 위/아래 사진등록에서 올리고, 매물자료는 이 칸에 통째로 붙여넣은 뒤 자동 채우기를 누르면 됩니다.</p>
               </section>
               )}
-{false && isAdminMode && (
-<div className="entry-mode-tabs">
-  <button
-    type="button"
-    className={entryMode === 'simple' ? 'active' : ''}
-    onClick={() => setEntryMode('simple')}
-  >
-    간단 매물 등록
-  </button>
-
-  <button
-    type="button"
-    className={entryMode === 'detail' ? 'active' : ''}
-    onClick={() => setEntryMode('detail')}
-  >
-    상세 등록
-  </button>
-</div>
-)}
                {isStaffMode && staffView === 'register' && (
                   <section className="staff-step-register">
                   <div className="staff-step-head">
@@ -4641,16 +4670,132 @@ if (isStaffMode && currentStaff?.code) {
               )}
 
               {entryMode === 'simple' && !isStaffMode && (
-  <section className="admin-section-block priority-block">
-    <h4>{isAdminMode ? '간단 매물 등록' : '직원 간단 등록'}</h4>
-    <p className="muted">
-      {isAdminMode
-        ? '사진, 주소검색, 기본 조건을 빠르게 입력하고 필요하면 상세 등록에서 전체 항목을 보완합니다.'
-        : '현장에서 사진을 먼저 올리고, 버튼 선택과 숫자 입력만으로 빠르게 검수대기 매물을 저장합니다.'}
-    </p>
+  <section className="admin-section-block priority-block quick-simple-entry">
+    <h4>간단입력</h4>
+    <p className="muted">현장에서 핵심 항목과 사진을 먼저 저장하고, 필요하면 상세입력에서 보완합니다.</p>
 
-    <section className="quick-field-section">
-      <h4>1. 사진 등록</h4>
+    <ButtonChoiceGroup
+      label="매물종류"
+      value={simpleCategory}
+      options={QUICK_PROPERTY_TYPES}
+      onChange={(type) => {
+        setQuickRoomType(type);
+        updateField('category', type);
+        if (ROOM_BATH_DEFAULTS[type] && !form.room_bath) updateField('room_bath', ROOM_BATH_DEFAULTS[type]);
+        if (type.includes('매매')) {
+          setQuickTradeType('매매');
+          updateField('trade_type', '매매');
+        }
+      }}
+    />
+
+    <ButtonChoiceGroup
+      label="거래형태"
+      value={simpleTradeType}
+      options={isRevenueBuildingSale ? ['매매'] : QUICK_TRADE_TYPES}
+      onChange={(type) => {
+        if (isRevenueBuildingSale) return;
+        setQuickTradeType(type);
+        updateField('trade_type', type);
+      }}
+    />
+    {isRevenueBuildingSale && <p className="muted quick-helper-text">수익형 건물 매매로 인식되어 거래형태를 매매로 고정합니다.</p>}
+
+    <AddressLedgerSearchSection
+      title="주소"
+      form={form}
+      updateField={updateField}
+      addressResults={addressResults}
+      setAddressResults={setAddressResults}
+      addressSearching={addressSearching}
+      handleAddressSearch={handleAddressSearch}
+      selectedAddressItem={selectedAddressItem}
+      setSelectedAddressItem={setSelectedAddressItem}
+      selectedAddressLabel={selectedAddressLabel}
+      buildingLedgerSearching={buildingLedgerSearching}
+      fetchBuildingLedger={fetchBuildingLedger}
+      ledgerPreviewItems={ledgerPreviewItems}
+      status={status}
+      setStatus={setStatus}
+    />
+
+    <section className="quick-field-section quick-core-fields">
+      <h4>기본 항목</h4>
+      <div className="two-cols">
+        <Field label="상세주소 또는 호실" value={form.real_unit || quickUnit} onChange={(v) => { setQuickUnit(v); updateField('real_unit', v); }} placeholder="예: 303호" inputMode="numeric" />
+        <Field label="제목" value={form.title} onChange={(v) => updateField('title', v)} placeholder="예: 인의동 즉시입주 원룸" />
+      </div>
+    </section>
+
+    <section className="quick-field-section quick-price-fields">
+      <h4>가격 / 조건</h4>
+      {simpleTradeType === '매매' ? (
+        <>
+          <div className="three-cols">
+            <NumberField label="매매가격" value={form.sale_price} onChange={(v) => updateRevenueField('sale_price', v)} placeholder="예: 91000" />
+            <Field label="면적" value={form.area} onChange={(v) => updateField('area', v)} placeholder="예: 84㎡" />
+            <Field label="층수" value={form.floor_info} onChange={(v) => updateField('floor_info', v)} placeholder="예: 3층 / 총 4층" />
+          </div>
+          <div className="two-cols">
+            <Field label="사용승인일" value={form.approval_date} onChange={(v) => updateField('approval_date', v)} placeholder="확인필요" />
+            <Field label="관리비" value={form.maintenance_fee} onChange={(v) => updateField('maintenance_fee', v)} placeholder="확인필요" />
+          </div>
+        </>
+      ) : simpleTradeType === '전세' ? (
+        <>
+          <div className="three-cols">
+            <NumberField label="전세금" value={form.deposit} onChange={(v) => updateField('deposit', v)} placeholder="예: 7000" />
+            <Field label="관리비" value={form.maintenance_fee} onChange={(v) => updateField('maintenance_fee', v)} placeholder="확인필요" />
+            <Field label="방/욕실" value={form.room_bath} onChange={(v) => updateField('room_bath', v)} placeholder="방 1 / 욕실 1" />
+          </div>
+          <div className="two-cols">
+            <Field label="층수" value={form.floor_info} onChange={(v) => updateField('floor_info', v)} placeholder="예: 3층 / 총 4층" />
+            <Field label="입주가능일" value={form.move_in} onChange={(v) => updateField('move_in', v)} placeholder="즉시입주 협의" />
+          </div>
+        </>
+      ) : (
+        <>
+          <div className="three-cols">
+            <NumberField label="보증금" value={form.deposit} onChange={(v) => updateField('deposit', v)} placeholder="예: 300" />
+            <NumberField label="월세" value={form.rent} onChange={(v) => updateField('rent', v)} placeholder="예: 40" />
+            <Field label="관리비" value={form.maintenance_fee} onChange={(v) => updateField('maintenance_fee', v)} placeholder="확인필요" />
+          </div>
+          <div className="three-cols">
+            <Field label="방/욕실" value={form.room_bath} onChange={(v) => updateField('room_bath', v)} placeholder="방 1 / 욕실 1" />
+            <Field label="층수" value={form.floor_info} onChange={(v) => updateField('floor_info', v)} placeholder="예: 3층 / 총 4층" />
+            <Field label="입주가능일" value={form.move_in} onChange={(v) => updateField('move_in', v)} placeholder="즉시입주 협의" />
+          </div>
+        </>
+      )}
+    </section>
+
+    {isRevenueBuildingSale && (
+      <section className="quick-field-section quick-revenue-fields">
+        <h4>수익형 건물 항목</h4>
+        <div className="three-cols">
+          <NumberField label="매매가격" value={form.sale_price} onChange={(v) => updateRevenueField('sale_price', v)} placeholder="예: 91000" />
+          <NumberField label="융자금" value={form.loan_amount} onChange={(v) => updateRevenueField('loan_amount', v)} placeholder="예: 41000" />
+          <NumberField label="총보증금" value={form.total_deposit} onChange={(v) => updateRevenueField('total_deposit', v)} placeholder="예: 42200" />
+        </div>
+        <div className="three-cols">
+          <NumberField label="실인수가" value={form.acquisition_price} onChange={(v) => updateRevenueField('acquisition_price', v)} placeholder="예: 7800" />
+          <NumberField label="총월세" value={form.total_monthly_rent} onChange={(v) => updateRevenueField('total_monthly_rent', v)} placeholder="예: 498" />
+          <NumberField label="월이자" value={form.monthly_interest} onChange={(v) => updateRevenueField('monthly_interest', v)} placeholder="예: 171" />
+        </div>
+        <div className="three-cols">
+          <NumberField label="월순수익" value={form.net_profit} onChange={(v) => updateRevenueField('net_profit', v)} placeholder="예: 327" />
+          <Field label="수익률" value={form.return_rate || calculatedReturnRate} onChange={(v) => updateField('return_rate', v)} placeholder="자동계산" inputMode="decimal" />
+          <NumberField label="총세대수" value={form.total_units} onChange={(v) => updateField('total_units', v)} placeholder="예: 19" suffix="세대" />
+        </div>
+        <div className="two-cols">
+          <NumberField label="임대중 세대수" value={form.rented_units} onChange={(v) => updateField('rented_units', v)} placeholder="예: 18" suffix="세대" />
+          <NumberField label="공실수" value={form.vacant_units} onChange={(v) => updateField('vacant_units', v)} placeholder="예: 1" suffix="세대" />
+        </div>
+      </section>
+    )}
+
+    <section className="quick-field-section quick-photo-section">
+      <h4>사진 업로드</h4>
       <PhotoUploader
         photos={photoUrls}
         onUpload={uploadPhotoFiles}
@@ -4668,247 +4813,15 @@ if (isStaffMode && currentStaff?.code) {
       />
     </section>
 
-    <AddressLedgerSearchSection
-      title="2. 주소검색"
-      form={form}
-      updateField={updateField}
-      addressResults={addressResults}
-      setAddressResults={setAddressResults}
-      addressSearching={addressSearching}
-      handleAddressSearch={handleAddressSearch}
-      selectedAddressItem={selectedAddressItem}
-      setSelectedAddressItem={setSelectedAddressItem}
-      selectedAddressLabel={selectedAddressLabel}
-      buildingLedgerSearching={buildingLedgerSearching}
-      fetchBuildingLedger={fetchBuildingLedger}
-      ledgerPreviewItems={ledgerPreviewItems}
-      status={status}
-      setStatus={setStatus}
-    />
-
-    <ButtonChoiceGroup
-      label="3. 매물종류"
-      value={quickRoomType}
-      options={QUICK_PROPERTY_TYPES}
-      onChange={(type) => {
-        setQuickRoomType(type);
-        updateField('category', type);
-        if (ROOM_BATH_DEFAULTS[type]) updateField('room_bath', ROOM_BATH_DEFAULTS[type]);
-        updateField('move_in', form.move_in || '즉시입주 협의');
-        updateField('direction', form.direction || '주출입구 기준 확인 필요');
-      }}
-    />
-
-    <ButtonChoiceGroup
-      label="4. 거래형태"
-      value={quickTradeType}
-      options={QUICK_TRADE_TYPES}
-      onChange={(type) => {
-        setQuickTradeType(type);
-        updateField('trade_type', type);
-      }}
-    />
     <section className="quick-field-section">
-      <h4>5. 가격 입력</h4>
-      {quickTradeType === '매매' ? (
-        <>
-          <div className="three-cols">
-            <NumberField label="매매가" value={form.sale_price} onChange={(v) => updateField('sale_price', v)} placeholder="예: 91000" />
-            <NumberField label="융자금" value={form.loan_amount} onChange={(v) => updateField('loan_amount', v)} placeholder="예: 41000" />
-            <NumberField label="총보증금" value={form.total_deposit} onChange={(v) => updateField('total_deposit', v)} placeholder="예: 42200" />
-          </div>
-          <div className="three-cols">
-            <NumberField label="월세수입" value={form.total_monthly_rent} onChange={(v) => updateField('total_monthly_rent', v)} placeholder="예: 498" />
-            <NumberField label="월순수입" value={form.net_profit} onChange={(v) => updateField('net_profit', v)} placeholder="예: 327" />
-            <NumberField label="인수금/실투자금" value={form.acquisition_price} onChange={(v) => updateField('acquisition_price', v)} placeholder="예: 7800" />
-          </div>
-        </>
-      ) : (
-        <div className="three-cols">
-          <NumberField label="보증금" value={form.deposit} onChange={(v) => updateField('deposit', v)} placeholder="예: 300" />
-          <NumberField label="월세" value={form.rent} onChange={(v) => updateField('rent', v)} placeholder="예: 40" />
-          <NumberField
-            label="관리비 금액"
-            value={form.maintenance_fee}
-            onChange={(v) => updateField('maintenance_fee', v)}
-            placeholder="예: 5"
-            disabled={maintenanceType === '관리비없음' || maintenanceType === '확인필요'}
-          />
-        </div>
-      )}
-    </section>
-
-    <ButtonChoiceGroup
-      label="6. 관리비 구분"
-      value={maintenanceType}
-      options={MAINTENANCE_TYPES}
-      onChange={setMaintenanceType}
-    />
-
-    <SelectableOptionGroup
-      label="관리비 포함 항목"
-      value={maintenanceItemsText}
-      options={MAINTENANCE_ITEMS}
-      onChange={setMaintenanceItemsText}
-      placeholder="예: 정화조비, 건물청소비"
-    />
-
-    <section className="quick-field-section">
-      <h4>7. 층 / 호수</h4>
-      <div className="three-cols">
-        <NumberField label="해당층" value={quickFloor} onChange={setQuickFloor} placeholder="예: 3" suffix="층" />
-        <NumberField label="총층" value={quickTotalFloor} onChange={setQuickTotalFloor} placeholder="예: 4" suffix="층" />
-        <Field label="호수" value={quickUnit} onChange={setQuickUnit} placeholder="예: 303호" inputMode="numeric" />
-      </div>
-      <label className="check-line quick-check-line">
-        <input type="checkbox" checked={quickShowUnit} onChange={(e) => setQuickShowUnit(e.target.checked)} />
-        호수 공개
-      </label>
-    </section>
-
-    {isAdminMode && (
-    <section className="quick-field-section">
-      <h4>8. 방 / 욕실</h4>
-      <div className="two-cols">
-        <NumberField label="방 수" value={quickRoomCount} onChange={setQuickRoomCount} placeholder="예: 1" suffix="개" />
-        <NumberField label="욕실 수" value={quickBathCount} onChange={setQuickBathCount} placeholder="예: 1" suffix="개" />
-      </div>
-    </section>
-    )}
-
-    {isAdminMode && (
-    <ButtonChoiceGroup
-      label="11. 방향"
-      value={directionChoice}
-      options={DIRECTION_OPTIONS}
-      onChange={setDirectionChoice}
-    />
-    )}
-    {isAdminMode && (
-    <p className="muted quick-helper-text">방향 기준: 주출입구 기준</p>
-    )}
-
-    <ButtonChoiceGroup
-      label="12. 입주가능일"
-      value={moveInChoice}
-      options={MOVE_IN_OPTIONS}
-      onChange={setMoveInChoice}
-    />
-    {moveInChoice === '날짜 직접입력' && (
-      <section className="quick-field-section">
-        <Field label="입주 가능 날짜" value={moveInDate} onChange={setMoveInDate} placeholder="예: 2026년 6월 20일 이후" />
-      </section>
-    )}
-
-    <ButtonChoiceGroup
-      label="13. 주차"
-      value={parkingChoice}
-      options={PARKING_OPTIONS}
-      onChange={setParkingChoice}
-    />
-    <section className="quick-field-section">
-      <div className="three-cols">
-        <NumberField label="총 주차대수" value={parkingTotal} onChange={setParkingTotal} placeholder="예: 8" suffix="대" />
-        <NumberField label="세대당 주차대수" value={parkingPerUnit} onChange={setParkingPerUnit} placeholder="예: 1" suffix="대" />
-        <Field label="주차 메모" value={parkingMemo} onChange={setParkingMemo} placeholder="예: 건물 앞 주차 가능" />
-      </div>
-    </section>
-
-    {isAdminMode && (
-    <ButtonChoiceGroup
-      label="14. 난방"
-      value={heatingChoice}
-      options={HEATING_OPTIONS}
-      onChange={setHeatingChoice}
-    />
-    )}
-
-    {isAdminMode && (
-    <ButtonChoiceGroup
-      label="엘리베이터"
-      value={elevatorChoice}
-      options={ELEVATOR_OPTIONS}
-      onChange={setElevatorChoice}
-    />
-    )}
-
-    <section className="quick-field-section">
-      <h4>{isStaffMode ? '비공개 메모' : '제목 키워드와 메모'}</h4>
-      {isAdminMode && (
-      <div className="quick-title-keyword-row">
-        <p className="quick-label">제목 키워드 삽입</p>
-        {['리모델링', '단기임대', '저렴한', '넓은', '즉시입주', '풀옵션'].map((keyword) => (
-          <button key={keyword} type="button" className={quickTitleKeyword === keyword ? 'active' : ''} onClick={() => setQuickTitleKeyword(keyword)}>
-            {keyword}
-          </button>
-        ))}
-        <button type="button" className={quickTitleKeyword === '' ? 'active' : ''} onClick={() => setQuickTitleKeyword('')}>
-          선택안함
-        </button>
-      </div>
-      )}
       <TextArea
-        label={isStaffMode ? '비공개 메모' : '한줄 요약'}
-        value={isStaffMode ? form.private_memo : form.summary}
-        onChange={(v) => updateField(isStaffMode ? 'private_memo' : 'summary', v)}
+        label="담당자 메모"
+        value={form.staff_memo}
+        onChange={(v) => updateField('staff_memo', v)}
         rows={3}
-        placeholder={isStaffMode ? '예: 집주인 통화 필요, 현관 비번 확인 전, 사진 추가 필요' : '예: 리모델링, 즉시입주, 주차가능, 공단 출퇴근 편리'}
+        placeholder="예: 집주인 통화 필요, 현관 비번 확인 전, 사진 추가 필요"
       />
     </section>
-
-    {isAdminMode && (
-    <SelectableOptionGroup
-      label="옵션/편의"
-      value={form.convenienceText}
-      options={OPTION_PRESETS.convenienceText}
-      onChange={(v) => updateField('convenienceText', v)}
-      placeholder="예: 건조기, 공기청정기"
-    />
-    )}
-
-    {isAdminMode && (
-    <SelectableOptionGroup
-      label="안전시설"
-      value={form.safetyText}
-      options={OPTION_PRESETS.safetyText}
-      onChange={(v) => updateField('safetyText', v)}
-      placeholder="예: 보안등, 관리실"
-    />
-    )}
-
-    {isAdminMode && (
-    <SelectableOptionGroup
-      label="생활권"
-      value={form.educationText}
-      options={OPTION_PRESETS.educationText}
-      onChange={(v) => updateField('educationText', v)}
-      placeholder="예: 역세권, 산책로 인근"
-    />
-    )}
-
-    {isAdminMode && (
-    <SelectableOptionGroup
-      label="19. 매물 배지"
-      value={form.badgesText}
-      options={BADGE_OPTIONS}
-      onChange={(v) => updateField('badgesText', v)}
-      placeholder="예: 반전세가능"
-    />
-    )}
-
-    <ButtonChoiceGroup
-      label="게시상태"
-      value={postStatusLabel}
-      options={isStaffMode ? [POST_STATUS_OPTIONS[0].label] : POST_STATUS_OPTIONS.map((item) => item.label)}
-      onChange={(nextStatus) => {
-        if (isStaffMode) {
-          setPostStatusLabel(POST_STATUS_OPTIONS[0].label);
-          return;
-        }
-        setPostStatusLabel(nextStatus);
-      }}
-    />
-
   </section>
 )}
               {entryMode === 'detail' && (
