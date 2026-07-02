@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+import React, { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { createRoot } from 'react-dom/client';
 import { supabase, isSupabaseReady } from './supabaseClient';
 import './styles.css';
@@ -172,7 +172,7 @@ const OPTION_PRESETS = {
   educationText: ['편의점 인근', '버스 이용 편리', '공단 출퇴근 동선', '마트 인근', '식당가 인근', '병원 인근', '학교 인근', '주차 편리', '조용한 주거지']
 };
 
-const QUICK_PROPERTY_TYPES = ['원룸', '미니투룸', '투룸', '쓰리룸 이상', '아파트', '상가/사무실', '토지', '다가구매매', '원룸건물매매'];
+const QUICK_PROPERTY_TYPES = ['원룸', '미니투룸', '투룸', '쓰리룸 이상', '아파트', '상가/사무실', '토지', '다가구/원룸건물 매매', '상가건물 매매'];
 const QUICK_TRADE_TYPES = ['월세', '전세', '반전세', '매매'];
 const MAINTENANCE_TYPES = ['관리비포함', '관리비별도', '관리비없음', '확인필요'];
 const MAINTENANCE_ITEMS = ['인터넷', '유선방송', '공용전기', '수도요금', '공용청소비', '관리용역비', '승강기유지비', '주차비'];
@@ -211,6 +211,10 @@ const PUBLIC_PROPERTY_COLUMNS = [
   'category',
   'trade_type',
   'address',
+  'latitude',
+  'longitude',
+  'geocode_status',
+  'geocoded_at',
   'badges',
   'deposit',
   'rent',
@@ -267,9 +271,13 @@ const PUBLIC_PROPERTY_COLUMNS = [
   'convenience',
   'safety',
   'education',
-  'is_featured',
+ 'is_featured',
   'status',
-    'staff_name',
+  'latitude',
+ 'longitude',
+ 'geocode_status',
+  'geocoded_at',
+ 'staff_name',
   'staff_code',
   'created_by',
   'updated_by',
@@ -628,11 +636,6 @@ function parseBulkText(text) {
     }
   }
 
-  if (next.sale_price || next.acquisition_price || next.total_monthly_rent || next.net_profit) {
-    next.trade_type = next.trade_type || '매매';
-    next.category = next.category || '원룸건물매매';
-  }
-
   return next;
 }
 
@@ -838,6 +841,26 @@ function formatAmount(value) {
   return `${num.toLocaleString()}만원`;
 }
 
+function formatKoreanMoney(valueInManwon) {
+  const raw = String(valueInManwon ?? '').trim();
+  if (!raw) return '계약 전 확인';
+  if (/[억만]원|문의|확인|별도|협의/.test(raw)) return raw;
+
+  const cleaned = raw.replace(/,/g, '').replace(/[^\d.-]/g, '');
+  const num = Number(cleaned);
+  if (!Number.isFinite(num)) return raw;
+
+  const sign = num < 0 ? '-' : '';
+  const absolute = Math.abs(Math.round(num));
+  if (absolute >= 10000) {
+    const eok = Math.floor(absolute / 10000);
+    const man = absolute % 10000;
+    return man ? `${sign}${eok}억 ${man.toLocaleString()}만원` : `${sign}${eok}억원`;
+  }
+
+  return `${sign}${absolute.toLocaleString()}만원`;
+}
+
 function normalizeManwon(value) {
   const raw = String(value || '').trim();
   if (!raw) return '';
@@ -862,6 +885,37 @@ function normalizeCustomerCategory(value = '') {
   return String(value).replace(/\s+/g, '').replace(/\u00B7/g, '').replace(/·/g, '').toLowerCase();
 }
 
+const SALE_LISTING_KEYWORDS = [
+  '매매', '다가구매매', '원룸건물매매', '원룸건물', '건물매매', '상가매매',
+  '수익형', '투자', '인수가', '매매가', '실투자금', 'sale', 'building_sale', 'investment'
+];
+
+function isSaleProperty(property = {}) {
+  const saleText = [
+    property.title,
+    property.category,
+    property.trade_type,
+    property.listing_type,
+    property.transaction_type,
+    property.sale_type,
+    property.property_type,
+    ...(Array.isArray(property.badges) ? property.badges : [property.badges]),
+    property.summary,
+    property.description,
+    property.investment_point
+  ].filter(Boolean).join(' ').replace(/\s+/g, '').toLowerCase();
+
+  const hasSaleKeyword = SALE_LISTING_KEYWORDS.some((keyword) => saleText.includes(keyword));
+  const hasSaleValue = [
+    property.sale_price,
+    property.acquisition_price,
+    property.net_profit,
+    property.total_monthly_rent
+  ].some((value) => String(value ?? '').trim() !== '');
+
+  return hasSaleKeyword || hasSaleValue;
+}
+
 function matchCustomerCategory(property, selectedCategory) {
   if (!selectedCategory || selectedCategory === '전체') return true;
   const categoryText = normalizeCustomerCategory(`${property.category || ''} ${property.title || ''}`);
@@ -874,6 +928,7 @@ function matchCustomerCategory(property, selectedCategory) {
   if (selected.includes('상가')) return categoryText.includes('상가') || categoryText.includes('사무실');
   if (selected.includes('다가구')) return categoryText.includes('다가구');
   if (selected.includes('원룸건물')) return categoryText.includes('원룸건물') || categoryText.includes('원룸빌딩');
+  if (selected === '매매') return isSaleProperty(property);
 
   return categoryText.includes(selected);
 }
@@ -950,6 +1005,7 @@ function matchesCustomerFilters(item, keyword, category, filters) {
   const matchCategory = matchCustomerCategory(item, category);
   const matchTrade =
     filters.trade === '전체' ||
+    (filters.trade === '매매' && isSaleProperty(item)) ||
     tradeValue === filters.trade ||
     (filters.trade === '단기' && tradeValue.includes('단기'));
 
@@ -1013,7 +1069,7 @@ function formatMaintenanceFee(value) {
   return `관리비 ${formatMoney(display)}`;
 }
 
-function getSaleDisplay(property = {}) {
+function getSaleDisplay(property) {
   return {
     investment:
       property.acquisition_price ||
@@ -1039,69 +1095,116 @@ function getSaleDisplay(property = {}) {
       ''
   };
 }
+function getSaleCardPrimaryPrice(property = {}) {
+  const saleDisplay = getSaleDisplay(property);
 
-function isSaleProperty(property = {}) {
-  return Boolean(property.category?.includes('매매') || property.trade_type === '매매');
+  const investmentPrice =
+    property.acquisition_price ||
+    property.takeover_price ||
+    property.investment_price ||
+    property.investment_amount ||
+    saleDisplay.investment;
+
+  if (investmentPrice) {
+    return {
+      label: '\uC778\uC218\uAC00',
+      value: investmentPrice,
+      saleDisplay
+    };
+  }
+
+  return {
+    label: '\uB9E4\uB9E4\uAC00',
+    value: saleDisplay.salePrice || property.sale_price || property.deposit || '',
+    saleDisplay
+  };
 }
 
-function isIncomeSaleProperty(property = {}) {
-  if (!isSaleProperty(property)) return false;
-
-  const badgesText = getPropertyBadges(property).join(' ');
+function isInvestmentSaleProperty(property = {}) {
   const text = [
     property.category,
     property.trade_type,
     property.title,
-    badgesText,
     property.summary,
+    property.investment_point
+  ].filter(Boolean).join(' ');
+
+  return isSaleProperty(property) && /원룸건물|다가구|수익형|건물|상가|투자|매매|留ㅻℓ/.test(text);
+}
+
+function getInvestmentSummaryItems(property = {}) {
+  const saleDisplay = getSaleDisplay(property);
+  return [
+    ['인수가', property.acquisition_price || property.takeover_price || property.investment_price || saleDisplay.investment],
+    ['월세수입', property.total_monthly_rent || saleDisplay.totalRent],
+    ['월순수익', property.net_profit || saleDisplay.netProfit],
+    ['매매가', property.sale_price || saleDisplay.salePrice]
+  ].filter(([, value]) => String(value || '').trim());
+}
+
+function getInvestmentFacilityItems(property = {}) {
+  const text = [
+    ...(Array.isArray(property.safety) ? property.safety : []),
+    property.parking,
     property.description,
-    property.investment_point,
-    property.room_bath
-  ]
-    .filter(Boolean)
-    .join(' ');
+    property.summary
+  ].filter(Boolean).join(' ');
 
-  return (
-    text.includes('원룸건물') ||
-    text.includes('다가구') ||
-    text.includes('건물매매') ||
-    text.includes('수익형') ||
-    text.includes('소액투자') ||
-    Boolean(getSaleDisplay(property).investment && (property.total_monthly_rent || property.net_profit))
-  );
+  return [
+    '공동현관',
+    'CCTV',
+    property.parking ? `주차 ${property.parking}` : '주차 확인필요',
+    text.includes('옥상') ? '옥상' : '옥상 확인필요',
+    '공용부 사진 확인',
+    '호실별 옵션 상이',
+    '임대차현황 계약 전 확인'
+  ];
 }
 
-function getPrimaryPriceDisplay(property = {}) {
-  if (isSaleProperty(property)) {
-    const saleDisplay = getSaleDisplay(property);
-
-    if (isIncomeSaleProperty(property) && saleDisplay.investment) {
-      return `투자금 ${formatAmount(saleDisplay.investment)}`;
-    }
-
-    return `매매가 ${formatAmount(saleDisplay.salePrice || property.sale_price || property.deposit)}`;
-  }
-
-  return `보증금 ${formatAmount(property.deposit)} / 월세 ${formatAmount(property.rent)}`;
+function getLegalSummaryRows(property = {}) {
+  const maintenanceInfo = getMaintenanceInfo(property.maintenance_fee);
+  return [
+    ['소재지', property.address || '계약 전 확인'],
+    ['거래형태', property.trade_type || '계약 전 확인'],
+    ['매물종류', property.category || '계약 전 확인'],
+    ['가격', isSaleProperty(property)
+      ? `매매가 ${formatKoreanMoney(property.sale_price || getSaleDisplay(property).salePrice)}`
+      : `보증금 ${formatKoreanMoney(property.deposit)} / 월세 ${formatKoreanMoney(property.rent)}`],
+    ['면적', isInvestmentSaleProperty(property)
+      ? `대지 ${property.land_area || '확인필요'} / 연면적 ${property.building_area || property.total_area || '확인필요'}`
+      : property.area || '계약 전 확인'],
+    ['사용승인일', property.approval_date || '계약 전 확인'],
+    ['주차', property.parking || '계약 전 확인'],
+    ['층수', getPublicFloorInfo(property.floor_info) || property.total_floor_info || '계약 전 확인'],
+    ['관리비', maintenanceInfo.display || '계약 전 확인']
+  ];
 }
 
-function getMapPrimaryPriceLabel(property = {}) {
-  if (isSaleProperty(property)) {
-    const saleDisplay = getSaleDisplay(property);
+function getRelatedPriority(base = {}, candidate = {}) {
+  if (String(candidate.category || '') === String(base.category || '')) return 1;
+  const text = `${candidate.category || ''} ${candidate.trade_type || ''} ${candidate.title || ''}`;
+  if (/원룸건물|원룸빌딩/.test(text) && isSaleProperty(candidate)) return 2;
+  if (/다가구/.test(text) && isSaleProperty(candidate)) return 3;
+  if (/수익형|투자|건물/.test(text) && isSaleProperty(candidate)) return 4;
+  if (extractAreaKeyword(candidate.address) === extractAreaKeyword(base.address)) return 5;
+  return isSaleProperty(candidate) ? 6 : 7;
+}
 
-    if (isIncomeSaleProperty(property) && saleDisplay.investment) {
-      return `투자 ${formatAmount(saleDisplay.investment).replace(/만원$/, '')}`;
-    }
-
-    return formatAmount(saleDisplay.salePrice || property.sale_price || property.deposit);
-  }
-
-  return property.rent ? `월 ${formatAmount(property.rent)}` : '문의';
+function getRelatedProperties(base = {}, list = []) {
+  return list
+    .filter((item) => item.id !== base.id)
+    .map((item, index) => ({ item, index, priority: isInvestmentSaleProperty(base) ? getRelatedPriority(base, item) : index + 1 }))
+    .sort((a, b) => a.priority - b.priority || a.index - b.index)
+    .map(({ item }) => item)
+    .slice(0, 9);
 }
 function App() {
   const queryMode = useMemo(() => {
     const params = new URLSearchParams(window.location.search);
     const adminParam = params.get('admin');
+    const adminPaths = ['/admin', '/admin/login', '/dashboard'];
+    const currentPath = window.location.pathname.replace(/\/+$/, '') || '/';
+    if (adminPaths.includes(currentPath)) return 'admin';
     if (adminParam === 'staff') return 'staff';
     if (adminParam === 'owner') return 'admin';
     if (adminParam === '1') return 'admin';
@@ -1172,15 +1275,73 @@ function App() {
     return CUSTOMER_PROPERTY_TYPES;
   }, [properties]);
 
-  const filtered = useMemo(() => {
+   const filtered = useMemo(() => {
     return properties.filter((item) => matchesCustomerFilters(item, keyword, category, filters));
-}, [properties, keyword, category, filters]);
+  }, [properties, keyword, category, filters]);
 
   function selectProperty(property) {
     setSelected(property);
     const target = document.getElementById('property-detail');
     if (target) target.scrollIntoView({ behavior: 'smooth', block: 'start' });
   }
+
+ const isOwnerAdmin = portalMode === 'admin' && isAdmin;
+const isManagementMode = isOwnerAdmin;
+
+function handleQuickEditProperty(property) {
+  setSelected(property);
+  setAdminOpen(true);
+  alert('관리자 화면에서 해당 매물의 수정 버튼을 눌러 이어서 수정하세요.');
+}
+
+async function handleQuickHoldProperty(property) {
+  if (!isSupabaseReady) {
+    alert('Supabase 연결 전에는 상태 변경이 되지 않습니다.');
+    return;
+  }
+
+  const ok = window.confirm('이 매물을 보류 상태로 바꿀까요?');
+  if (!ok) return;
+
+  const { error } = await supabase
+    .from('properties')
+    .update({ status: 'hold' })
+    .eq('id', property.id);
+
+  if (error) {
+    alert(`보류 처리 실패: ${error.message}`);
+    return;
+  }
+
+  await loadProperties();
+}
+
+async function handleQuickDeleteProperty(property) {
+  if (!isOwnerAdmin) {
+    alert('삭제는 대표 관리자만 가능합니다.');
+    return;
+  }
+
+  if (!isSupabaseReady) {
+    alert('Supabase 연결 전에는 삭제가 되지 않습니다.');
+    return;
+  }
+
+  const ok = window.confirm('이 매물을 삭제할까요? 삭제 후 복구가 어렵습니다.');
+  if (!ok) return;
+
+  const { error } = await supabase
+    .from('properties')
+    .delete()
+    .eq('id', property.id);
+
+  if (error) {
+    alert(`삭제 실패: ${error.message}`);
+    return;
+  }
+
+  await loadProperties();
+}
 
   return (
  <div className={isAdminRoute && adminOpen ? 'admin-app-mode' : undefined}>
@@ -1217,6 +1378,11 @@ function App() {
               filterSheetOpen={filterSheetOpen}
               setFilterSheetOpen={setFilterSheetOpen}
               onSelect={selectProperty}
+                isManagementMode={isManagementMode}
+  isOwnerAdmin={isOwnerAdmin}
+  onEditProperty={handleQuickEditProperty}
+  onHoldProperty={handleQuickHoldProperty}
+  onDeleteProperty={handleQuickDeleteProperty}
             />
             <PropertyDetail
               property={selected || filtered[0]}
@@ -1405,7 +1571,7 @@ function loadNaverMapScript() {
 
     const script = document.createElement('script');
     script.id = 'naver-map-script';
-    script.src = `https://oapi.map.naver.com/openapi/v3/maps.js?ncpKeyId=${NAVER_MAP_CLIENT_ID}`;
+    script.src = `https://oapi.map.naver.com/openapi/v3/maps.js?ncpKeyId=${NAVER_MAP_CLIENT_ID}&submodules=geocoder`;
     script.async = true;
     script.onload = resolve;
     script.onerror = reject;
@@ -1591,15 +1757,63 @@ const CUSTOMER_MAP_AREAS = [
   { key: '구미', lat: 36.1195, lng: 128.3446, x: 36, y: 45 }
 ];
 
+function getPropertyCoords(property = {}) {
+  const candidates = [
+    { lat: property.latitude, lng: property.longitude, source: 'latitude_longitude' },
+    { lat: property.lat, lng: property.lng, source: 'lat_lng' },
+    { lat: property.coord_y, lng: property.coord_x, source: 'coord_y_coord_x' },
+    { lat: property.y, lng: property.x, source: 'y_x' }
+  ];
+
+  for (const candidate of candidates) {
+    if (String(candidate.lat ?? '').trim() === '' || String(candidate.lng ?? '').trim() === '') continue;
+    const lat = Number(candidate.lat);
+    const lng = Number(candidate.lng);
+    if (
+      Number.isFinite(lat) && Number.isFinite(lng) &&
+      lat >= -90 && lat <= 90 &&
+      lng >= -180 && lng <= 180
+    ) {
+      return { lat, lng, source: candidate.source, isFallback: false };
+    }
+  }
+
+  const addressPoint = property._addressCoords;
+  if (addressPoint) {
+    const lat = Number(addressPoint.lat);
+    const lng = Number(addressPoint.lng);
+    if (Number.isFinite(lat) && Number.isFinite(lng)) {
+      return { lat, lng, source: 'address', isFallback: true };
+    }
+  }
+
+  const text = `${getPropertyAddress(property)} ${property.title || ''}`;
+  const area = CUSTOMER_MAP_AREAS.find((item) => text.includes(item.key)) || CUSTOMER_MAP_AREAS[CUSTOMER_MAP_AREAS.length - 1];
+  return { lat: area.lat, lng: area.lng, source: 'area', isFallback: true };
+}
+
+function getPropertyAddress(property = {}) {
+  return property.road_address || property.roadAddress || property.jibun_address ||
+    property.jibunAddress || property.address || '';
+}
+
+function getPropertyMapQuery(property = {}) {
+  const coords = getPropertyCoords(property);
+  return !coords.isFallback
+    ? `${coords.lat},${coords.lng}`
+    : getPropertyAddress(property) || OFFICE.address;
+}
+
 function getPropertyMapPoint(property = {}, index = 0) {
-  const text = `${property.address || ''} ${property.title || ''}`;
+  const coords = getPropertyCoords(property);
+  const text = `${getPropertyAddress(property)} ${property.title || ''}`;
   const base = CUSTOMER_MAP_AREAS.find((area) => text.includes(area.key)) || CUSTOMER_MAP_AREAS[CUSTOMER_MAP_AREAS.length - 1];
-  const offset = ((index % 5) - 2) * 0.004;
+
   return {
-    lat: base.lat + offset,
-    lng: base.lng + ((index % 3) - 1) * 0.004,
-    x: Math.min(86, Math.max(14, base.x + ((index % 5) - 2) * 3)),
-    y: Math.min(84, Math.max(16, base.y + ((index % 4) - 1) * 4))
+    lat: coords.lat,
+    lng: coords.lng,
+    x: coords.isFallback ? Math.min(86, Math.max(14, base.x + ((index % 5) - 2) * 3)) : 50,
+    y: coords.isFallback ? Math.min(84, Math.max(16, base.y + ((index % 4) - 1) * 4)) : 50
   };
 }
 
@@ -1612,9 +1826,25 @@ function getCustomerMarkerClass(property = {}) {
   if (property.is_featured || text.includes('추천')) return 'featured';
   return 'default';
 }
-
 function getMapMarkerLabel(property = {}) {
-  return getMapPrimaryPriceLabel(property);
+  if (isSaleProperty(property)) {
+    const saleDisplay = getSaleDisplay(property);
+
+    const acquisitionPrice =
+      property.acquisition_price ||
+      property.takeover_price ||
+      property.investment_price ||
+      property.investment_amount ||
+      saleDisplay.investment;
+
+    if (acquisitionPrice) {
+      return `인수 ${formatAmount(acquisitionPrice)}`;
+    }
+
+    return formatAmount(property.sale_price || saleDisplay.salePrice || property.deposit);
+  }
+
+  return property.rent ? `월 ${formatAmount(property.rent)}` : '문의';
 }
 
 function escapeHtml(value) {
@@ -1630,19 +1860,88 @@ function CustomerMapView({ properties, selected, onSelect, keyword, setKeyword, 
   const mapElementRef = useRef(null);
   const markersRef = useRef([]);
   const mapRef = useRef(null);
+  const geocodingKeysRef = useRef(new Set());
   const [activeTab, setActiveTab] = useState('');
+  const [geocodedCoords, setGeocodedCoords] = useState({});
   const selectedProperty = properties.find((item) => item.id === selected?.id) || properties[0];
-  const markerItems = useMemo(() => properties.slice(0, 60).map((property, index) => ({
-    property,
-    point: getPropertyMapPoint(property, index),
-    markerClass: getCustomerMarkerClass(property)
-  })), [properties]);
+  const markerItems = useMemo(() => properties
+    .map((property) => {
+      const hasDbCoords =
+        String(property.latitude ?? '').trim() !== '' &&
+        String(property.longitude ?? '').trim() !== '' &&
+        Number.isFinite(Number(property.latitude)) &&
+        Number.isFinite(Number(property.longitude));
+      const address = getPropertyAddress(property);
+      const point = getPropertyCoords({
+        ...property,
+        _addressCoords: geocodedCoords[property.id] || geocodedCoords[address]
+      });
+      return { property, point, hasDbCoords, markerClass: getCustomerMarkerClass(property) };
+    })
+    , [properties, geocodedCoords]);
 
   useEffect(() => {
+    let cancelled = false;
+    const targets = properties.filter((property) => getPropertyCoords(property).isFallback && getPropertyAddress(property));
+    if (!targets.length) return () => { cancelled = true; };
+
+    loadNaverMapScript().then(() => {
+      if (cancelled || !window.naver?.maps?.Service) return;
+      targets.forEach((property) => {
+        const address = getPropertyAddress(property);
+        const geocodingKey = String(property.id || address);
+        if (geocodedCoords[property.id] || geocodedCoords[address] || geocodingKeysRef.current.has(geocodingKey)) return;
+        geocodingKeysRef.current.add(geocodingKey);
+        window.naver.maps.Service.geocode({ query: address }, (status, response) => {
+          geocodingKeysRef.current.delete(geocodingKey);
+          if (cancelled || status !== window.naver.maps.Service.Status.OK) return;
+          const result = response?.v2?.addresses?.[0];
+          const point = getPropertyCoords({ latitude: result?.y, longitude: result?.x });
+          if (point.isFallback) return;
+          setGeocodedCoords((prev) => ({ ...prev, [property.id]: point, [address]: point }));
+        });
+      });
+    }).catch(() => {});
+
+    return () => { cancelled = true; };
+  }, [properties, geocodedCoords]);
+
+  useEffect(() => {
+    console.log('[KAN_MAP_DEBUG]', {
+      total: properties.length,
+      saleCount: properties.filter(isSaleProperty).length,
+      markerCount: markerItems.length,
+      missingCoords: properties.filter((property) => getPropertyCoords(property).isFallback).map((property) => ({
+        id: property.id,
+        title: property.title,
+        address: property.address,
+        category: property.category,
+        trade_type: property.trade_type,
+        acquisition_price: property.acquisition_price,
+        sale_price: property.sale_price
+      })),
+      saleItems: properties.filter(isSaleProperty).map((property) => ({
+        id: property.id,
+        title: property.title,
+        address: property.address,
+        category: property.category,
+        trade_type: property.trade_type,
+        acquisition_price: property.acquisition_price,
+        sale_price: property.sale_price,
+        coords: getPropertyCoords(property)
+      }))
+    });
+  }, [properties, markerItems.length]);
+
+  useLayoutEffect(() => {
     let mounted = true;
+    let resizeObserver = null;
+    let resizeFrame = null;
+    const resizeTimers = [];
+    let resizeCustomerMap = () => {};
 
     const clearMarkers = () => {
-      markersRef.current.forEach((marker) => marker.setMap(null));
+      markersRef.current.forEach(({ marker }) => marker.setMap(null));
       markersRef.current = [];
     };
 
@@ -1660,11 +1959,57 @@ function CustomerMapView({ properties, selected, onSelect, keyword, setKeyword, 
         });
 
         mapRef.current = map;
-        clearMarkers();
 
-        markerItems.forEach(({ property, point, markerClass }) => {
+        const applyMapViewport = () => {
+          if (markerItems.length === 1) {
+            map.setCenter(new naver.maps.LatLng(markerItems[0].point.lat, markerItems[0].point.lng));
+            map.setZoom(15);
+            return;
+          }
+          if (markerItems.length > 1) {
+            const bounds = new naver.maps.LatLngBounds();
+            markerItems.forEach(({ point }) => bounds.extend(new naver.maps.LatLng(point.lat, point.lng)));
+            map.fitBounds(bounds);
+            return;
+          }
+          map.setCenter(new naver.maps.LatLng(36.1195, 128.3906));
+          map.setZoom(12);
+        };
+
+        resizeCustomerMap = () => {
+          if (!mapElementRef.current) return;
+
+          const width = mapElementRef.current.clientWidth;
+          const height = mapElementRef.current.clientHeight;
+
+          if (width > 0 && height > 0) {
+            map.setSize(new naver.maps.Size(width, height));
+            naver.maps.Event.trigger(map, 'resize');
+            applyMapViewport();
+          }
+        };
+
+        resizeFrame = requestAnimationFrame(resizeCustomerMap);
+        [300, 900, 1500, 2500].forEach((delay) => {
+          resizeTimers.push(setTimeout(resizeCustomerMap, delay));
+        });
+
+        if (window.ResizeObserver) {
+          resizeObserver = new ResizeObserver(resizeCustomerMap);
+          resizeObserver.observe(mapElementRef.current);
+        }
+
+        window.addEventListener('resize', resizeCustomerMap);
+
+        clearMarkers();
+        markerItems.forEach(({ property, point, hasDbCoords, markerClass }) => {
           const marker = new naver.maps.Marker({
-            position: new naver.maps.LatLng(point.lat, point.lng),
+            position: hasDbCoords
+              ? new naver.maps.LatLng(
+                  Number(property.latitude),
+                  Number(property.longitude)
+                )
+              : new naver.maps.LatLng(point.lat, point.lng),
             map,
             icon: {
               content: `<div class="customer-map-naver-marker ${markerClass}"><span>${escapeHtml(getMapMarkerLabel(property))}</span></div>`,
@@ -1673,13 +2018,19 @@ function CustomerMapView({ properties, selected, onSelect, keyword, setKeyword, 
             }
           });
           naver.maps.Event.addListener(marker, 'click', () => onSelect(property));
-          markersRef.current.push(marker);
+          markersRef.current.push({ propertyId: property.id, marker });
         });
+
+        applyMapViewport();
       })
       .catch(() => {});
 
     return () => {
       mounted = false;
+      if (resizeFrame) cancelAnimationFrame(resizeFrame);
+      resizeTimers.forEach((timer) => clearTimeout(timer));
+      if (resizeObserver) resizeObserver.disconnect();
+      window.removeEventListener('resize', resizeCustomerMap);
       clearMarkers();
     };
   }, [markerItems, onSelect]);
@@ -1694,12 +2045,6 @@ function CustomerMapView({ properties, selected, onSelect, keyword, setKeyword, 
     <section className="customer-map-view" id="map-view">
       <div className="customer-map-canvas">
         <div ref={mapElementRef} className="customer-real-map" />
-        <div className="customer-map-fallback" aria-hidden="true">
-          <span className="map-road-line line-a" />
-          <span className="map-road-line line-b" />
-          <span className="map-region-name gumi">구미</span>
-          <span className="map-region-name chilgok">칠곡</span>
-        </div>
         <div className="customer-map-topbar">
           <div className="map-search-inline">
             <span>⌕</span>
@@ -1749,19 +2094,6 @@ function CustomerMapView({ properties, selected, onSelect, keyword, setKeyword, 
           </div>
         )}
 
-        <div className="customer-static-markers">
-          {markerItems.map(({ property, point, markerClass }) => (
-            <button
-              key={property.id}
-              type="button"
-              className={`customer-map-marker ${markerClass} ${selectedProperty?.id === property.id ? 'active' : ''}`}
-              style={{ left: `${point.x}%`, top: `${point.y}%` }}
-              onClick={() => onSelect(property)}
-            >
-              <span>{getMapMarkerLabel(property)}</span>
-            </button>
-          ))}
-        </div>
       </div>
 
       <MapPropertyPanel property={selectedProperty} />
@@ -1783,7 +2115,7 @@ function MapPropertyPanel({ property }) {
   }
 
   const cover = property.photos?.[0] || 'https://images.unsplash.com/photo-1564013799919-ab600027ffc6?auto=format&fit=crop&w=1000&q=80';
-  const isSale = property.category?.includes('매매') || property.trade_type === '매매';
+  const isSale = isSaleProperty(property);
   const inquiryBody = encodeURIComponent(buildInquiryMessage(property));
   const photoCount = property.photos?.length || 0;
 
@@ -1799,7 +2131,7 @@ function MapPropertyPanel({ property }) {
           <span>{property.category || '매물'}</span>
           <span>{property.trade_type || '거래형태 확인'}</span>
         </div>
-        <h2>{getPrimaryPriceDisplay(property)}</h2>
+        <h2>{isSale ? `매매가 ${formatAmount(getSaleDisplay(property).salePrice)}` : `보증금 ${formatAmount(property.deposit)} / 월세 ${formatAmount(property.rent)}`}</h2>
         <p className="map-panel-address">{shortAddress(property.address)}</p>
         <div className="map-panel-facts">
           <span>{formatMaintenanceFee(property.maintenance_fee)}</span>
@@ -1905,7 +2237,12 @@ function CustomerListingSection({
   setFilters,
   filterSheetOpen,
   setFilterSheetOpen,
-  onSelect
+  onSelect,
+  isManagementMode = false,
+  isOwnerAdmin = false,
+  onEditProperty,
+  onHoldProperty,
+  onDeleteProperty
 }) {
   const resetAll = () => {
     setCategory('전체');
@@ -1966,12 +2303,17 @@ function CustomerListingSection({
           </div>
           <div className="customer-property-grid">
             {properties.map((property) => (
-              <PropertyListItem
-                key={property.id}
-                property={property}
-                active={selected?.id === property.id}
-                onClick={() => onSelect(property)}
-              />
+             <PropertyListItem
+  key={property.id}
+  property={property}
+  active={selected?.id === property.id}
+  onClick={() => onSelect(property)}
+  isManagementMode={isManagementMode}
+  isOwnerAdmin={isOwnerAdmin}
+  onEdit={onEditProperty}
+  onHold={onHoldProperty}
+  onDelete={onDeleteProperty}
+/>
             ))}
             {!properties.length && <div className="empty-box">검색 조건에 맞는 매물이 없습니다.</div>}
           </div>
@@ -2096,14 +2438,12 @@ function ErrorNotice({ message }) {
     </div>
   );
 }
-function PropertyListItem({ property, active, onClick }) {
+function PropertyListItem({ property, active, onClick, isManagementMode = false, isOwnerAdmin = false, onEdit, onHold, onDelete }) {
   const cover =
     property.photos?.[0] ||
     'https://images.unsplash.com/photo-1564013799919-ab600027ffc6?auto=format&fit=crop&w=1200&q=80';
 
-  const isSale =
-    property.category?.includes('매매') ||
-    property.trade_type === '매매';
+  const isSale = isSaleProperty(property);
 
   const formatMoney = (value) => {
     if (!value) return '-';
@@ -2164,6 +2504,7 @@ function PropertyListItem({ property, active, onClick }) {
   const moveInText = String(property.move_in || '').includes('즉시') ? '즉시입주' : (property.move_in || '입주 협의');
   const maintenanceText = formatMaintenanceFee(property.maintenance_fee);
   const regionText = shortAddress(property.address);
+  const primarySalePrice = isSale ? getSaleCardPrimaryPrice(property) : null;
 
   return (
     <article className={`property-list-item customer-property-card ${active ? 'active' : ''}`}>
@@ -2182,7 +2523,17 @@ function PropertyListItem({ property, active, onClick }) {
 
         {isSale ? (
           <div className="list-price">
-            <b>{getPrimaryPriceDisplay(property)}</b>
+            <b>
+              {primarySalePrice.label} {formatMoney(primarySalePrice.value)}
+            </b>
+
+            {primarySalePrice.saleDisplay.totalRent && (
+              <em>월세수입 {formatMoney(primarySalePrice.saleDisplay.totalRent)}</em>
+            )}
+            {primarySalePrice.saleDisplay.netProfit && (
+              <em>월순수입 {formatMoney(primarySalePrice.saleDisplay.netProfit)}</em>
+            )}
+            {primarySalePrice.saleDisplay.salePrice && <em>매매가 {formatMoney(primarySalePrice.saleDisplay.salePrice)}</em>}
           </div>
         ) : (
           <div className="list-price">
@@ -2202,18 +2553,38 @@ function PropertyListItem({ property, active, onClick }) {
         </div>
       </button>
       <div className="property-card-actions">
-        <a href={`tel:${OFFICE.phone}`}>전화</a>
-        <a href={`sms:${OFFICE.phone}?body=${inquiryBody}`}>문자</a>
-      </div>
+  {isManagementMode ? (
+    <>
+      <button type="button" onClick={(e) => { e.stopPropagation(); onEdit?.(property); }}>
+        수정
+      </button>
+      <button type="button" onClick={(e) => { e.stopPropagation(); onHold?.(property); }}>
+        보류
+      </button>
+      {isOwnerAdmin && (
+        <button type="button" onClick={(e) => { e.stopPropagation(); onDelete?.(property); }}>
+          삭제
+        </button>
+      )}
+    </>
+  ) : (
+    <>
+      <a href={`tel:${OFFICE.phone}`}>전화</a>
+      <a href={`sms:${OFFICE.phone}?body=${inquiryBody}`}>문자</a>
+    </>
+  )}
+</div>
     </article>
   );
 }
 
 function PropertyDetail({ property, allProperties = [], onSelect }) {
   const [activePhoto, setActivePhoto] = useState(0);
+  const [showAllRelated, setShowAllRelated] = useState(false);
 
   useEffect(() => {
     setActivePhoto(0);
+    setShowAllRelated(false);
   }, [property?.id]);
 
   if (!property) {
@@ -2223,9 +2594,17 @@ function PropertyDetail({ property, allProperties = [], onSelect }) {
   const photos = property.photos?.length ? property.photos : [];
   const mainPhoto = photos[activePhoto] || 'https://images.unsplash.com/photo-1564013799919-ab600027ffc6?auto=format&fit=crop&w=1600&q=80';
   const inquiryBody = encodeURIComponent(buildInquiryMessage(property));
-  const related = allProperties.filter((item) => item.id !== property.id).slice(0, 4);
-  const hasMap = Boolean(property.map_image || property.map_link);
-const isSaleProperty = property.category?.includes('매매') || property.trade_type === '매매';
+  const related = getRelatedProperties(property, allProperties);
+  const visibleRelated = showAllRelated ? related : related.slice(0, 3);
+  const detailMapQuery = getPropertyMapQuery(property);
+  const hasMap = Boolean(detailMapQuery);
+  const detailMapEmbedUrl = `https://maps.google.com/maps?q=${encodeURIComponent(detailMapQuery)}&output=embed`;
+  const detailMapLink = `https://map.naver.com/p/search/${encodeURIComponent(detailMapQuery)}`;
+const isSaleListing = isSaleProperty(property);
+const isInvestmentSale = isInvestmentSaleProperty(property);
+const investmentSummaryItems = getInvestmentSummaryItems(property);
+const investmentFacilityItems = getInvestmentFacilityItems(property);
+const legalSummaryRows = getLegalSummaryRows(property);
 const maintenanceInfo = getMaintenanceInfo(property.maintenance_fee);
 const publicMaintenanceItems = linesToArray(property.maintenance_includes).length
   ? linesToArray(property.maintenance_includes)
@@ -2239,22 +2618,22 @@ const heatingText = (property.convenience || [])
   ?.replace('난방:', '')
   .trim();
 
-const infoRows = isSaleProperty
+const infoRows = isSaleListing
   ? [
       ['소재지', property.address || '계약 전 확인'],
       ['거래유형', property.trade_type || '매매'],
       ['매물종류', property.category || '계약 전 확인'],
 
-      ['매매가', property.sale_price || property.deposit || '계약 전 확인'],
-      ['융자금', property.loan_amount || '계약 전 확인'],
-      ['보증금 총액', property.total_deposit || '계약 전 확인'],
-      ['실인수가', property.acquisition_price || '계약 전 확인'],
-      ['총월세', property.total_monthly_rent || property.rent || '계약 전 확인'],
-      ['월이자', property.monthly_interest || '계약 전 확인'],
-      ['월순수익', property.net_profit || '계약 전 확인'],
+      ['매매가', formatKoreanMoney(property.sale_price || property.deposit)],
+      ['융자금', property.loan_amount ? formatKoreanMoney(property.loan_amount) : '계약 전 확인'],
+      ['보증금 총액', property.total_deposit ? formatKoreanMoney(property.total_deposit) : '계약 전 확인'],
+      ['실인수가', property.acquisition_price ? formatKoreanMoney(property.acquisition_price) : '계약 전 확인'],
+      ['총월세', property.total_monthly_rent || property.rent ? formatKoreanMoney(property.total_monthly_rent || property.rent) : '계약 전 확인'],
+      ['월이자', property.monthly_interest ? formatKoreanMoney(property.monthly_interest) : '계약 전 확인'],
+      ['월순수익', property.net_profit ? formatKoreanMoney(property.net_profit) : '계약 전 확인'],
       ['수익률', property.return_rate || '계약 전 확인'],
 
-      ['면적', property.area || '계약 전 확인'],
+      ['면적', isInvestmentSale ? `대지 ${property.land_area || '확인필요'} / 연면적 ${property.building_area || property.total_area || '확인필요'}` : property.area || '계약 전 확인'],
       ['대지면적', property.land_area || '계약 전 확인'],
       ['연면적', property.building_area || '계약 전 확인'],
       ['총층', getPublicFloorInfo(property.floor_info) || '계약 전 확인'],
@@ -2272,8 +2651,8 @@ const infoRows = isSaleProperty
       ['소재지', property.address || '계약 전 확인'],
       ['거래유형', property.trade_type || '계약 전 확인'],
       ['매물종류', property.category || '계약 전 확인'],
-      ['보증금', property.deposit || '계약 전 확인'],
-      ['월세', property.rent || '계약 전 확인'],
+      ['보증금', formatKoreanMoney(property.deposit)],
+      ['월세', formatKoreanMoney(property.rent)],
       ['관리비', maintenanceInfo.display || '계약 전 확인'],
       ...(maintenanceInfo.includedItems.length ? [['관리비 포함 항목', maintenanceInfo.includedItems.join(', ')]] : []),
       ['면적', property.area || '계약 전 확인'],
@@ -2324,7 +2703,18 @@ const infoRows = isSaleProperty
 
           <section className="content-card public-summary-card">
             <p className="section-eyebrow">PRICE</p>
-            <h2>{getPrimaryPriceDisplay(property)}</h2>
+            {isInvestmentSale ? (
+              <div className="investment-summary-grid">
+                {investmentSummaryItems.map(([label, value]) => (
+                  <div key={label}>
+                    <span>{label}</span>
+                    <strong>{formatKoreanMoney(value)}</strong>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <h2>{isSaleListing ? `매매가 ${formatKoreanMoney(getSaleDisplay(property).salePrice)}` : `보증금 ${formatKoreanMoney(property.deposit)} / 월세 ${formatKoreanMoney(property.rent)}`}</h2>
+            )}
             {property.maintenance_fee && <p>{formatMaintenanceFee(property.maintenance_fee)}</p>}
             <p className="side-address">📍 {property.address || '위치 계약 전 확인'}</p>
             <p className="lead-text">{property.summary || '가격, 위치, 입주조건을 확인 후 안내드리는 매물입니다.'}</p>
@@ -2345,6 +2735,14 @@ const infoRows = isSaleProperty
             </div>
           </section>
 
+          {(property.investment_point || (isInvestmentSale && property.risk_note)) && (
+            <section className="content-card investment-point-card">
+              <h2>투자 포인트</h2>
+              <p>{property.investment_point || '임대 현황과 수익 조건은 계약 전 자료 확인이 필요합니다.'}</p>
+              {isInvestmentSale && property.return_rate && <strong>예상 수익률 {property.return_rate}</strong>}
+            </section>
+          )}
+
           <section id="detail-desc" className="content-card description-card">
             <h2>상세 설명</h2>
             <p>{property.description || '사진과 조건을 확인하시고 전화 또는 문자로 문의주시면 현장 상황과 입주 가능 여부를 바로 안내드리겠습니다.'}</p>
@@ -2354,20 +2752,10 @@ const infoRows = isSaleProperty
                 <TextLines value={property.recommended_for} />
               </div>
             )}
-            {(property.investment_point || property.risk_note) && (
+            {property.risk_note && (
               <div className="check-points">
-                {property.investment_point && (
-                  <>
-                    <strong>투자 포인트</strong>
-                    <p>{property.investment_point}</p>
-                  </>
-                )}
-                {property.risk_note && (
-                  <>
-                    <strong>참고/주의사항</strong>
-                    <p>{property.risk_note}</p>
-                  </>
-                )}
+                <strong>참고/주의사항</strong>
+                <p>{property.risk_note}</p>
               </div>
             )}
             <div className="check-points">
@@ -2381,16 +2769,19 @@ const infoRows = isSaleProperty
           </section>
 
           <section id="detail-options" className="content-card">
-            <h2>옵션</h2>
-            <IconGrid items={property.convenience} fallback={['에어컨', '세탁기', '냉장고', '인터넷']} />
+            <h2>{isInvestmentSale ? '공용부 및 임대차 확인' : '옵션'}</h2>
+            <IconGrid
+              items={isInvestmentSale ? investmentFacilityItems : property.convenience}
+              fallback={isInvestmentSale ? investmentFacilityItems : ['에어컨', '세탁기', '냉장고', '인터넷']}
+            />
           </section>
 
-          <section className="content-card">
+          <section className="content-card maintenance-card">
             <h2>관리비 포함 항목</h2>
             <TagList items={publicMaintenanceItems} />
           </section>
 
-          <section className="content-card">
+          <section className="content-card location-life-card">
             <h2>위치/생활권</h2>
             <TextLines value={property.location_description} fallback="정확한 위치와 생활권은 상담 시 안내드립니다." />
             <div className="sub-grid-block">
@@ -2405,7 +2796,7 @@ const infoRows = isSaleProperty
             </div>
           </section>
 
-          <section className="content-card">
+          <section className="content-card photo-caption-card">
             <h2>사진별 설명</h2>
             <PhotoCaptionList photos={photos} captions={property.photo_captions} />
             {!linesToArray(property.photo_captions).length && <p className="muted">사진별 설명은 상담 시 추가로 안내드립니다.</p>}
@@ -2414,12 +2805,20 @@ const infoRows = isSaleProperty
           {hasMap && (
             <section id="detail-location" className="content-card">
               <h2>위치 및 주변시설</h2>
-              {property.map_image && <img className="map-image" src={property.map_image} alt="매물 위치 지도" />}
-              {property.map_link && <a className="map-link" href={property.map_link} target="_blank" rel="noreferrer">지도 바로가기</a>}
+              <div className="map-preview-box real-map-box">
+                <iframe
+                  key={`detail-top-${property.id}-${detailMapQuery}`}
+                  title="매물 상단 위치 지도"
+                  src={detailMapEmbedUrl}
+                  loading="lazy"
+                  referrerPolicy="no-referrer-when-downgrade"
+                />
+              </div>
+              <a className="map-link" href={detailMapLink} target="_blank" rel="noreferrer">지도 바로가기</a>
             </section>
           )}
 
-          <section className="content-card detail-contact-section">
+          <section className="content-card detail-contact-section mobile-hide-contact">
             <h2>문의</h2>
             <div className="side-actions">
               <a className="primary-btn" href={`tel:${OFFICE.phone}`}>전화상담</a>
@@ -2428,7 +2827,7 @@ const infoRows = isSaleProperty
           </section>
 
           <section id="detail-related" className="content-card">
-            <section className="detail-map-section">
+            <section className="detail-map-section related-location-duplicate">
   <div className="detail-map-head">
     <div>
       <p className="section-eyebrow">LOCATION</p>
@@ -2438,18 +2837,18 @@ const infoRows = isSaleProperty
 
     <a
       className="map-link-button"
-      href={`https://map.naver.com/p/search/${encodeURIComponent(property?.address || OFFICE.address)}`}
+      href={detailMapLink}
       target="_blank"
       rel="noreferrer"
     >
       네이버지도 열기
     </a>
   </div>
-
   <div className="map-preview-box real-map-box">
   <iframe
+    key={`detail-bottom-${property.id}-${detailMapQuery}`}
     title="매물 위치 지도"
-    src={`https://maps.google.com/maps?q=${encodeURIComponent(property?.address || OFFICE.address)}&output=embed`}
+    src={detailMapEmbedUrl}
     loading="lazy"
     referrerPolicy="no-referrer-when-downgrade"
   />
@@ -2457,9 +2856,8 @@ const infoRows = isSaleProperty
 </section>
             <h2>구미시의 다른 매물</h2>
             <div className="related-grid">
-             {related.map((item) => {
-  const relatedSale =
-    item.category?.includes('매매') || item.trade_type === '매매';
+             {visibleRelated.map((item) => {
+  const relatedSale = isSaleProperty(item);
 
   const saleDisplay = getSaleDisplay(item);
 
@@ -2488,12 +2886,12 @@ const infoRows = isSaleProperty
 
         {relatedSale ? (
           <em className="related-simple-price">
-            투자금 {formatAmount(saleDisplay.investment)} · 월순수익 {formatAmount(saleDisplay.netProfit)}
+            투자금 {formatKoreanMoney(saleDisplay.investment)} · 월순수익 {formatKoreanMoney(saleDisplay.netProfit)}
           </em>
         ) : (
           <>
             <em className="related-simple-price">
-              보증금 {formatAmount(item.deposit)} / 월세 {formatAmount(item.rent)}
+              보증금 {formatKoreanMoney(item.deposit)} / 월세 {formatKoreanMoney(item.rent)}
             </em>
             {maintenanceText && (
               <span className="related-simple-maintenance">
@@ -2508,31 +2906,39 @@ const infoRows = isSaleProperty
 })}
               {!related.length && <p className="muted">등록된 다른 매물이 없습니다.</p>}
             </div>
+            {related.length > 3 && (
+              <button type="button" className="small-btn related-more-button" onClick={() => setShowAllRelated((prev) => !prev)}>
+                {showAllRelated ? '다른 매물 접기' : '다른 매물 더보기'}
+              </button>
+            )}
           </section>
 
           <section className="legal-box content-card">
             <h2>중개대상물 표시·광고 안내</h2>
-            <p>중개대상물 종류: {property.category || '계약 전 확인'}</p>
-            <p>거래형태: {property.trade_type || '계약 전 확인'}</p>
-            <p>소재지: {property.address || '계약 전 확인'}</p>
-            <p>가격: {isSaleProperty ? `매매가 ${property.sale_price || property.deposit || '계약 전 확인'}` : `보증금 ${property.deposit || '-'} / 월세 ${property.rent || '-'}`}</p>
-            <p>관리비: {maintenanceInfo.display || '계약 전 확인'}</p>
-            {maintenanceInfo.includedItems.length > 0 && <p>관리비 포함 항목: {maintenanceInfo.includedItems.join(', ')}</p>}
-            <p>층수: {getPublicFloorInfo(property.floor_info) || '계약 전 확인'}</p>
-            <p>방/욕실: {property.room_bath || '계약 전 확인'}</p>
-            <p>사용승인일: {property.approval_date || '계약 전 확인'}</p>
-            <p>주차: {property.parking || '계약 전 확인'}</p>
-            <p>난방: {heatingText || '계약 전 확인'}</p>
-            <p>엘리베이터: {property.elevator || '계약 전 확인'}</p>
-            <p>방향: {property.direction || '계약 전 확인'}</p>
-            <p>입주가능일: {property.move_in || '계약 전 확인'}</p>
-            <p>상호명: {OFFICE.name}</p>
-            <p>소재지: {OFFICE.address}</p>
-            <p>대표공인중개사: {OFFICE.broker}</p>
-            <p>등록번호: {OFFICE.regNo}</p>
-            <p>연락처: {OFFICE.phone} / {OFFICE.tel}</p>
-            {property.legal_notice && <TextLines value={property.legal_notice} />}
-            <p>※ 세부 조건은 계약 전 현장 및 공부서류 확인 후 최종 안내드립니다.</p>
+            <div className="legal-summary-grid">
+              {legalSummaryRows.slice(0, 8).map(([label, value]) => (
+                <p key={label}><span>{label}</span><strong>{value}</strong></p>
+              ))}
+            </div>
+            <details className="legal-detail-more">
+              <summary>중개대상물 표시사항 자세히 보기</summary>
+              {legalSummaryRows.slice(8).map(([label, value]) => (
+                <p key={label}>{label}: {value}</p>
+              ))}
+              {maintenanceInfo.includedItems.length > 0 && <p>관리비 포함 항목: {maintenanceInfo.includedItems.join(', ')}</p>}
+              <p>방/욕실: {property.room_bath || '계약 전 확인'}</p>
+              <p>난방: {heatingText || '계약 전 확인'}</p>
+              <p>엘리베이터: {property.elevator || '계약 전 확인'}</p>
+              <p>방향: {property.direction || '계약 전 확인'}</p>
+              <p>입주가능일: {property.move_in || '계약 전 확인'}</p>
+              <p>상호명: {OFFICE.name}</p>
+              <p>중개사무소 소재지: {OFFICE.address}</p>
+              <p>대표공인중개사: {OFFICE.broker}</p>
+              <p>등록번호: {OFFICE.regNo}</p>
+              <p>연락처: {OFFICE.phone} / {OFFICE.tel}</p>
+              {property.legal_notice && <TextLines value={property.legal_notice} />}
+              <p>※ 세부 조건은 계약 전 현장 및 공부서류 확인 후 최종 안내드립니다.</p>
+            </details>
           </section>
         </article>
 
@@ -2554,15 +2960,22 @@ const infoRows = isSaleProperty
          <div className="big-price">
   {(property.category?.includes('매매') || property.trade_type === '매매') ? (
    <>
-  <span>투자금 {formatAmount(getSaleDisplay(property).investment)}</span>
-  <strong>총월세 {formatAmount(getSaleDisplay(property).totalRent)}</strong>
-  <em>매매가 {formatAmount(getSaleDisplay(property).salePrice)}</em>
-  <em>월순수익 {formatAmount(getSaleDisplay(property).netProfit)}</em>
+  <span>
+  인수가 {formatKoreanMoney(
+    property.acquisition_price ||
+    property.takeover_price ||
+    property.investment_price ||
+    getSaleDisplay(property).investment
+  )}
+</span>
+<strong>월세수입 {formatKoreanMoney(getSaleDisplay(property).totalRent)}</strong>
+<em>월순수익 {formatKoreanMoney(getSaleDisplay(property).netProfit)}</em>
+<em>매매가 {formatKoreanMoney(getSaleDisplay(property).salePrice)}</em>
 </>
   ) : (
     <>
-      <span>보증금 {property.deposit || '-'}</span>
-      <strong>월세 {property.rent || '-'}</strong>
+      <span>보증금 {formatKoreanMoney(property.deposit)}</span>
+      <strong>월세 {formatKoreanMoney(property.rent)}</strong>
    {property.maintenance_fee && <em>{formatMaintenanceFee(property.maintenance_fee)}</em>}
     </>
   )}
@@ -2570,7 +2983,14 @@ const infoRows = isSaleProperty
           <p className="side-address">📍 {property.address || '위치 계약 전 확인'}</p>
           <div className="side-facts">
             <span>🏠 {property.category || '-'}</span>
-            <span>📐 {property.area || '-'}</span>
+            {isInvestmentSale ? (
+              <>
+                <span>대지 {property.land_area || '-'}</span>
+                <span>연면적 {property.building_area || property.total_area || '-'}</span>
+              </>
+            ) : (
+              <span>📐 {property.area || '-'}</span>
+            )}
             <span>🚪 {property.room_bath || '-'}</span>
             <span>🏢 {getPublicFloorInfo(property.floor_info) || '-'}</span>
           </div>
@@ -2799,6 +3219,9 @@ const [addressSearching, setAddressSearching] = useState(false);
 const [buildingLedgerSearching, setBuildingLedgerSearching] = useState(false);
   const [detailFieldsOpen, setDetailFieldsOpen] = useState(false);
   const [quickTitleKeyword, setQuickTitleKeyword] = useState('');
+  const [publishTab, setPublishTab] = useState('');
+  const latestFormRef = useRef(form);
+  const [advertisingPropertyId, setAdvertisingPropertyId] = useState(null);
   const adminPassword = import.meta.env.VITE_ADMIN_PASSWORD || ['3', '8', '8', '3'].join('');
   const staffPassword = import.meta.env.VITE_STAFF_PASSWORD || ['0', '0', '0', '0'].join('');
   const isStaffMode = mode === 'staff';
@@ -2806,12 +3229,17 @@ const [buildingLedgerSearching, setBuildingLedgerSearching] = useState(false);
   const canEditExisting = isAdminMode && isAdmin;
   const accessLabel = isStaffMode ? '직원용 관리자' : isAdminMode ? '대표 관리자' : '권한 선택';
   const photoUrls = linesToArray(form.photosText);
+const simpleCategory = form.category || quickRoomType;
+const isRevenueBuildingSale = ['다가구/원룸건물 매매', '상가건물 매매', '다가구매매', '원룸건물매매', '상가건물매매']
+  .some((type) => simpleCategory === type || String(simpleCategory || '').includes(type));
+const simpleTradeType = isRevenueBuildingSale ? '매매' : (form.trade_type || quickTradeType);
+const calculatedReturnRate = calculateReturnRate(form.net_profit, form.acquisition_price);
 const quickMissingItems = [
   !isStaffMode && !form.title && '제목',
   !form.address && '주소',
-  quickTradeType === '매매' ? (!form.sale_price && '매매가') : (!form.deposit && '보증금'),
-  quickTradeType !== '매매' && !form.rent && '월세',
-  !(form.room_bath || ROOM_BATH_DEFAULTS[quickRoomType]) && '방/욕실',
+  simpleTradeType === '매매' ? (!form.sale_price && '매매가') : (!form.deposit && (simpleTradeType === '전세' ? '전세금' : '보증금')),
+  simpleTradeType !== '매매' && simpleTradeType !== '전세' && !form.rent && '월세',
+  simpleTradeType !== '매매' && !(form.room_bath || ROOM_BATH_DEFAULTS[quickRoomType]) && '방/욕실',
   photoUrls.length === 0 && '사진',
 ].filter(Boolean);
 
@@ -2868,13 +3296,17 @@ const ledgerPreviewItems = [
 ].filter(([, value]) => String(value || '').trim());
 
   useEffect(() => {
+    latestFormRef.current = form;
+  }, [form]);
+
+  useEffect(() => {
     if (isStaffMode) {
       setEntryMode('simple');
-    } else if (isAdminMode) {
+    } else if (isAdminMode && !['detail', 'simple', 'bulk'].includes(entryMode)) {
       setEntryMode('detail');
     }
     if (!editingId) {
-      setForm((prev) => ({
+      setLatestForm((prev) => ({
         ...prev,
         category: isStaffMode ? quickRoomType : prev.category,
         trade_type: isStaffMode ? quickTradeType : prev.trade_type,
@@ -2882,7 +3314,7 @@ const ledgerPreviewItems = [
         status: isAdminMode ? 'published' : 'pending'
       }));
     }
-  }, [editingId, isAdminMode, isStaffMode, quickRoomType, quickTradeType]);
+  }, [editingId, entryMode, isAdminMode, isStaffMode, quickRoomType, quickTradeType]);
 
   useEffect(() => {
     if (!isStaffMode || editingId) return;
@@ -2892,6 +3324,25 @@ const ledgerPreviewItems = [
     setQuickBathCount(defaults[2]);
     updateField('room_bath', `방 ${defaults[1]} / 욕실 ${defaults[2]}`);
   }, [quickRoomType, isStaffMode, editingId]);
+
+  useEffect(() => {
+    if (!isAdminMode || entryMode !== 'simple') return;
+    setLatestForm((prev) => ({
+      ...prev,
+      move_in: prev.move_in || '즉시입주 협의',
+      maintenance_fee: prev.maintenance_fee || '확인필요',
+      direction: prev.direction || '확인필요',
+      parking: prev.parking || '확인필요',
+      elevator: prev.elevator || '확인필요',
+      approval_date: prev.approval_date || '확인필요'
+    }));
+  }, [isAdminMode, entryMode]);
+
+  useEffect(() => {
+    if (!isAdminMode || entryMode !== 'simple' || !isRevenueBuildingSale) return;
+    if (quickTradeType !== '매매') setQuickTradeType('매매');
+    if (form.trade_type !== '매매') updateField('trade_type', '매매');
+  }, [isAdminMode, entryMode, isRevenueBuildingSale, quickTradeType, form.trade_type]);
 
   function chooseMode(nextMode) {
     setMode(nextMode);
@@ -2952,8 +3403,32 @@ setStaffProperties(data || []);
     }
   }
 
+  function setLatestForm(updater) {
+    const base = latestFormRef.current || form;
+    const next = typeof updater === 'function' ? updater(base) : updater;
+    latestFormRef.current = next;
+    setForm(next);
+  }
+
   function updateField(name, value) {
-    setForm((prev) => ({ ...prev, [name]: value }));
+    setLatestForm((prev) => ({ ...prev, [name]: value }));
+  }
+  function calculateReturnRate(netProfit, acquisitionPrice) {
+    const monthlyProfit = Number(String(netProfit || '').replace(/[^0-9.]/g, ''));
+    const takeoverPrice = Number(String(acquisitionPrice || '').replace(/[^0-9.]/g, ''));
+    if (!monthlyProfit || !takeoverPrice) return '';
+    return String(Math.round((monthlyProfit * 12 / takeoverPrice * 100) * 10) / 10);
+  }
+
+  function updateRevenueField(name, value) {
+    setLatestForm((prev) => {
+      const next = { ...prev, [name]: value };
+      const previousRate = calculateReturnRate(prev.net_profit, prev.acquisition_price);
+      if (!prev.return_rate || prev.return_rate === previousRate) {
+        next.return_rate = calculateReturnRate(next.net_profit, next.acquisition_price);
+      }
+      return next;
+    });
   }
   async function handleAddressSearch() {
     const keyword = form.address?.trim();
@@ -3067,7 +3542,7 @@ setStaffProperties(data || []);
         setParkingChoice('주차가능');
       }
 
-      setForm((prev) => ({
+      setLatestForm((prev) => ({
         ...prev,
         approval_date: approvalDate || prev.approval_date,
         main_use: mainUse || prev.main_use,
@@ -3100,10 +3575,479 @@ setStaffProperties(data || []);
       return;
     }
 
-    setForm((prev) => ({ ...prev, ...parsed }));
+    setLatestForm((prev) => ({ ...prev, ...parsed }));
     setStatus(`일괄입력 ${Object.keys(parsed).length}개 항목을 자동 채웠습니다. 사진 확인 후 저장을 누르세요.`);
   }
+// 당근 업로드용 CSV 다운로드 함수
+// 당근 원본 양식 맞춤 CSV 다운로드 함수
+function handleDaangnExcelDownload() {
+  const payload = typeof formToPayload === 'function' ? formToPayload(form) : form;
 
+  const clean = (value) => {
+    if (value === null || value === undefined) return '';
+    return String(value)
+      .replace(/\r?\n+/g, ' / ')
+      .replace(/\s+/g, ' ')
+      .trim();
+  };
+
+  const toManwon = (value) => {
+    const text = clean(value).replaceAll(',', '');
+    if (!text) return '';
+
+    const eokMatch = text.match(/(\d+(?:\.\d+)?)\s*억/);
+    const manMatch = text.match(/(\d+(?:\.\d+)?)\s*만/);
+
+    if (eokMatch) {
+      const eok = Number(eokMatch[1]) * 10000;
+      const man = manMatch ? Number(manMatch[1]) : 0;
+      return String(Math.round(eok + man));
+    }
+
+    const numberMatch = text.match(/\d+(?:\.\d+)?/);
+    return numberMatch ? numberMatch[0] : '';
+  };
+
+  const getRoomBath = () => {
+    const text = clean(payload.room_bath || form.room_bath);
+    const match =
+      text.match(/방\s*(\d+).*욕실\s*(\d+)/) ||
+      text.match(/(\d+)\s*\/\s*(\d+)/);
+
+    return {
+      room: match ? match[1] : '1',
+      bath: match ? match[2] : '1'
+    };
+  };
+
+  const getFloor = () => {
+    const floorText = clean(payload.floor_info || form.floor_info);
+    const totalText = clean(payload.total_floor_info || form.total_floor_info);
+
+    const floorMatch = floorText.match(/(\d+)\s*층/);
+    const totalMatch =
+      floorText.match(/총\s*(\d+)\s*층/) ||
+      totalText.match(/지상\s*(\d+)\s*층/) ||
+      totalText.match(/총\s*(\d+)\s*층/);
+
+    return {
+      floor: floorMatch ? floorMatch[1] : '',
+      totalFloor: totalMatch ? totalMatch[1] : ''
+    };
+  };
+
+  const getYear = () => {
+    const text = clean(payload.approval_date || form.approval_date);
+    const match = text.match(/(19|20)\d{2}/);
+    return match ? match[0] : '';
+  };
+
+  const getMaintenanceType = () => {
+    const text = clean(payload.maintenance_fee || form.maintenance_fee);
+
+    if (!text) return '확인 필요';
+    if (text.includes('없음')) return '관리비 없음';
+    return '정액 관리비';
+  };
+
+  const getMaintenanceItems = () => {
+    const direct = clean(payload.maintenance_includes || form.maintenance_includes || maintenanceItemsText);
+    if (direct) return direct;
+
+    const text = clean(payload.maintenance_fee || form.maintenance_fee);
+    const match = text.match(/포함 항목:\s*([^)]+)/);
+    if (match) return clean(match[1]);
+
+    return '';
+  };
+
+  const getParking = () => {
+    const text = clean(payload.parking || form.parking);
+
+    if (text.includes('불가')) return '불가능';
+    if (text.includes('가능') || text.includes('대')) return '가능';
+    return '확인 필요';
+  };
+
+  const getDirection = () => {
+    const text = clean(payload.direction || form.direction)
+      .replace('/ 주출입구 기준', '')
+      .replace('주출입구 기준', '')
+      .trim();
+
+    return text || '주출입구';
+  };
+
+  const getOptions = () => {
+    const convenience = Array.isArray(payload.convenience)
+      ? payload.convenience
+      : linesToArray(form.convenienceText);
+
+    return convenience
+      .map((item) => clean(item).replace(/^난방:\s*/, ''))
+      .filter(Boolean)
+      .join(', ');
+  };
+
+  const getPropertyType = () => {
+    const text = clean(payload.category || form.category || '');
+
+    if (text.includes('미니투룸')) return '미니투룸';
+    if (text.includes('투룸')) return '투룸';
+    if (text.includes('상가')) return '상가';
+    if (text.includes('토지')) return '토지';
+    if (text.includes('다가구') || text.includes('원룸건물')) return '다가구';
+    if (text.includes('아파트')) return '아파트';
+    return '원룸';
+  };
+
+  const getTradeType = () => {
+    const text = clean(payload.trade_type || form.trade_type || '');
+
+    if (text.includes('매매')) return '매매';
+    if (text.includes('전세')) return '전세';
+    if (text.includes('단기')) return '단기';
+    return '월세';
+  };
+
+  const roomBath = getRoomBath();
+  const floor = getFloor();
+  const tradeType = getTradeType();
+
+  const priceValue =
+    tradeType === '매매'
+      ? toManwon(payload.sale_price || form.sale_price)
+      : toManwon(payload.deposit || form.deposit);
+
+  const monthlyRentValue =
+    tradeType === '월세' || tradeType === '단기'
+      ? toManwon(payload.rent || form.rent)
+      : '';
+
+  const description = [
+    payload.title || form.title,
+    payload.summary || form.summary,
+    payload.description || form.description,
+    payload.location_description || form.location_description,
+    payload.recommended_for || form.recommended_for,
+    payload.investment_point || form.investment_point,
+    payload.risk_note || form.risk_note
+  ]
+    .map(clean)
+    .filter(Boolean)
+    .join(' / ');
+
+  const headers = [
+    '매물유형',
+    '거래유형',
+    '보증금/매매가(만원)',
+    '월세(만원)',
+    '주소',
+    '상세주소',
+    '면적(㎡)',
+    '방 수',
+    '욕실 수',
+    '층',
+    '총 층',
+    '향',
+    '입주가능일',
+    '관리비 유형',
+    '총 관리비(만원)',
+    '관리비 포함항목',
+    '관리비 기준',
+    '관리비 실비근거',
+    '관리비 확인일자 사유',
+    '주차',
+    '반려동물',
+    '대출',
+    '옵션',
+    '건축년도',
+    '매물 설명',
+    '메모',
+    '토지 지목',
+    '용도지역',
+    '권리금(만원)',
+    '건물용도'
+  ];
+
+  const rowData = [
+    getPropertyType(),
+    tradeType,
+    priceValue,
+    monthlyRentValue,
+    clean(payload.address || form.address),
+    clean(payload.real_unit || form.real_unit || quickUnit),
+    toManwon(payload.area || form.area),
+    roomBath.room,
+    roomBath.bath,
+    floor.floor,
+    floor.totalFloor,
+    getDirection(),
+    clean(payload.move_in || form.move_in) || '즉시입주',
+    getMaintenanceType(),
+    toManwon(payload.maintenance_fee || form.maintenance_fee),
+    getMaintenanceItems(),
+    '직접 월 기재',
+    '세대별 사용량 또는 계약 내용 기준',
+    '확인 필요',
+    getParking(),
+    '확인 필요',
+    '확인 필요',
+    getOptions(),
+    getYear(),
+    description,
+    clean(payload.private_memo || form.private_memo),
+    clean(payload.land_category || form.land_category),
+    clean(payload.zoning || form.zoning),
+    toManwon(payload.premium || form.premium),
+    clean(payload.main_use || form.main_use)
+  ];
+
+  const escapeCSV = (value) => {
+    const text = clean(value);
+
+    if (text.includes(',') || text.includes('"')) {
+      return `"${text.replace(/"/g, '""')}"`;
+    }
+
+    return text;
+  };
+
+  const csvContent =
+    '\uFEFF' +
+    headers.map(escapeCSV).join(',') +
+    '\n' +
+    rowData.map(escapeCSV).join(',');
+
+  const today = new Date();
+  const yyyy = today.getFullYear();
+  const mm = String(today.getMonth() + 1).padStart(2, '0');
+  const dd = String(today.getDate()).padStart(2, '0');
+  const filename = `daangn-property-${yyyy}${mm}${dd}.csv`;
+
+  const blob = new Blob([csvContent], {
+    type: 'text/csv;charset=utf-8;'
+  });
+
+  const link = document.createElement('a');
+  const url = URL.createObjectURL(blob);
+
+  link.href = url;
+  link.download = filename;
+  link.style.display = 'none';
+
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+
+  URL.revokeObjectURL(url);
+
+  setStatus('당근 원본 양식에 맞춘 CSV 파일을 다운로드했습니다.');
+}
+function compactPublishText(value) {
+  return String(value || '').replace(/\s+/g, ' ').trim();
+}
+
+function removeConsecutiveDuplicateWords(value) {
+  const words = compactPublishText(value).split(' ').filter(Boolean);
+
+  return words
+    .filter((word, index) => index === 0 || word !== words[index - 1])
+    .join(' ');
+}
+
+function cleanBlogBodyStart(value) {
+  return String(value || '').replace(/^\s*니다[.．]?\s*/u, '').trimStart();
+}
+
+function getPublishDong(address) {
+  const text = compactPublishText(address)
+    .replace('경상북도', '')
+    .replace('구미시', '')
+    .trim();
+
+  const match = text.match(/([가-힣0-9]+(?:동|읍|면|리))/);
+  return match ? match[1] : '';
+}
+
+function getPublishPropertyType(data) {
+  return compactPublishText(data.category || '');
+}
+
+function formatPublishMoney(value) {
+  const text = compactPublishText(value);
+  return text ? normalizeManwon(text) : '-';
+}
+
+function getPublishPriceText(data) {
+  const tradeType = compactPublishText(data.trade_type || quickTradeType || '월세');
+
+  if (tradeType.includes('매매')) {
+    return `매매가 ${formatPublishMoney(data.sale_price || data.deposit)}`;
+  }
+
+  if (tradeType.includes('전세') && !tradeType.includes('반전세')) {
+    return `전세금 ${formatPublishMoney(data.deposit)}`;
+  }
+
+  if (tradeType.includes('반전세')) {
+    return `반전세 ${formatPublishMoney(data.deposit)} / 월세 ${formatPublishMoney(data.rent)}`;
+  }
+
+  return `보증금 ${formatPublishMoney(data.deposit)} / 월세 ${formatPublishMoney(data.rent)}`;
+}
+
+function makePublishTag(value) {
+  return String(value || '')
+    .replace(/[#\s]/g, '')
+    .replace(/[^0-9A-Za-z가-힣_]/g, '');
+}
+
+function getPublishSnapshot() {
+  const sourceForm = latestFormRef.current || form;
+  const category = isStaffMode ? quickRoomType : (sourceForm.category || '');
+  const tradeType = isStaffMode ? quickTradeType : (sourceForm.trade_type || '');
+
+  const floorInfo = isStaffMode
+    ? [
+        quickShowUnit && quickUnit ? quickUnit : '',
+        quickFloor ? `${quickFloor}층` : '',
+        quickTotalFloor ? `총 ${quickTotalFloor}층` : ''
+      ].filter(Boolean).join(' / ')
+    : sourceForm.floor_info;
+
+  const moveInText = isStaffMode
+    ? (moveInChoice === '날짜 직접입력' ? (moveInDate || '날짜협의') : moveInChoice)
+    : sourceForm.move_in;
+
+  const parkingText = isStaffMode
+    ? [
+        parkingTotal ? `총 ${parkingTotal}대` : '',
+        parkingPerUnit ? `세대당 ${parkingPerUnit}대` : '',
+        parkingChoice,
+        parkingMemo
+      ].filter(Boolean).join(' / ')
+    : sourceForm.parking;
+
+  const directionText = isStaffMode
+    ? `${directionChoice} / 주출입구 기준`
+    : sourceForm.direction;
+
+  const maintenanceText = isStaffMode
+    ? maintenanceType
+    : sourceForm.maintenance_fee;
+
+  return {
+    ...sourceForm,
+    category,
+    trade_type: tradeType,
+    floor_info: floorInfo || sourceForm.floor_info,
+    move_in: moveInText || sourceForm.move_in,
+    parking: parkingText || sourceForm.parking,
+    direction: directionText || sourceForm.direction,
+    maintenance_fee: maintenanceText || sourceForm.maintenance_fee,
+    room_bath: sourceForm.room_bath || ROOM_BATH_DEFAULTS[category] || '',
+    photos: linesToArray(sourceForm.photosText)
+  };
+}
+
+function buildPublishTags(data, extraTags = []) {
+  const dong = getPublishDong(data.address);
+  const propertyType = getPublishPropertyType(data);
+  const tradeType = compactPublishText(data.trade_type || '월세');
+
+  const seeds = [
+    '구미원룸',
+    tradeType.includes('월세') ? '구미원룸월세' : '',
+    `구미${propertyType}`,
+    dong ? `${dong}${propertyType}` : '',
+    dong ? `구미${dong}${propertyType}` : '',
+    `${propertyType}${tradeType}`,
+    '구미부동산',
+    '칸공인중개사',
+    ...extraTags
+  ];
+
+  return [...new Set(seeds.map(makePublishTag).filter(Boolean))]
+    .map((tag) => `#${tag}`)
+    .join(' ');
+}
+
+function buildBlogPublishData() {
+  const data = getPublishSnapshot();
+
+  return buildNaverBlogAd({
+    ...data,
+    photos: Array.isArray(data.photos) ? data.photos : linesToArray(data.photosText),
+    convenience: linesToArray(data.convenienceText),
+    safety: linesToArray(data.safetyText),
+    education: linesToArray(data.educationText),
+    maintenance_includes: data.maintenance_includes
+  });
+}
+function buildInstagramPublishData() {
+  const data = getPublishSnapshot();
+  const dong = getPublishDong(data.address);
+  const locationTitle = dong ? `구미 ${dong}` : '구미';
+  const propertyType = getPublishPropertyType(data);
+  const tradeType = compactPublishText(data.trade_type || '월세');
+  const priceText = getPublishPriceText(data);
+  const photos = Array.isArray(data.photos) ? data.photos : linesToArray(data.photosText);
+
+  const body = [
+    `🔥 ${locationTitle} ${propertyType} ${tradeType}`,
+    priceText,
+    `📍 위치: ${data.address || locationTitle}`,
+    `📐 면적: ${data.area || '확인 필요'}`,
+    `🏢 층수: ${data.floor_info || '확인 필요'}`,
+    `🚗 주차: ${data.parking || '확인 필요'}`,
+    `🗓 입주: ${data.move_in || '즉시입주 협의'}`,
+    data.summary ? `✨ ${data.summary}` : '✨ 실사진 확인 매물, 빠른 안내 가능합니다.',
+    `문의 ${OFFICE.phone}`
+  ].join('\n');
+
+  return {
+    body,
+    tags: buildPublishTags(data, ['구미월세', '구미방구하기', '구미자취방']),
+    photos: photos.join('\n')
+  };
+}
+
+function handleCopy(label, text) {
+  const copyText = String(text || '').trim();
+
+  if (!copyText) {
+    setStatus(`${label} 내용이 없습니다.`);
+    return;
+  }
+
+  if (navigator.clipboard && window.isSecureContext) {
+    navigator.clipboard.writeText(copyText)
+      .then(() => setStatus(`${label} 복사 완료했습니다.`))
+      .catch(() => setStatus(`${label} 복사에 실패했습니다. 내용을 직접 선택해서 복사해주세요.`));
+    return;
+  }
+
+  const textarea = document.createElement('textarea');
+  textarea.value = copyText;
+  textarea.style.position = 'fixed';
+  textarea.style.left = '-9999px';
+  document.body.appendChild(textarea);
+  textarea.focus();
+  textarea.select();
+
+  try {
+    document.execCommand('copy');
+    setStatus(`${label} 복사 완료했습니다.`);
+  } catch (error) {
+    setStatus(`${label} 복사에 실패했습니다. 내용을 직접 선택해서 복사해주세요.`);
+  } finally {
+    document.body.removeChild(textarea);
+  }
+}
+
+const blogPublishData = buildBlogPublishData();
+const instagramPublishData = buildInstagramPublishData();
 function startEdit(property) {
   if (
     isStaffMode &&
@@ -3122,7 +4066,9 @@ setStaffStep(0);
   setDuplicateWarning(null);
     setAdminDetailProperty(property);
     setAdminDetailTab('public');
-    setForm(propertyToForm(property));
+    const editForm = propertyToForm(property);
+    latestFormRef.current = editForm;
+    setLatestForm(editForm);
     setQuickRoomType(property.category || '원룸');
     setQuickTradeType(property.trade_type || '월세');
     const maintenance = getMaintenanceInfo(property.maintenance_fee);
@@ -3158,9 +4104,12 @@ setStaffStep(0);
   }
 
   function resetForm() {
+    const nextForm = { ...emptyForm, status: isAdminMode ? 'published' : 'pending' };
     setEditingId(null);
-    setForm({ ...emptyForm, status: isAdminMode ? 'published' : 'pending' });
+    latestFormRef.current = nextForm;
+    setLatestForm(nextForm);
     setBulkText('');
+    setPublishTab('');
     setQuickRoomType('원룸');
     setQuickTradeType('월세');
     setMaintenanceType('관리비별도');
@@ -3325,7 +4274,7 @@ const files = await Promise.all(
       if (data?.publicUrl) uploadedUrls.push({ url: data.publicUrl, originalFile: originalFiles[index] });
     }
 
-    setForm((prev) => {
+    setLatestForm((prev) => {
       const before = linesToArray(prev.photosText);
       return { ...prev, photosText: [...before, ...uploadedUrls.map((item) => item.url)].join('\n') };
     });
@@ -3381,7 +4330,7 @@ const files = await Promise.all(
       setStatus('사진 재보정 URL 생성에 실패했습니다.');
       return;
     }
-    setForm((prev) => ({
+    setLatestForm((prev) => ({
       ...prev,
       photosText: linesToArray(prev.photosText).map((url) => (url === src ? nextUrl : url)).join('\n')
     }));
@@ -3399,7 +4348,7 @@ const files = await Promise.all(
   }
 
   function removePhoto(index) {
-    setForm((prev) => {
+    setLatestForm((prev) => {
       const next = linesToArray(prev.photosText);
       next.splice(index, 1);
       return { ...prev, photosText: next.join('\n') };
@@ -3407,7 +4356,7 @@ const files = await Promise.all(
   }
 
   function movePhoto(index, direction) {
-    setForm((prev) => {
+    setLatestForm((prev) => {
       const next = linesToArray(prev.photosText);
       const target = index + direction;
       if (target < 0 || target >= next.length) return prev;
@@ -3418,7 +4367,7 @@ const files = await Promise.all(
 function reorderPhoto(fromIndex, toIndex) {
   if (fromIndex === toIndex) return;
 
-  setForm((prev) => {
+  setLatestForm((prev) => {
     const next = linesToArray(prev.photosText);
     const [moved] = next.splice(fromIndex, 1);
     next.splice(toIndex, 0, moved);
@@ -3485,7 +4434,7 @@ function reorderPhoto(fromIndex, toIndex) {
           direction: directionText,
           parking: parkingText || '주차 확인 필요',
           elevator: elevatorChoice,
-          summary: form.summary || '직원이 현장에서 등록한 검수대기 매물입니다.',
+          summary: form.summary || '',
           private_memo: form.private_memo,
           status: staffStatusValue,
         }
@@ -3627,6 +4576,13 @@ if (isStaffMode && currentStaff?.code) {
             현재 접속: <strong>{accessLabel}</strong>
           </div>
         )}
+        <nav className="admin-menu-strip" aria-label="관리자 메뉴">
+          {['매물등록', '매물관리', '대표검수', '직원관리'].map((label) => (
+            <a key={label} href={`#admin-${label}`}>
+              {label}
+            </a>
+          ))}
+        </nav>
 
         {!mode ? (
           <div className="mode-choice">
@@ -3710,6 +4666,13 @@ if (isStaffMode && currentStaff?.code) {
                 </div>
               )}
               {isAdminMode && (
+                <div className="entry-mode-tabs" aria-label="입력 모드 선택">
+                  <button type="button" className={entryMode === 'detail' ? 'active' : ''} onClick={() => setEntryMode('detail')}>상세입력</button>
+                  <button type="button" className={entryMode === 'simple' ? 'active' : ''} onClick={() => setEntryMode('simple')}>간단입력</button>
+                  <button type="button" className={entryMode === 'bulk' ? 'active' : ''} onClick={() => setEntryMode('bulk')}>일괄입력</button>
+                </div>
+              )}
+              {isAdminMode && entryMode === 'bulk' && (
               <section className="admin-section-block priority-block">
                 <h4>0. 매물자료 일괄입력</h4>
                 <TextArea
@@ -3732,25 +4695,6 @@ if (isStaffMode && currentStaff?.code) {
                 <p className="muted">사진은 위/아래 사진등록에서 올리고, 매물자료는 이 칸에 통째로 붙여넣은 뒤 자동 채우기를 누르면 됩니다.</p>
               </section>
               )}
-{false && isAdminMode && (
-<div className="entry-mode-tabs">
-  <button
-    type="button"
-    className={entryMode === 'simple' ? 'active' : ''}
-    onClick={() => setEntryMode('simple')}
-  >
-    간단 매물 등록
-  </button>
-
-  <button
-    type="button"
-    className={entryMode === 'detail' ? 'active' : ''}
-    onClick={() => setEntryMode('detail')}
-  >
-    상세 등록
-  </button>
-</div>
-)}
                {isStaffMode && staffView === 'register' && (
                   <section className="staff-step-register">
                   <div className="staff-step-head">
@@ -4032,16 +4976,132 @@ if (isStaffMode && currentStaff?.code) {
               )}
 
               {entryMode === 'simple' && !isStaffMode && (
-  <section className="admin-section-block priority-block">
-    <h4>{isAdminMode ? '간단 매물 등록' : '직원 간단 등록'}</h4>
-    <p className="muted">
-      {isAdminMode
-        ? '사진, 주소검색, 기본 조건을 빠르게 입력하고 필요하면 상세 등록에서 전체 항목을 보완합니다.'
-        : '현장에서 사진을 먼저 올리고, 버튼 선택과 숫자 입력만으로 빠르게 검수대기 매물을 저장합니다.'}
-    </p>
+  <section className="admin-section-block priority-block quick-simple-entry">
+    <h4>간단입력</h4>
+    <p className="muted">현장에서 핵심 항목과 사진을 먼저 저장하고, 필요하면 상세입력에서 보완합니다.</p>
 
-    <section className="quick-field-section">
-      <h4>1. 사진 등록</h4>
+    <ButtonChoiceGroup
+      label="매물종류"
+      value={simpleCategory}
+      options={QUICK_PROPERTY_TYPES}
+      onChange={(type) => {
+        setQuickRoomType(type);
+        updateField('category', type);
+        if (ROOM_BATH_DEFAULTS[type] && !form.room_bath) updateField('room_bath', ROOM_BATH_DEFAULTS[type]);
+        if (type.includes('매매')) {
+          setQuickTradeType('매매');
+          updateField('trade_type', '매매');
+        }
+      }}
+    />
+
+    <ButtonChoiceGroup
+      label="거래형태"
+      value={simpleTradeType}
+      options={isRevenueBuildingSale ? ['매매'] : QUICK_TRADE_TYPES}
+      onChange={(type) => {
+        if (isRevenueBuildingSale) return;
+        setQuickTradeType(type);
+        updateField('trade_type', type);
+      }}
+    />
+    {isRevenueBuildingSale && <p className="muted quick-helper-text">수익형 건물 매매로 인식되어 거래형태를 매매로 고정합니다.</p>}
+
+    <AddressLedgerSearchSection
+      title="주소"
+      form={form}
+      updateField={updateField}
+      addressResults={addressResults}
+      setAddressResults={setAddressResults}
+      addressSearching={addressSearching}
+      handleAddressSearch={handleAddressSearch}
+      selectedAddressItem={selectedAddressItem}
+      setSelectedAddressItem={setSelectedAddressItem}
+      selectedAddressLabel={selectedAddressLabel}
+      buildingLedgerSearching={buildingLedgerSearching}
+      fetchBuildingLedger={fetchBuildingLedger}
+      ledgerPreviewItems={ledgerPreviewItems}
+      status={status}
+      setStatus={setStatus}
+    />
+
+    <section className="quick-field-section quick-core-fields">
+      <h4>기본 항목</h4>
+      <div className="two-cols">
+        <Field label="상세주소 또는 호실" value={form.real_unit || quickUnit} onChange={(v) => { setQuickUnit(v); updateField('real_unit', v); }} placeholder="예: 303호" inputMode="numeric" />
+        <Field label="제목" value={form.title} onChange={(v) => updateField('title', v)} placeholder="예: 인의동 즉시입주 원룸" />
+      </div>
+    </section>
+
+    <section className="quick-field-section quick-price-fields">
+      <h4>가격 / 조건</h4>
+      {simpleTradeType === '매매' ? (
+        <>
+          <div className="three-cols">
+            <NumberField label="매매가격" value={form.sale_price} onChange={(v) => updateRevenueField('sale_price', v)} placeholder="예: 91000" />
+            <Field label="면적" value={form.area} onChange={(v) => updateField('area', v)} placeholder="예: 84㎡" />
+            <Field label="층수" value={form.floor_info} onChange={(v) => updateField('floor_info', v)} placeholder="예: 3층 / 총 4층" />
+          </div>
+          <div className="two-cols">
+            <Field label="사용승인일" value={form.approval_date} onChange={(v) => updateField('approval_date', v)} placeholder="확인필요" />
+            <Field label="관리비" value={form.maintenance_fee} onChange={(v) => updateField('maintenance_fee', v)} placeholder="확인필요" />
+          </div>
+        </>
+      ) : simpleTradeType === '전세' ? (
+        <>
+          <div className="three-cols">
+            <NumberField label="전세금" value={form.deposit} onChange={(v) => updateField('deposit', v)} placeholder="예: 7000" />
+            <Field label="관리비" value={form.maintenance_fee} onChange={(v) => updateField('maintenance_fee', v)} placeholder="확인필요" />
+            <Field label="방/욕실" value={form.room_bath} onChange={(v) => updateField('room_bath', v)} placeholder="방 1 / 욕실 1" />
+          </div>
+          <div className="two-cols">
+            <Field label="층수" value={form.floor_info} onChange={(v) => updateField('floor_info', v)} placeholder="예: 3층 / 총 4층" />
+            <Field label="입주가능일" value={form.move_in} onChange={(v) => updateField('move_in', v)} placeholder="즉시입주 협의" />
+          </div>
+        </>
+      ) : (
+        <>
+          <div className="three-cols">
+            <NumberField label="보증금" value={form.deposit} onChange={(v) => updateField('deposit', v)} placeholder="예: 300" />
+            <NumberField label="월세" value={form.rent} onChange={(v) => updateField('rent', v)} placeholder="예: 40" />
+            <Field label="관리비" value={form.maintenance_fee} onChange={(v) => updateField('maintenance_fee', v)} placeholder="확인필요" />
+          </div>
+          <div className="three-cols">
+            <Field label="방/욕실" value={form.room_bath} onChange={(v) => updateField('room_bath', v)} placeholder="방 1 / 욕실 1" />
+            <Field label="층수" value={form.floor_info} onChange={(v) => updateField('floor_info', v)} placeholder="예: 3층 / 총 4층" />
+            <Field label="입주가능일" value={form.move_in} onChange={(v) => updateField('move_in', v)} placeholder="즉시입주 협의" />
+          </div>
+        </>
+      )}
+    </section>
+
+    {isRevenueBuildingSale && (
+      <section className="quick-field-section quick-revenue-fields">
+        <h4>수익형 건물 항목</h4>
+        <div className="three-cols">
+          <NumberField label="매매가격" value={form.sale_price} onChange={(v) => updateRevenueField('sale_price', v)} placeholder="예: 91000" />
+          <NumberField label="융자금" value={form.loan_amount} onChange={(v) => updateRevenueField('loan_amount', v)} placeholder="예: 41000" />
+          <NumberField label="총보증금" value={form.total_deposit} onChange={(v) => updateRevenueField('total_deposit', v)} placeholder="예: 42200" />
+        </div>
+        <div className="three-cols">
+          <NumberField label="실인수가" value={form.acquisition_price} onChange={(v) => updateRevenueField('acquisition_price', v)} placeholder="예: 7800" />
+          <NumberField label="총월세" value={form.total_monthly_rent} onChange={(v) => updateRevenueField('total_monthly_rent', v)} placeholder="예: 498" />
+          <NumberField label="월이자" value={form.monthly_interest} onChange={(v) => updateRevenueField('monthly_interest', v)} placeholder="예: 171" />
+        </div>
+        <div className="three-cols">
+          <NumberField label="월순수익" value={form.net_profit} onChange={(v) => updateRevenueField('net_profit', v)} placeholder="예: 327" />
+          <Field label="수익률" value={form.return_rate || calculatedReturnRate} onChange={(v) => updateField('return_rate', v)} placeholder="자동계산" inputMode="decimal" />
+          <NumberField label="총세대수" value={form.total_units} onChange={(v) => updateField('total_units', v)} placeholder="예: 19" suffix="세대" />
+        </div>
+        <div className="two-cols">
+          <NumberField label="임대중 세대수" value={form.rented_units} onChange={(v) => updateField('rented_units', v)} placeholder="예: 18" suffix="세대" />
+          <NumberField label="공실수" value={form.vacant_units} onChange={(v) => updateField('vacant_units', v)} placeholder="예: 1" suffix="세대" />
+        </div>
+      </section>
+    )}
+
+    <section className="quick-field-section quick-photo-section">
+      <h4>사진 업로드</h4>
       <PhotoUploader
         photos={photoUrls}
         onUpload={uploadPhotoFiles}
@@ -4059,247 +5119,15 @@ if (isStaffMode && currentStaff?.code) {
       />
     </section>
 
-    <AddressLedgerSearchSection
-      title="2. 주소검색"
-      form={form}
-      updateField={updateField}
-      addressResults={addressResults}
-      setAddressResults={setAddressResults}
-      addressSearching={addressSearching}
-      handleAddressSearch={handleAddressSearch}
-      selectedAddressItem={selectedAddressItem}
-      setSelectedAddressItem={setSelectedAddressItem}
-      selectedAddressLabel={selectedAddressLabel}
-      buildingLedgerSearching={buildingLedgerSearching}
-      fetchBuildingLedger={fetchBuildingLedger}
-      ledgerPreviewItems={ledgerPreviewItems}
-      status={status}
-      setStatus={setStatus}
-    />
-
-    <ButtonChoiceGroup
-      label="3. 매물종류"
-      value={quickRoomType}
-      options={QUICK_PROPERTY_TYPES}
-      onChange={(type) => {
-        setQuickRoomType(type);
-        updateField('category', type);
-        if (ROOM_BATH_DEFAULTS[type]) updateField('room_bath', ROOM_BATH_DEFAULTS[type]);
-        updateField('move_in', form.move_in || '즉시입주 협의');
-        updateField('direction', form.direction || '주출입구 기준 확인 필요');
-      }}
-    />
-
-    <ButtonChoiceGroup
-      label="4. 거래형태"
-      value={quickTradeType}
-      options={QUICK_TRADE_TYPES}
-      onChange={(type) => {
-        setQuickTradeType(type);
-        updateField('trade_type', type);
-      }}
-    />
     <section className="quick-field-section">
-      <h4>5. 가격 입력</h4>
-      {quickTradeType === '매매' ? (
-        <>
-          <div className="three-cols">
-            <NumberField label="매매가" value={form.sale_price} onChange={(v) => updateField('sale_price', v)} placeholder="예: 91000" />
-            <NumberField label="융자금" value={form.loan_amount} onChange={(v) => updateField('loan_amount', v)} placeholder="예: 41000" />
-            <NumberField label="총보증금" value={form.total_deposit} onChange={(v) => updateField('total_deposit', v)} placeholder="예: 42200" />
-          </div>
-          <div className="three-cols">
-            <NumberField label="월세수입" value={form.total_monthly_rent} onChange={(v) => updateField('total_monthly_rent', v)} placeholder="예: 498" />
-            <NumberField label="월순수입" value={form.net_profit} onChange={(v) => updateField('net_profit', v)} placeholder="예: 327" />
-            <NumberField label="인수금/실투자금" value={form.acquisition_price} onChange={(v) => updateField('acquisition_price', v)} placeholder="예: 7800" />
-          </div>
-        </>
-      ) : (
-        <div className="three-cols">
-          <NumberField label="보증금" value={form.deposit} onChange={(v) => updateField('deposit', v)} placeholder="예: 300" />
-          <NumberField label="월세" value={form.rent} onChange={(v) => updateField('rent', v)} placeholder="예: 40" />
-          <NumberField
-            label="관리비 금액"
-            value={form.maintenance_fee}
-            onChange={(v) => updateField('maintenance_fee', v)}
-            placeholder="예: 5"
-            disabled={maintenanceType === '관리비없음' || maintenanceType === '확인필요'}
-          />
-        </div>
-      )}
-    </section>
-
-    <ButtonChoiceGroup
-      label="6. 관리비 구분"
-      value={maintenanceType}
-      options={MAINTENANCE_TYPES}
-      onChange={setMaintenanceType}
-    />
-
-    <SelectableOptionGroup
-      label="관리비 포함 항목"
-      value={maintenanceItemsText}
-      options={MAINTENANCE_ITEMS}
-      onChange={setMaintenanceItemsText}
-      placeholder="예: 정화조비, 건물청소비"
-    />
-
-    <section className="quick-field-section">
-      <h4>7. 층 / 호수</h4>
-      <div className="three-cols">
-        <NumberField label="해당층" value={quickFloor} onChange={setQuickFloor} placeholder="예: 3" suffix="층" />
-        <NumberField label="총층" value={quickTotalFloor} onChange={setQuickTotalFloor} placeholder="예: 4" suffix="층" />
-        <Field label="호수" value={quickUnit} onChange={setQuickUnit} placeholder="예: 303호" inputMode="numeric" />
-      </div>
-      <label className="check-line quick-check-line">
-        <input type="checkbox" checked={quickShowUnit} onChange={(e) => setQuickShowUnit(e.target.checked)} />
-        호수 공개
-      </label>
-    </section>
-
-    {isAdminMode && (
-    <section className="quick-field-section">
-      <h4>8. 방 / 욕실</h4>
-      <div className="two-cols">
-        <NumberField label="방 수" value={quickRoomCount} onChange={setQuickRoomCount} placeholder="예: 1" suffix="개" />
-        <NumberField label="욕실 수" value={quickBathCount} onChange={setQuickBathCount} placeholder="예: 1" suffix="개" />
-      </div>
-    </section>
-    )}
-
-    {isAdminMode && (
-    <ButtonChoiceGroup
-      label="11. 방향"
-      value={directionChoice}
-      options={DIRECTION_OPTIONS}
-      onChange={setDirectionChoice}
-    />
-    )}
-    {isAdminMode && (
-    <p className="muted quick-helper-text">방향 기준: 주출입구 기준</p>
-    )}
-
-    <ButtonChoiceGroup
-      label="12. 입주가능일"
-      value={moveInChoice}
-      options={MOVE_IN_OPTIONS}
-      onChange={setMoveInChoice}
-    />
-    {moveInChoice === '날짜 직접입력' && (
-      <section className="quick-field-section">
-        <Field label="입주 가능 날짜" value={moveInDate} onChange={setMoveInDate} placeholder="예: 2026년 6월 20일 이후" />
-      </section>
-    )}
-
-    <ButtonChoiceGroup
-      label="13. 주차"
-      value={parkingChoice}
-      options={PARKING_OPTIONS}
-      onChange={setParkingChoice}
-    />
-    <section className="quick-field-section">
-      <div className="three-cols">
-        <NumberField label="총 주차대수" value={parkingTotal} onChange={setParkingTotal} placeholder="예: 8" suffix="대" />
-        <NumberField label="세대당 주차대수" value={parkingPerUnit} onChange={setParkingPerUnit} placeholder="예: 1" suffix="대" />
-        <Field label="주차 메모" value={parkingMemo} onChange={setParkingMemo} placeholder="예: 건물 앞 주차 가능" />
-      </div>
-    </section>
-
-    {isAdminMode && (
-    <ButtonChoiceGroup
-      label="14. 난방"
-      value={heatingChoice}
-      options={HEATING_OPTIONS}
-      onChange={setHeatingChoice}
-    />
-    )}
-
-    {isAdminMode && (
-    <ButtonChoiceGroup
-      label="엘리베이터"
-      value={elevatorChoice}
-      options={ELEVATOR_OPTIONS}
-      onChange={setElevatorChoice}
-    />
-    )}
-
-    <section className="quick-field-section">
-      <h4>{isStaffMode ? '비공개 메모' : '제목 키워드와 메모'}</h4>
-      {isAdminMode && (
-      <div className="quick-title-keyword-row">
-        <p className="quick-label">제목 키워드 삽입</p>
-        {['리모델링', '단기임대', '저렴한', '넓은', '즉시입주', '풀옵션'].map((keyword) => (
-          <button key={keyword} type="button" className={quickTitleKeyword === keyword ? 'active' : ''} onClick={() => setQuickTitleKeyword(keyword)}>
-            {keyword}
-          </button>
-        ))}
-        <button type="button" className={quickTitleKeyword === '' ? 'active' : ''} onClick={() => setQuickTitleKeyword('')}>
-          선택안함
-        </button>
-      </div>
-      )}
       <TextArea
-        label={isStaffMode ? '비공개 메모' : '한줄 요약'}
-        value={isStaffMode ? form.private_memo : form.summary}
-        onChange={(v) => updateField(isStaffMode ? 'private_memo' : 'summary', v)}
+        label="담당자 메모"
+        value={form.staff_memo}
+        onChange={(v) => updateField('staff_memo', v)}
         rows={3}
-        placeholder={isStaffMode ? '예: 집주인 통화 필요, 현관 비번 확인 전, 사진 추가 필요' : '예: 리모델링, 즉시입주, 주차가능, 공단 출퇴근 편리'}
+        placeholder="예: 집주인 통화 필요, 현관 비번 확인 전, 사진 추가 필요"
       />
     </section>
-
-    {isAdminMode && (
-    <SelectableOptionGroup
-      label="옵션/편의"
-      value={form.convenienceText}
-      options={OPTION_PRESETS.convenienceText}
-      onChange={(v) => updateField('convenienceText', v)}
-      placeholder="예: 건조기, 공기청정기"
-    />
-    )}
-
-    {isAdminMode && (
-    <SelectableOptionGroup
-      label="안전시설"
-      value={form.safetyText}
-      options={OPTION_PRESETS.safetyText}
-      onChange={(v) => updateField('safetyText', v)}
-      placeholder="예: 보안등, 관리실"
-    />
-    )}
-
-    {isAdminMode && (
-    <SelectableOptionGroup
-      label="생활권"
-      value={form.educationText}
-      options={OPTION_PRESETS.educationText}
-      onChange={(v) => updateField('educationText', v)}
-      placeholder="예: 역세권, 산책로 인근"
-    />
-    )}
-
-    {isAdminMode && (
-    <SelectableOptionGroup
-      label="19. 매물 배지"
-      value={form.badgesText}
-      options={BADGE_OPTIONS}
-      onChange={(v) => updateField('badgesText', v)}
-      placeholder="예: 반전세가능"
-    />
-    )}
-
-    <ButtonChoiceGroup
-      label="게시상태"
-      value={postStatusLabel}
-      options={isStaffMode ? [POST_STATUS_OPTIONS[0].label] : POST_STATUS_OPTIONS.map((item) => item.label)}
-      onChange={(nextStatus) => {
-        if (isStaffMode) {
-          setPostStatusLabel(POST_STATUS_OPTIONS[0].label);
-          return;
-        }
-        setPostStatusLabel(nextStatus);
-      }}
-    />
-
   </section>
 )}
               {entryMode === 'detail' && (
@@ -4308,7 +5136,7 @@ if (isStaffMode && currentStaff?.code) {
                 <Field label="제목" value={form.title} onChange={(v) => updateField('title', v)} placeholder="예: 진평초등 앞 리모델링 원룸임대" />
                 <div className="two-cols">
                 
-                <SelectField label="매물종류" value={form.category} onChange={(v) => updateField('category', v)} options={['원룸', '미니투룸', '투룸', '쓰리룸 이상', '다가구 매매', '상가·사무실']} />
+                <SelectField label="매물종류" value={form.category} onChange={(v) => updateField('category', v)} options={[...new Set([form.category, '원룸', '원룸 월세', '미니투룸', '미니투룸 월세', '투룸', '투룸 월세', '쓰리룸 이상', '상가·사무실', '아파트', '다가구매매', '다가구 매매', '원룸건물매매'].filter(Boolean))]} />
 <SelectField label="거래형태" value={form.trade_type} onChange={(v) => updateField('trade_type', v)} options={['월세', '반전세', '전세', '매매', '단기임대']} />
                 </div>
                 <AddressLedgerSearchSection
@@ -4427,11 +5255,106 @@ if (isStaffMode && currentStaff?.code) {
       <strong>{form.parking || '확인 필요'}</strong>
     </div>
 
-    <div>
-      <span>사진</span>
-      <strong>{photoUrls.length}장</strong>
-    </div>
+ <div>
+  <span>사진</span>
+  <strong>{photoUrls.length}장</strong>
+</div>
+</div>
+
+<div style={{ marginTop: '14px' }}>
+  <div style={{ display: 'flex', gap: '8px', justifyContent: 'flex-end', flexWrap: 'wrap' }}>
+    <button
+      type="button"
+      onClick={handleDaangnExcelDownload}
+      style={{ backgroundColor: '#FF7E36', color: 'white', padding: '8px 14px', borderRadius: '4px', border: 'none', cursor: 'pointer', fontWeight: 'bold' }}
+    >
+      당근
+    </button>
+
+    <button
+      type="button"
+      onClick={() => setPublishTab(publishTab === 'blog' ? '' : 'blog')}
+      style={{ backgroundColor: '#173f73', color: 'white', padding: '8px 14px', borderRadius: '4px', border: 'none', cursor: 'pointer', fontWeight: 'bold' }}
+    >
+      블로그
+    </button>
+
+    <button
+      type="button"
+      onClick={() => setPublishTab(publishTab === 'instagram' ? '' : 'instagram')}
+      style={{ backgroundColor: '#222', color: 'white', padding: '8px 14px', borderRadius: '4px', border: 'none', cursor: 'pointer', fontWeight: 'bold' }}
+    >
+      인스타
+    </button>
+
+    <button
+      type="button"
+      onClick={() => setPublishTab(publishTab === 'all' ? '' : 'all')}
+      style={{ backgroundColor: '#0f766e', color: 'white', padding: '8px 14px', borderRadius: '4px', border: 'none', cursor: 'pointer', fontWeight: 'bold' }}
+    >
+      전체
+    </button>
   </div>
+
+  {publishTab && (
+    <div style={{ marginTop: '14px', padding: '14px', border: '1px solid #d8dee9', borderRadius: '10px', backgroundColor: '#f8fafc' }}>
+      {publishTab === 'all' && (
+        <div style={{ marginBottom: '14px', textAlign: 'right' }}>
+          <button
+            type="button"
+            onClick={handleDaangnExcelDownload}
+            style={{ backgroundColor: '#FF7E36', color: 'white', padding: '8px 14px', borderRadius: '4px', border: 'none', cursor: 'pointer', fontWeight: 'bold' }}
+          >
+            당근 CSV 다운로드
+          </button>
+        </div>
+      )}
+
+      {(publishTab === 'blog' || publishTab === 'all') && (
+        <section style={{ marginBottom: '16px' }}>
+          <h4>블로그 발행자료</h4>
+
+          <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', marginBottom: '8px' }}>
+            <button type="button" onClick={() => handleCopy('블로그 제목', blogPublishData.title)}>제목 복사</button>
+            <button type="button" onClick={() => handleCopy('블로그 본문', blogPublishData.body)}>본문 복사</button>
+            <button type="button" onClick={() => handleCopy('블로그 태그', blogPublishData.tags)}>태그 복사</button>
+          </div>
+
+          <label style={{ display: 'block', fontWeight: 'bold', marginTop: '8px' }}>제목</label>
+          <textarea readOnly value={blogPublishData.title} rows={2} style={{ width: '100%', padding: '8px' }} />
+
+          <label style={{ display: 'block', fontWeight: 'bold', marginTop: '8px' }}>본문</label>
+          <textarea readOnly value={blogPublishData.body} rows={12} style={{ width: '100%', padding: '8px' }} />
+
+          <label style={{ display: 'block', fontWeight: 'bold', marginTop: '8px' }}>태그</label>
+          <textarea readOnly value={blogPublishData.tags} rows={3} style={{ width: '100%', padding: '8px' }} />
+        </section>
+      )}
+
+      {(publishTab === 'instagram' || publishTab === 'all') && (
+        <section>
+          <h4>인스타 발행자료</h4>
+
+          <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', marginBottom: '8px' }}>
+            <button type="button" onClick={() => handleCopy('인스타 문구', instagramPublishData.body)}>문구 복사</button>
+            <button type="button" onClick={() => handleCopy('인스타 태그', instagramPublishData.tags)}>태그 복사</button>
+            <button type="button" onClick={() => handleCopy('사진 URL', instagramPublishData.photos)}>사진 URL 복사</button>
+          </div>
+
+          <label style={{ display: 'block', fontWeight: 'bold', marginTop: '8px' }}>문구</label>
+          <textarea readOnly value={instagramPublishData.body} rows={8} style={{ width: '100%', padding: '8px' }} />
+
+          <label style={{ display: 'block', fontWeight: 'bold', marginTop: '8px' }}>태그</label>
+          <textarea readOnly value={instagramPublishData.tags} rows={3} style={{ width: '100%', padding: '8px' }} />
+
+          <label style={{ display: 'block', fontWeight: 'bold', marginTop: '8px' }}>사진 URL</label>
+          <textarea readOnly value={instagramPublishData.photos} rows={5} style={{ width: '100%', padding: '8px' }} />
+        </section>
+      )}
+    </div>
+  )}
+</div>
+
 </section>
               )}
               {isAdminMode && (
@@ -4467,7 +5390,7 @@ if (isStaffMode && currentStaff?.code) {
                   <Field
                     label="총층수"
                     value={form.total_floor_info || form.floor_info}
-                    onChange={(v) => setForm((prev) => ({ ...prev, total_floor_info: v, floor_info: v }))}
+                    onChange={(v) => setLatestForm((prev) => ({ ...prev, total_floor_info: v, floor_info: v }))}
                     placeholder="지상 4층 / 지하 1층"
                   />
                 </div>
@@ -4739,43 +5662,205 @@ if (isStaffMode && currentStaff?.code) {
             )}
 
             {canEditExisting && (
-            <div className="admin-list">
-              <h3>등록 매물</h3>
-              <AdminPropertyTabs property={adminDetailProperty} activeTab={adminDetailTab} setActiveTab={setAdminDetailTab} />
-              {properties.map((property) => (
-                <div className="admin-list-item" key={property.id}>
-                  <div className="admin-item-title">
-                    <strong>{property.title}</strong>
-                    <em className={`status-chip status-${property.status || 'pending'}`}>
-                      {STATUS_LABELS[property.status || 'pending'] || property.status}
-                    </em>
-                    {hasPrivateAdminInfo(property) && (
-                      <button
-                        type="button"
-                        className="memo-icon-button"
-                        title="비공개 메모 보기"
-                        onClick={() => {
-                          setAdminDetailProperty(property);
-                          setAdminDetailTab('memo');
-                        }}
-                      >
-                        메모
-                      </button>
-                    )}
-                  </div>
-                  <span>{(property.category?.includes('매매') || property.trade_type === '매매') ? `매매가 ${property.sale_price || '-'} / 총월세 ${property.total_monthly_rent || '-'}` : `${property.deposit || '-'} / ${property.rent || '-'}`}</span>
-                  <div>
-                    <button onClick={() => { setAdminDetailProperty(property); setAdminDetailTab('public'); }}>상세</button>
-                    <button onClick={() => startEdit(property)}>수정</button>
-                    <button onClick={() => changePropertyStatus(property.id, 'published')}>승인</button>
-                    <button onClick={() => changePropertyStatus(property.id, 'hold')}>보류</button>
-                    <button onClick={() => changePropertyStatus(property.id, 'pending')}>대기</button>
-                    <button onClick={() => deleteProperty(property.id)}>삭제</button>
-                  </div>
-                </div>
-              ))}
+
+  <div className="admin-list">
+    <h3>등록 매물</h3>
+    <p className="muted">사진을 보고 매물을 확인한 뒤 수정 또는 광고올리기를 누르세요.</p>
+    <AdminPropertyTabs property={adminDetailProperty} activeTab={adminDetailTab} setActiveTab={setAdminDetailTab} />
+
+{properties.map((property) => {
+  const isSale =
+    property.category?.includes('매매') ||
+    property.trade_type === '매매';
+
+  const representativePhoto =
+    Array.isArray(property.photos) && property.photos.length
+      ? property.photos[0]
+      : '';
+
+  const isAdvertisingOpen = advertisingPropertyId === property.id;
+
+  const statusText =
+    STATUS_LABELS[property.status || 'pending'] ||
+    property.status ||
+    '임시저장';
+
+  const instagramText = [
+    `🏠 ${property.title || '구미 부동산 매물'}`,
+    `📍 ${property.address || '구미시'}`,
+    isSale
+      ? `💰 매매가 ${formatAmount(property.sale_price)} / 인수가 ${formatAmount(property.acquisition_price)}`
+      : `💰 보증금 ${formatAmount(property.deposit)} / 월세 ${formatAmount(property.rent)}`,
+    property.summary || '',
+    '',
+    '#구미부동산 #구미원룸 #구미투룸 #구미다가구매매 #칸공인중개사'
+  ].filter(Boolean).join('\n');
+
+  const facebookText = [
+    property.title || '구미 부동산 매물 안내',
+    '',
+    `위치: ${property.address || '구미시'}`,
+    isSale
+      ? `매매가: ${formatAmount(property.sale_price)} / 인수가: ${formatAmount(property.acquisition_price)} / 월세수입: ${formatAmount(property.total_monthly_rent)} / 월순수익: ${formatAmount(property.net_profit)}`
+      : `보증금: ${formatAmount(property.deposit)} / 월세: ${formatAmount(property.rent)} / 관리비: ${property.maintenance_fee || '확인 필요'}`,
+    '',
+    property.summary || property.description || '',
+    '',
+    `문의: ${OFFICE.phone}`
+  ].filter(Boolean).join('\n');
+
+  return (
+    <div className="admin-list-item" key={property.id}>
+      <div
+        style={{
+          display: 'grid',
+          gridTemplateColumns: '96px 1fr',
+          gap: '12px',
+          alignItems: 'start'
+        }}
+      >
+        <div>
+          {representativePhoto ? (
+            <img
+              src={representativePhoto}
+              alt="대표사진"
+              style={{
+                width: '96px',
+                height: '82px',
+                objectFit: 'cover',
+                borderRadius: '10px',
+                border: '1px solid #e5e7eb'
+              }}
+            />
+          ) : (
+            <div
+              style={{
+                width: '96px',
+                height: '82px',
+                borderRadius: '10px',
+                border: '1px solid #e5e7eb',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                fontSize: '12px',
+                color: '#64748b',
+                background: '#f8fafc'
+              }}
+            >
+              사진 없음
             </div>
-            )}
+          )}
+        </div>
+
+        <div>
+          <div className="admin-item-title">
+            <strong>{property.title || '제목 미입력 매물'}</strong>
+            <em className={`status-chip status-${property.status || 'pending'}`}>
+              {statusText}
+            </em>
+          </div>
+
+          <p className="muted" style={{ margin: '4px 0 8px' }}>
+            {property.address || '주소 미입력'}
+          </p>
+
+          <span>
+            {isSale
+              ? `매매가 ${formatAmount(property.sale_price)} / 인수가 ${formatAmount(property.acquisition_price)} / 월세수입 ${formatAmount(property.total_monthly_rent)} / 월순수익 ${formatAmount(property.net_profit)}`
+              : `보증금 ${formatAmount(property.deposit)} / 월세 ${formatAmount(property.rent)} / 관리비 ${property.maintenance_fee || '확인 필요'}`}
+          </span>
+
+          <div style={{ marginTop: '10px', display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+            <button type="button" onClick={() => startEdit(property)}>
+              수정
+            </button>
+
+            <button
+              type="button"
+              onClick={() =>
+                setAdvertisingPropertyId(isAdvertisingOpen ? null : property.id)
+              }
+            >
+              광고올리기
+            </button>
+
+            <button
+              type="button"
+              onClick={() => changePropertyStatus(property.id, 'hold')}
+            >
+              보류
+            </button>
+          </div>
+
+          {isAdvertisingOpen && (
+            <div
+              style={{
+                marginTop: '10px',
+                padding: '10px',
+                border: '1px solid #e5e7eb',
+                borderRadius: '10px',
+                background: '#f8fafc',
+                display: 'flex',
+                gap: '8px',
+                flexWrap: 'wrap'
+              }}
+            >
+              <button
+                type="button"
+                onClick={async () => {
+                  const blogAd = buildNaverBlogAd(property);
+                  const copied = await copyAdvertisementText(
+                    `${blogAd.title}\n\n${blogAd.body}\n\n${blogAd.tags}`
+                  );
+                  setStatus(copied ? '네이버 블로그 원고 복사 완료' : '복사 실패');
+                }}
+              >
+                네이버 블로그
+              </button>
+
+              <button
+                type="button"
+                onClick={async () => {
+                  const daangnAd = buildDaangnAd(property);
+                  const copied = await copyAdvertisementText(
+                    `${daangnAd.title}\n\n${daangnAd.body}`
+                  );
+                  setStatus(copied ? '당근 문구 복사 완료' : '복사 실패');
+                }}
+              >
+                당근
+              </button>
+
+              <button
+                type="button"
+                onClick={async () => {
+                  const copied = await copyAdvertisementText(instagramText);
+                  setStatus(copied ? '인스타 문구 복사 완료' : '복사 실패');
+                }}
+              >
+                인스타 문구
+              </button>
+
+              <button
+                type="button"
+                onClick={async () => {
+                  const copied = await copyAdvertisementText(facebookText);
+                  setStatus(copied ? '페이스북 문구 복사 완료' : '복사 실패');
+                }}
+              >
+                페이스북 문구
+              </button>
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+})}
+
+  </div>
+)}
+
           </div>
         )}
       </div>
@@ -5160,220 +6245,543 @@ function buildDaangnRegistrationHelper(property) {
     copyText
   };
 }
+function cleanBlogBodyStart(text) {
+  return String(text || '').trimStart();
+}
+
 function buildNaverBlogAd(property) {
-  const address = String(property.address || '경상북도 구미시').trim();
-
-  const neighborhood =
-    address
-      .split(/\s+/)
-      .find((word) => /[동읍면리]$/.test(word)) || '구미';
-
-  const category = String(property.category || '원룸').trim();
-  const tradeType = String(property.trade_type || '월세').trim();
-
-  const roomType =
-    category
-      .replace(/월세|전세|반전세|매매|단기임대|단기/g, '')
-      .trim() || '원룸';
-
-  const price = getDaangnPrice(property);
-
-  const rawMaintenance = String(
-    property.maintenance_fee || ''
-  ).trim();
-
-  const maintenance = !rawMaintenance
-    ? '확인 필요'
-    : /^\d+(\.\d+)?$/.test(rawMaintenance)
-      ? `${rawMaintenance}만원`
-      : rawMaintenance;
-
-  const options = toTextList(property.convenience).slice(0, 15);
-  const safety = toTextList(property.safety).slice(0, 8);
-  const living = toTextList(property.education).slice(0, 8);
-  const badges = toTextList(property.badges).slice(0, 3);
+  const clean = (value) => String(value || '').trim();
+  const compact = (value) => clean(value).replace(/\s+/g, ' ');
+  const toList = (value) => toTextList(value).map(clean).filter(Boolean);
 
   const photos = Array.isArray(property.photos)
-    ? property.photos
-    : toTextList(property.photos);
+    ? property.photos.map(clean).filter(Boolean)
+    : toList(property.photos);
 
-  const photoPlaces = [
-    '건물 외관과 주차공간',
-    '현관과 신발장',
-    '방 전체 구조',
-    '침실과 수납공간',
-    '주방과 싱크대',
-    '욕실 내부',
-    '세탁공간과 베란다',
-    '채광과 창문',
-    '주요 옵션',
-    '생활공간 전체'
+  const options = [
+    ...toList(property.convenience),
+    ...toList(property.safety),
+    ...toList(property.education)
   ];
 
-  const photoCaptions =
-    photos.length > 0
-      ? photos.map((_, index) => {
-          const place =
-            photoPlaces[index] || `내부 공간 ${index + 1}`;
+  const maintenanceItems = toList(property.maintenance_includes);
 
-          return `${index + 1}. 구미 ${neighborhood} ${roomType} ${place}`;
-        })
-      : ['사진 등록 후 사진 수에 맞춰 설명을 작성해주세요.'];
+  const category = clean(property.category) || '부동산 매물';
+  const tradeType = clean(property.trade_type) || '거래형태 확인';
+  const address = clean(property.address) || '구미시 일원';
+  const isSale =
+    category.includes('매매') ||
+    tradeType === '매매';
 
-  const isRentalRoom =
-    /(원룸|미니투룸|투룸|쓰리룸)/.test(roomType) &&
-    !/매매/.test(`${tradeType} ${category}`);
+  const getDong = (value) => {
+    const text = clean(value)
+      .replace('경상북도', '')
+      .replace('경북', '')
+      .replace('구미시', '')
+      .trim();
 
-  const title = [
-    '구미',
-    neighborhood,
-    roomType,
-    tradeType,
-    price,
-    badges.join(' ')
-  ]
-    .filter(Boolean)
-    .join(' ')
-    .replace(/\s+/g, ' ')
-    .trim()
-    .slice(0, 100);
+    const match = text.match(/([가-힣0-9]+(?:동|읍|면|리))/);
+    return match ? match[1] : '';
+  };
 
-  const hubLinkBlock = isRentalRoom
+  const dong = getDong(address);
+  const locationTitle = dong ? `구미 ${dong}` : '구미';
+
+  const moneyText = (value) => {
+    const text = clean(value);
+    if (!text) return '';
+    if (text.includes('억') || text.includes('만') || text.includes('원')) return text;
+    if (/^\d+(\.\d+)?$/.test(text.replaceAll(',', ''))) return `${Number(text.replaceAll(',', '')).toLocaleString()}만원`;
+    return text;
+  };
+
+  const priceText = isSale
     ? [
-        '',
-        '📌 구미 원룸 월세를 여러 지역으로 비교해보고 싶다면?',
-        '인의동, 진평동, 구평동, 인동, 공단 인근 매물도 함께 비교해보실 수 있습니다.',
-        '👉 구미 원룸 월세 전체 안내 보러가기',
-        OFFICE.blog
-      ]
-    : [];
+        property.sale_price ? `매매가 ${moneyText(property.sale_price)}` : '',
+        property.acquisition_price ? `인수가 ${moneyText(property.acquisition_price)}` : '',
+        property.total_monthly_rent ? `총월세 ${moneyText(property.total_monthly_rent)}` : '',
+        property.net_profit ? `월순수익 ${moneyText(property.net_profit)}` : ''
+      ].filter(Boolean).join(' / ') || '가격 상담 시 확인'
+    : [
+        property.deposit ? `보증금 ${moneyText(property.deposit)}` : '',
+        property.rent ? `월세 ${moneyText(property.rent)}` : '',
+        property.maintenance_fee ? `관리비 ${clean(property.maintenance_fee)}` : ''
+      ].filter(Boolean).join(' / ') || '가격 상담 시 확인';
 
-  const legalNotice =
-    property.legal_notice ||
-    [
-      '【중개대상물 표시·광고 사항】',
-      `중개대상물 종류: ${category || '확인 필요'}`,
-      `거래형태: ${tradeType || '확인 필요'}`,
-      `소재지: ${address || '확인 필요'}`,
-      `거래가격: ${price}`,
-      `관리비: ${maintenance}`,
-      `면적: ${property.area || '확인 필요'}`,
-      `해당층/총층: ${
-        property.floor_info ||
-        property.total_floor_info ||
-        '확인 필요'
-      }`,
-      `방/욕실: ${property.room_bath || '확인 필요'}`,
-      `방향: ${property.direction || '확인 필요'}`,
-      `입주가능일: ${property.move_in || '협의 가능'}`,
-      `주차: ${property.parking || '확인 필요'}`,
-      `사용승인일: ${property.approval_date || '확인 필요'}`,
-      '',
-      `상호명: ${OFFICE.name}`,
-      `중개사무소 소재지: ${OFFICE.address}`,
-      `대표공인중개사: ${OFFICE.broker}`,
-      `등록번호: ${OFFICE.regNo}`,
-      `연락처: ${OFFICE.phone} / ${OFFICE.tel}`
-    ].join('\n');
+  const titleBenefit = [
+    clean(property.maintenance_fee).includes('포함') ? '관리비포함' : '',
+    clean(property.move_in).includes('즉시') ? '즉시입주' : '',
+    clean(property.parking).includes('가능') ? '주차가능' : '',
+    clean(property.remodeling) ? '리모델링' : ''
+  ].filter(Boolean)[0] || '';
 
-  const body = [
-    `구미 ${neighborhood} ${roomType} ${tradeType} 매물입니다.`,
-    `${price}, 관리비 ${maintenance} 조건입니다.`,
-    property.summary ||
-      '실사진을 직접 확인한 매물로 자세하게 안내해드립니다.',
-    '',
-    '━━━━━━━━━━━━━━━━━━',
-    '🏠 매물 기본정보',
-    '━━━━━━━━━━━━━━━━━━',
-    `지역: ${address}`,
-    `매물종류: ${roomType}`,
-    `거래형태: ${tradeType}`,
-    `가격: ${price}`,
-    `관리비: ${maintenance}`,
-    `관리비 포함 항목: ${
-      property.maintenance_includes || '확인 필요'
-    }`,
-    `면적: ${property.area || '확인 필요'}`,
-    `층수: ${
-      property.floor_info ||
-      property.total_floor_info ||
-      '확인 필요'
-    }`,
-    `방/욕실: ${property.room_bath || '확인 필요'}`,
-    `방향: ${property.direction || '확인 필요'}`,
-    `입주가능일: ${property.move_in || '협의 가능'}`,
-    `주차: ${property.parking || '확인 필요'}`,
-    '',
-    '━━━━━━━━━━━━━━━━━━',
-    '⭐ 매물 핵심정리',
-    '━━━━━━━━━━━━━━━━━━',
-    property.description ||
-      property.summary ||
-      '현장에서 직접 확인한 실사진 매물입니다.',
-    '',
-    '━━━━━━━━━━━━━━━━━━',
-    '📍 위치와 생활권',
-    '━━━━━━━━━━━━━━━━━━',
-    property.location_description ||
-      '구미 주요 생활권과 출퇴근 동선을 확인해주세요.',
-    living.length
-      ? living.map((item) => `✓ ${item}`).join('\n')
-      : '',
-    ...hubLinkBlock,
-    '',
-    '━━━━━━━━━━━━━━━━━━',
-    '🛋 옵션과 내부 상태',
-    '━━━━━━━━━━━━━━━━━━',
-    options.length
-      ? options.map((item) => `✓ ${item}`).join('\n')
-      : '옵션은 상담 시 확인해주세요.',
-    safety.length
-      ? safety.map((item) => `✓ ${item}`).join('\n')
-      : '',
-    '',
-    '━━━━━━━━━━━━━━━━━━',
-    '📷 사진별 설명',
-    '━━━━━━━━━━━━━━━━━━',
-    photoCaptions.join('\n\n'),
-    '',
-    '━━━━━━━━━━━━━━━━━━',
-    '🙋 이런 분께 추천드립니다',
-    '━━━━━━━━━━━━━━━━━━',
-    property.recommended_for ||
-      [
-        `✓ 구미 ${neighborhood}에서 방을 찾는 분`,
-        '✓ 출퇴근이 편리한 매물을 찾는 분',
-        '✓ 실사진으로 확인한 매물을 찾는 분'
-      ].join('\n'),
-    '',
-    '━━━━━━━━━━━━━━━━━━',
-    '📞 문의 및 방 보기',
-    '━━━━━━━━━━━━━━━━━━',
-    '실사진을 직접 확인한 매물입니다.',
-    '현재 공실 여부와 입주 가능일은 상담 시 다시 확인해드립니다.',
-    `전화·문자 문의: ${OFFICE.phone}`,
-    '',
-    legalNotice
-  ]
-    .filter((line) => line !== '')
-    .join('\n');
+  const generatedTitle = [
+    locationTitle,
+    category,
+    tradeType,
+    isSale
+      ? (property.acquisition_price ? `인수가 ${moneyText(property.acquisition_price)}` : moneyText(property.sale_price))
+      : [moneyText(property.deposit), moneyText(property.rent)].filter(Boolean).join('/'),
+    titleBenefit
+  ].filter(Boolean).join(' ');
 
-  const rawTags = [
-    '#구미부동산',
-    `#구미${roomType.replace(/\s+/g, '')}`,
-    `#${neighborhood}${roomType.replace(/\s+/g, '')}`,
-    `#구미${neighborhood}${roomType.replace(/\s+/g, '')}`,
-    `#구미${tradeType.replace(/\s+/g, '')}`,
-    isRentalRoom ? '#구미원룸' : '',
-    isRentalRoom ? '#구미원룸월세' : '',
-    isRentalRoom ? '#구미자취방' : '',
-    '#칸공인중개사'
-  ].filter(Boolean);
+  const title = compact(generatedTitle || property.title || `${locationTitle} ${category}`);
 
-  const tags = [...new Set(rawTags)].join(' ');
+  const addInfo = (label, value) => {
+    const text = clean(value);
+    return `- ${label}: ${text || '계약 전 확인'}`;
+  };
 
-  return { title, body, tags };
+  const photoGuide = photos.length
+    ? photos.map((url, index) => {
+        const guide =
+          index === 0 ? '대표사진 또는 외관 사진' :
+          index === 1 ? '방 내부 전체 모습' :
+          index === 2 ? '주방 또는 옵션 사진' :
+          index === 3 ? '욕실 또는 세탁공간' :
+          index === 4 ? '현관/수납/주차 등 추가 사진' :
+          '추가 상세 사진';
+
+        return `사진 ${index + 1}. ${guide}\n${url}`;
+      }).join('\n\n')
+    : '사진은 상담 시 확인 가능합니다.';
+
+  const recommendText = clean(property.recommended_for) ||
+    (isSale
+      ? '구미 수익형 부동산, 다가구주택, 원룸건물 투자를 검토하시는 분께 추천드립니다.'
+      : `${locationTitle}에서 월세 조건, 생활권, 출퇴근 동선을 함께 보고 싶은 분께 추천드립니다.`);
+
+  const optionText = options.length
+    ? options.join(', ')
+    : '옵션 및 내부 상태는 현장 확인 후 안내드립니다.';
+
+  const maintenanceText = maintenanceItems.length
+    ? maintenanceItems.join(', ')
+    : clean(property.maintenance_fee) || '계약 전 확인';
+
+  const body = cleanBlogBodyStart([
+    title,
+    '',
+    `안녕하세요. 구미 원룸·투룸·상가·다가구 매매를 안내하는 칸공인중개사입니다.`,
+    `오늘 소개드릴 매물은 ${locationTitle}에 위치한 ${category} ${tradeType} 매물입니다.`,
+    `${locationTitle} ${category}를 찾고 계신 분들이 가격, 위치, 구조, 관리비 조건을 한 번에 비교해 보실 수 있도록 핵심 내용을 정리해 드립니다.`,
+    '',
+    '[매물 핵심 요약]',
+    addInfo('소재지', address),
+    addInfo('매물종류', category),
+    addInfo('거래형태', tradeType),
+    addInfo('가격조건', priceText),
+    addInfo('관리비', property.maintenance_fee),
+    addInfo('면적', property.area),
+    addInfo('층수', property.total_floor_info || property.floor_info),
+    addInfo('방/욕실', property.room_bath),
+    addInfo('방향', property.direction),
+    addInfo('주차', property.parking),
+    addInfo('입주가능일', property.move_in),
+    addInfo('사용승인일', property.approval_date),
+    '',
+    '[위치와 생활권]',
+    clean(property.location_description) ||
+      `${locationTitle} 생활권에 있는 매물입니다. 주변 편의시설, 출퇴근 동선, 대중교통 이용 여부는 상담 시 매물 위치 기준으로 자세히 안내드리겠습니다.`,
+    property.education?.length ? property.education.join(', ') : '',
+    '',
+    '[구조와 내부 상태]',
+    clean(property.summary) || `${category} 구조의 매물로, 실제 조건은 현장 확인 후 안내드립니다.`,
+    clean(property.description) || '사진과 현장 상태를 기준으로 내부 구조, 옵션, 채광, 소음 여부 등을 확인해 드리겠습니다.',
+    property.room_bath ? `방/욕실 구성은 ${property.room_bath}입니다.` : '',
+    property.area ? `면적은 ${property.area} 기준으로 안내드립니다.` : '',
+    property.floor_info ? `층수 정보는 ${property.floor_info}입니다.` : '',
+    '',
+    '[옵션 및 관리비]',
+    `옵션: ${optionText}`,
+    `관리비 포함 항목: ${maintenanceText}`,
+    clean(property.elevator) ? `엘리베이터: ${property.elevator}` : '',
+    clean(property.structure) ? `건물 구조: ${property.structure}` : '',
+    '',
+    '[주차·입주·방향]',
+    `주차: ${clean(property.parking) || '계약 전 확인'}`,
+    `입주가능일: ${clean(property.move_in) || '계약 전 확인'}`,
+    `방향: ${clean(property.direction) || '계약 전 확인'}`,
+    '',
+    '[이런 분께 추천드립니다]',
+    recommendText,
+    '',
+    isSale ? '[투자 검토 포인트]' : '[임대 검토 포인트]',
+    isSale
+      ? [
+          property.investment_point ? clean(property.investment_point) : '월세수입, 인수가, 융자 조건, 공실 여부를 함께 검토해 볼 수 있는 매물입니다.',
+          property.risk_note ? `참고사항: ${clean(property.risk_note)}` : ''
+        ].filter(Boolean).join('\n')
+      : '보증금, 월세, 관리비, 입주일, 옵션 상태를 함께 비교하시면 실제 월 지출을 판단하기 좋습니다.',
+    '',
+    '[사진 안내]',
+    photoGuide,
+    '',
+    '[문의 안내]',
+    '매물은 현장 상황에 따라 계약 진행 여부나 조건이 달라질 수 있습니다.',
+    '방문 전 전화 또는 문자로 매물 가능 여부를 확인해 주시면 빠르게 안내드리겠습니다.',
+    '',
+    `칸공인중개사사무소`,
+    `대표공인중개사: ${OFFICE.broker}`,
+    `문의: ${OFFICE.phone} / ${OFFICE.tel}`,
+    `주소: ${OFFICE.address}`,
+    `등록번호: ${OFFICE.regNo}`,
+    '',
+    '[중개대상물 표시·광고 사항]',
+    addInfo('중개대상물 종류', category),
+    addInfo('거래형태', tradeType),
+    addInfo('소재지', address),
+    addInfo('거래가격', priceText),
+    addInfo('관리비', property.maintenance_fee),
+    addInfo('면적', property.area),
+    addInfo('층수', property.total_floor_info || property.floor_info),
+    addInfo('방/욕실', property.room_bath),
+    addInfo('방향', property.direction),
+    addInfo('입주가능일', property.move_in),
+    addInfo('주차', property.parking),
+    addInfo('사용승인일', property.approval_date),
+    clean(property.legal_notice),
+    '',
+    '※ 위 내용은 등록된 매물 정보를 기준으로 작성되었으며, 세부 조건은 계약 전 현장 및 공부서류 확인 후 최종 안내드립니다.'
+  ].filter((line) => line !== '').join('\n'));
+
+  const makeTag = (value) => String(value || '')
+    .replace(/[#\s]/g, '')
+    .replace(/[^0-9A-Za-z가-힣_]/g, '');
+
+  const tagSeeds = [
+    '구미부동산',
+    '칸공인중개사',
+    dong ? `구미${dong}` : '',
+    dong && category ? `${dong}${category}` : '',
+    category.includes('원룸') ? '구미원룸' : '',
+    category.includes('투룸') ? '구미투룸' : '',
+    category.includes('상가') ? '구미상가임대' : '',
+    isSale ? '구미다가구매매' : '',
+    isSale ? '구미수익형부동산' : '',
+    tradeType.includes('월세') ? '구미월세' : '',
+    `${makeTag(category)}${makeTag(tradeType)}`
+  ];
+
+  const tags = [...new Set(tagSeeds.map(makeTag).filter(Boolean))]
+    .map((tag) => `#${tag}`)
+    .join(' ');
+
+  return {
+    title,
+    body,
+    tags
+  };
 }
+
+const BLOG_PHOTO_TAGS = [
+  { key: 'cover', label: '대표사진', keywords: ['대표', '메인', '외관', '전경'] },
+  { key: 'exterior', label: '외관', keywords: ['외관', '전면', '건물'] },
+  { key: 'parking', label: '주차장', keywords: ['주차'] },
+  { key: 'road', label: '주변 도로', keywords: ['도로', '진입', '골목'] },
+  { key: 'entrance', label: '공동현관', keywords: ['현관', '출입구', '공동'] },
+  { key: 'security', label: 'CCTV/보안', keywords: ['cctv', '보안', '도어락'] },
+  { key: 'stairs', label: '계단실', keywords: ['계단'] },
+  { key: 'hallway', label: '복도', keywords: ['복도'] },
+  { key: 'room', label: '호실 내부', keywords: ['내부', '방', '거실', '주방', '욕실'] },
+  { key: 'roof', label: '옥상', keywords: ['옥상'] },
+  { key: 'etc', label: '기타', keywords: [] }
+];
+
+function cleanAdText(value, fallback = '') {
+  const text = String(value || '').trim();
+  return text || fallback;
+}
+
+function getPropertyPhotoList(property = {}) {
+  return Array.isArray(property.photos)
+    ? property.photos.filter(Boolean)
+    : toTextList(property.photos || property.photosText);
+}
+
+function getPhotoUrl(photo) {
+  return typeof photo === 'string' ? photo : photo?.url;
+}
+
+function getPhotoTag(photo, index = 0) {
+  const raw = typeof photo === 'string'
+    ? ''
+    : String(photo?.tag || photo?.label || photo?.caption || photo?.description || '');
+  const lower = raw.toLowerCase();
+  const matched = BLOG_PHOTO_TAGS.find((tag) =>
+    tag.key === raw || tag.label === raw || tag.key === lower ||
+    tag.keywords.some((keyword) => lower.includes(keyword.toLowerCase()))
+  );
+
+  return matched || (index === 0 ? BLOG_PHOTO_TAGS[0] : BLOG_PHOTO_TAGS[BLOG_PHOTO_TAGS.length - 1]);
+}
+
+function selectBlogPhotos(photos, maxCount = 12) {
+  const list = (Array.isArray(photos) ? photos : toTextList(photos))
+    .map((photo, index) => ({ photo, index, tag: getPhotoTag(photo, index), url: getPhotoUrl(photo) }))
+    .filter((item) => item.url);
+
+  if (list.length <= maxCount) return list;
+
+  const selected = [];
+  const used = new Set();
+  const priorities = ['cover', 'exterior', 'parking', 'road', 'entrance', 'security', 'stairs', 'hallway', 'room', 'roof', 'etc'];
+
+  priorities.forEach((key) => {
+    if (selected.length >= maxCount) return;
+    const item = list.find((candidate) => candidate.tag.key === key && !used.has(candidate.index));
+    if (item) {
+      selected.push(item);
+      used.add(item.index);
+    }
+  });
+
+  list.forEach((item) => {
+    if (selected.length < maxCount && !used.has(item.index)) {
+      selected.push(item);
+      used.add(item.index);
+    }
+  });
+
+  return selected.sort((a, b) => a.index - b.index);
+}
+
+function generatePhotoCaption(photo, property = {}, index = 0) {
+  const tag = getPhotoTag(photo, index);
+  const building = cleanAdText(property.building_name || property.title, '해당 매물');
+  const captions = {
+    cover: `${building}의 대표 사진입니다. 전체 분위기와 현장 상태를 먼저 확인할 수 있습니다.`,
+    exterior: '건물 외관과 전면 도로, 진입 동선을 함께 확인할 수 있습니다.',
+    parking: '건물 주차 공간과 차량 진입 동선을 확인할 수 있습니다.',
+    road: '주변 도로와 생활 동선을 확인할 수 있는 사진입니다.',
+    entrance: '공동현관과 출입구 관리 상태를 확인할 수 있습니다.',
+    security: 'CCTV와 보안 시설 등 공용부 관리 상태를 확인할 수 있습니다.',
+    stairs: '계단실 조명과 공용부 관리 상태를 확인할 수 있습니다.',
+    hallway: '각 층 복도와 호실 출입 동선을 확인할 수 있습니다.',
+    room: '호실 내부 구조와 채광, 기본 상태를 확인할 수 있습니다.',
+    roof: '옥상 상태와 주변 조망을 확인할 수 있습니다.',
+    etc: '매물 확인에 참고할 수 있는 추가 사진입니다.'
+  };
+
+  return captions[tag.key] || captions.etc;
+}
+
+function isBlogSaleProperty(property = {}) {
+  return String(property.category || '').includes('매매') ||
+    String(property.trade_type || '').includes('매매') ||
+    String(property.category || '').includes('留ㅻℓ') ||
+    String(property.trade_type || '').includes('留ㅻℓ');
+}
+
+function isInvestmentProperty(property = {}) {
+  const text = [
+    property.category,
+    property.title,
+    property.summary,
+    property.investment_point,
+    property.return_rate,
+    property.net_profit
+  ].filter(Boolean).join(' ');
+
+  return new RegExp('수익|건물|상가|투자|return|yield|섹션|매매|留ㅻℓ').test(text);
+}
+
+function propertyValue(property, keys, fallback = '확인필요') {
+  const found = keys.map((key) => property?.[key]).find((value) => String(value || '').trim());
+  return cleanAdText(found, fallback);
+}
+
+function formatBlogPrice(property = {}) {
+  if (isBlogSaleProperty(property)) {
+    return `매매가 ${propertyValue(property, ['sale_price'], '계약 전 확인필요')}`;
+  }
+
+  if (String(property.trade_type || '').includes('전세')) {
+    return `전세 ${propertyValue(property, ['deposit'], '계약 전 확인필요')}`;
+  }
+
+  return `보증금 ${propertyValue(property, ['deposit'])} / 월세 ${propertyValue(property, ['rent'])}`;
+}
+
+function extractAreaKeyword(address = '') {
+  const parts = String(address || '').split(/\s+/).filter(Boolean);
+  return parts.find((part) => /동|읍|면|리|가$/.test(part)) || parts.slice(0, 2).join(' ') || '구미';
+}
+
+function buildBlogTitle(property = {}) {
+  const area = extractAreaKeyword(property.address);
+  const type = cleanAdText(property.category || property.trade_type, '부동산 매물');
+  const price = formatBlogPrice(property).replace(/\s+/g, ' ');
+  const name = cleanAdText(property.building_name || property.title, '');
+  return [area, name, type, price].filter(Boolean).join(' ').slice(0, 80);
+}
+
+function buildLegalNotice(property = {}) {
+  const base = [
+    '중개대상물 표시·광고 사항',
+    `상호명: ${OFFICE.name}`,
+    `소재지: ${OFFICE.address}`,
+    `대표 공인중개사: ${OFFICE.broker}`,
+    `등록번호: ${OFFICE.regNo}`,
+    `연락처: ${OFFICE.phone} / ${OFFICE.tel}`,
+    `중개대상물 종류: ${propertyValue(property, ['category'])}`,
+    `거래형태: ${propertyValue(property, ['trade_type'])}`,
+    `소재지: ${propertyValue(property, ['address'])}`,
+    `면적: ${propertyValue(property, ['area', 'building_area', 'total_area'])}`,
+    `가격: ${formatBlogPrice(property)}`,
+    `관리비: ${propertyValue(property, ['maintenance_fee'])}`,
+    `층수: ${propertyValue(property, ['total_floor_info', 'floor_info'])}`,
+    `방향: ${propertyValue(property, ['direction'])}`,
+    `방/욕실: ${propertyValue(property, ['room_bath', 'structure'])}`,
+    `입주가능일: ${propertyValue(property, ['move_in'], '계약 전 상황 확인필요')}`,
+    `사용승인일: ${propertyValue(property, ['approval_date'])}`,
+    `주차: ${propertyValue(property, ['parking'])}`
+  ];
+
+  if (isInvestmentProperty(property)) {
+    base.push(
+      '',
+      '수익률 안내: 현재 임대 현황 및 제공 자료 기준이며, 실제 수익률은 공실, 수선비, 관리비, 대출조건, 금리 변동, 세금 등에 따라 달라질 수 있습니다. 계약 전 등기사항증명서, 건축물대장, 임대차계약서, 보증금·월세 내역, 투자금과 공실 여부를 확인해야 합니다.'
+    );
+  }
+
+  if (!cleanAdText(property.maintenance_fee)) {
+    base.push('관리비 및 공과금은 각 호실별 사용량과 임대차 조건에 따라 별도 부과될 수 있습니다.');
+  }
+
+  return base.join('\n');
+}
+
+function buildSearchTerms(property = {}) {
+  const area = extractAreaKeyword(property.address);
+  const base = [
+    ...toTextList(property.internal_tags),
+    `${area}부동산`,
+    `${area}${cleanAdText(property.category, '매물')}`.replace(/\s+/g, ''),
+    property.category,
+    property.trade_type,
+    property.building_name,
+    property.room_bath,
+    '구미부동산',
+    '구미방구하기'
+  ];
+
+  if (isInvestmentProperty(property)) {
+    base.push(`${area}건물매매`, `${area}수익형부동산`, `${area}부동산투자`);
+  }
+
+  return [...new Set(base.map((tag) => cleanAdText(tag).replace(/\s+/g, '')).filter(Boolean))];
+}
+
+function generateBlogPost(property, photos = getPropertyPhotoList(property)) {
+  const selectedPhotos = selectBlogPhotos(photos, 12);
+  const photoCaptions = selectedPhotos.map((item, index) => ({
+    ...item,
+    displayIndex: index + 1,
+    caption: generatePhotoCaption(item.photo, property, item.index)
+  }));
+  const options = [
+    ...toTextList(property.convenience),
+    ...toTextList(property.safety),
+    ...toTextList(property.education)
+  ];
+  const title = buildBlogTitle(property);
+  const firstParagraph = cleanAdText(
+    property.summary,
+    `${extractAreaKeyword(property.address)}에서 확인 가능한 ${cleanAdText(property.category, '부동산 매물')}입니다. 가격, 구조, 입지, 사진을 기준으로 정리했습니다.`
+  );
+  const lines = [
+    firstParagraph,
+    '',
+    '[매물 핵심 요약]',
+    `매물명: ${propertyValue(property, ['title', 'building_name'])}`,
+    `위치: ${propertyValue(property, ['address'])}`,
+    `거래유형: ${propertyValue(property, ['trade_type'])}`,
+    `매물종류: ${propertyValue(property, ['category'])}`,
+    `금액: ${formatBlogPrice(property)}`,
+    `관리비: ${propertyValue(property, ['maintenance_fee'])}`,
+    `면적: ${propertyValue(property, ['area', 'building_area', 'total_area'])}`,
+    `층수: ${propertyValue(property, ['total_floor_info', 'floor_info'])}`,
+    `방/욕실 또는 구조: ${propertyValue(property, ['room_bath', 'structure'])}`,
+    `방향: ${propertyValue(property, ['direction'])}`,
+    `주차: ${propertyValue(property, ['parking'])}`,
+    `입주가능일: ${propertyValue(property, ['move_in'], '계약 전 상황 확인필요')}`,
+    `사용승인일: ${propertyValue(property, ['approval_date'])}`,
+    '',
+    '[사진 안내]',
+    ...(photoCaptions.length
+      ? photoCaptions.flatMap((item) => [`[사진 ${item.displayIndex}: ${item.tag.label}]`, item.caption, item.url, ''])
+      : ['등록된 사진이 없는 매물입니다. 현장 사진은 상담 시 추가 확인이 필요합니다.', '']),
+    '[상세 설명]',
+    cleanAdText(property.description, '상세 설명은 현장 확인 후 추가 안내드립니다.'),
+    '',
+    '[입지 및 생활 편의]',
+    cleanAdText(property.location_description, '주변 입지와 생활 편의는 계약 전 현장 확인이 필요합니다.'),
+    '',
+    '[추천 대상]',
+    cleanAdText(property.recommended_for, '실거주 또는 임대 조건을 확인하려는 분께 추천드립니다.'),
+    '',
+    options.length ? '[옵션 및 관리 상태]' : '',
+    options.length ? options.join('\n') : '',
+    '',
+    isInvestmentProperty(property) ? '[투자 참고 정보]' : '',
+    isInvestmentProperty(property) ? cleanAdText(property.investment_point || property.risk_note, '수익 관련 세부 조건은 계약 전 자료 확인이 필요합니다.') : '',
+    '',
+    '[문의 안내]',
+    `사진과 조건을 확인하신 뒤 ${OFFICE.phone}로 문의주시면 현재 가능 여부와 방문 일정을 안내드리겠습니다.`,
+    '',
+    buildLegalNotice(property),
+    '',
+    '[관련 검색어]',
+    buildSearchTerms(property).join(', ')
+  ].filter((line, index, list) => line || list[index - 1]);
+
+  return {
+    title,
+    firstParagraph,
+    body: cleanBlogBodyStart(lines.join('\n')),
+    tags: buildSearchTerms(property).map((tag) => `#${tag.replace(/^#/, '')}`).join(' '),
+    selectedPhotos: photoCaptions,
+    photoCaptionText: photoCaptions.length
+      ? photoCaptions.map((item) => `사진 ${item.displayIndex}. ${item.tag.label} - ${item.caption}`).join('\n')
+      : '등록된 사진이 없습니다.'
+  };
+}
+
+function buildGeneratedNaverBlogAd(property) {
+  return generateBlogPost(property);
+}
+
+function buildSocialAd(property) {
+  const price = getDaangnPrice(property);
+  const advantages = [
+    property.summary,
+    property.room_bath && `구조 ${property.room_bath}`,
+    property.parking && `주차 ${property.parking}`,
+    property.move_in && `입주 ${property.move_in}`
+  ].filter(Boolean);
+  const tags = [...new Set([
+    '구미부동산',
+    '구미방구하기',
+    property.category,
+    property.trade_type,
+    shortAddress(property.address)
+  ].map((tag) => String(tag || '').replaceAll(' ', '')).filter(Boolean))]
+    .map((tag) => `#${tag.replace(/^#/, '')}`)
+    .join(' ');
+
+  return {
+    body: [
+      `🔥 ${property.title || '구미 추천 매물'}`,
+      `💰 ${price}`,
+      ...advantages.map((item) => `✓ ${item}`),
+      '',
+      `빠른 상담·방문 문의 ${OFFICE.phone}`
+    ].join('\n'),
+    tags
+  };
+}
+
 async function copyAdvertisementText(text) {
   try {
     await navigator.clipboard.writeText(text);
@@ -5391,14 +6799,170 @@ async function copyAdvertisementText(text) {
     return copied;
   }
 }
+
+function sanitizeFileName(value) {
+  return String(value || 'blog-photo')
+    .replace(/[\\/:*?"<>|]/g, '')
+    .replace(/\s+/g, '')
+    .slice(0, 80) || 'blog-photo';
+}
+
+function getDosDateTime(date = new Date()) {
+  const time =
+    (date.getHours() << 11) |
+    (date.getMinutes() << 5) |
+    Math.floor(date.getSeconds() / 2);
+  const dosDate =
+    ((date.getFullYear() - 1980) << 9) |
+    ((date.getMonth() + 1) << 5) |
+    date.getDate();
+
+  return { time, date: dosDate };
+}
+
+function makeCrc32Table() {
+  return Array.from({ length: 256 }, (_, index) => {
+    let value = index;
+    for (let bit = 0; bit < 8; bit += 1) {
+      value = value & 1 ? 0xedb88320 ^ (value >>> 1) : value >>> 1;
+    }
+    return value >>> 0;
+  });
+}
+
+const CRC32_TABLE = makeCrc32Table();
+
+function crc32(bytes) {
+  let crc = 0xffffffff;
+  bytes.forEach((byte) => {
+    crc = CRC32_TABLE[(crc ^ byte) & 0xff] ^ (crc >>> 8);
+  });
+  return (crc ^ 0xffffffff) >>> 0;
+}
+
+function writeUint16(view, offset, value) {
+  view.setUint16(offset, value, true);
+}
+
+function writeUint32(view, offset, value) {
+  view.setUint32(offset, value >>> 0, true);
+}
+
+function makeZipBlob(files) {
+  const encoder = new TextEncoder();
+  const localParts = [];
+  const centralParts = [];
+  let offset = 0;
+  const { time, date } = getDosDateTime();
+
+  files.forEach((file) => {
+    const nameBytes = encoder.encode(file.name);
+    const data = file.bytes;
+    const checksum = crc32(data);
+    const localHeader = new Uint8Array(30 + nameBytes.length);
+    const localView = new DataView(localHeader.buffer);
+
+    writeUint32(localView, 0, 0x04034b50);
+    writeUint16(localView, 4, 20);
+    writeUint16(localView, 6, 0x0800);
+    writeUint16(localView, 8, 0);
+    writeUint16(localView, 10, time);
+    writeUint16(localView, 12, date);
+    writeUint32(localView, 14, checksum);
+    writeUint32(localView, 18, data.length);
+    writeUint32(localView, 22, data.length);
+    writeUint16(localView, 26, nameBytes.length);
+    writeUint16(localView, 28, 0);
+    localHeader.set(nameBytes, 30);
+    localParts.push(localHeader, data);
+
+    const centralHeader = new Uint8Array(46 + nameBytes.length);
+    const centralView = new DataView(centralHeader.buffer);
+    writeUint32(centralView, 0, 0x02014b50);
+    writeUint16(centralView, 4, 20);
+    writeUint16(centralView, 6, 20);
+    writeUint16(centralView, 8, 0x0800);
+    writeUint16(centralView, 10, 0);
+    writeUint16(centralView, 12, time);
+    writeUint16(centralView, 14, date);
+    writeUint32(centralView, 16, checksum);
+    writeUint32(centralView, 20, data.length);
+    writeUint32(centralView, 24, data.length);
+    writeUint16(centralView, 28, nameBytes.length);
+    writeUint16(centralView, 30, 0);
+    writeUint16(centralView, 32, 0);
+    writeUint16(centralView, 34, 0);
+    writeUint16(centralView, 36, 0);
+    writeUint32(centralView, 38, 0);
+    writeUint32(centralView, 42, offset);
+    centralHeader.set(nameBytes, 46);
+    centralParts.push(centralHeader);
+
+    offset += localHeader.length + data.length;
+  });
+
+  const centralSize = centralParts.reduce((sum, part) => sum + part.length, 0);
+  const endHeader = new Uint8Array(22);
+  const endView = new DataView(endHeader.buffer);
+  writeUint32(endView, 0, 0x06054b50);
+  writeUint16(endView, 8, files.length);
+  writeUint16(endView, 10, files.length);
+  writeUint32(endView, 12, centralSize);
+  writeUint32(endView, 16, offset);
+  writeUint16(endView, 20, 0);
+
+  return new Blob([...localParts, ...centralParts, endHeader], { type: 'application/zip' });
+}
+
+function downloadBlob(blob, filename) {
+  const link = document.createElement('a');
+  const url = URL.createObjectURL(blob);
+  link.href = url;
+  link.download = filename;
+  link.style.display = 'none';
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+  URL.revokeObjectURL(url);
+}
+
+async function downloadBlogPhotosZip(property, selectedPhotos) {
+  const photos = selectedPhotos || generateBlogPost(property).selectedPhotos;
+  if (!photos.length) {
+    throw new Error('블로그용으로 선택된 사진이 없습니다.');
+  }
+
+  const baseName = sanitizeFileName([
+    extractAreaKeyword(property.address),
+    property.building_name || property.title,
+    property.category || property.trade_type || '매물'
+  ].filter(Boolean).join('_'));
+  const files = [];
+
+  for (const [index, item] of photos.entries()) {
+    const response = await fetch(item.url);
+    if (!response.ok) throw new Error(`사진 다운로드 실패: ${index + 1}번`);
+    const bytes = new Uint8Array(await response.arrayBuffer());
+    const extension = String(item.url).split('?')[0].split('.').pop()?.toLowerCase().replace(/[^a-z0-9]/g, '') || 'jpg';
+    const label = sanitizeFileName(item.tag?.label || '사진');
+    files.push({
+      name: `${baseName}_${String(index + 1).padStart(2, '0')}_${label}.${extension}`,
+      bytes
+    });
+  }
+
+  downloadBlob(makeZipBlob(files), `${baseName}_blog_photos.zip`);
+}
 function AdminPropertyTabs({ property, activeTab, setActiveTab }) {
   const [daangnOpen, setDaangnOpen] = useState(false);
   const [daangnHelperOpen, setDaangnHelperOpen] = useState(false);
 const [blogOpen, setBlogOpen] = useState(false);
+const [socialOpen, setSocialOpen] = useState(false);
 
 const [copyStatus, setCopyStatus] = useState('');
   const [helperCopyStatus, setHelperCopyStatus] = useState('');
 const [blogCopyStatus, setBlogCopyStatus] = useState('');
+const [socialCopyStatus, setSocialCopyStatus] = useState('');
 useEffect(() => {
 if (!property || activeTab !== 'ad') return;
 
@@ -5513,7 +7077,7 @@ JSON.stringify(advertisingProperty)
         setCopyStatus('');
       }}
     >
-      {daangnOpen ? '당근 광고 닫기' : '당근용 광고 만들기'}
+      {daangnOpen ? '당근 광고문구 닫기' : '당근 광고문구 만들기'}
     </button>
 
     {daangnOpen && (() => {
@@ -5625,13 +7189,12 @@ JSON.stringify(advertisingProperty)
     type="button"
     className="primary-btn"
     onClick={() => {
-      setDaangnHelperOpen((prev) => !prev);
+      window.open('https://www.daangn.com/', '_blank', 'noopener,noreferrer');
+      setDaangnHelperOpen(false);
       setHelperCopyStatus('');
     }}
   >
-    {daangnHelperOpen
-      ? '당근 등록 도우미 닫기'
-      : '당근 등록 도우미'}
+    당근 등록화면 열기
   </button>
 
   {daangnHelperOpen && (() => {
@@ -5813,12 +7376,12 @@ JSON.stringify(advertisingProperty)
         }}
       >
         {blogOpen
-          ? '네이버 블로그 광고 닫기'
-          : '네이버 블로그용 만들기'}
+          ? '네이버 블로그 글 닫기'
+          : '네이버 블로그 글 만들기'}
       </button>
 
       {blogOpen && (() => {
-        const blogAd = buildNaverBlogAd(property);
+        const blogAd = buildGeneratedNaverBlogAd(property);
 
         return (
           <div
@@ -5861,6 +7424,24 @@ JSON.stringify(advertisingProperty)
             >
               제목 복사
             </button>
+
+            <strong style={{ display: 'block', marginTop: '18px' }}>
+              첫문단
+            </strong>
+
+            <textarea
+              readOnly
+              value={blogAd.firstParagraph}
+              rows={4}
+              style={{
+                width: '100%',
+                boxSizing: 'border-box',
+                marginTop: '8px',
+                padding: '12px',
+                borderRadius: '10px',
+                lineHeight: '1.6'
+              }}
+            />
 
             <strong
               style={{
@@ -5908,7 +7489,7 @@ JSON.stringify(advertisingProperty)
                 marginTop: '18px'
               }}
             >
-              네이버 블로그 태그
+              검색어 묶음
             </strong>
 
             <textarea
@@ -5921,6 +7502,50 @@ JSON.stringify(advertisingProperty)
                 marginTop: '8px',
                 padding: '12px',
                 borderRadius: '10px'
+              }}
+            />
+
+            <strong style={{ display: 'block', marginTop: '18px' }}>
+              블로그용 사진 선택 목록
+            </strong>
+
+            <div style={{ display: 'grid', gap: '8px', marginTop: '8px' }}>
+              {blogAd.selectedPhotos.length ? (
+                blogAd.selectedPhotos.map((item) => (
+                  <div
+                    key={`${item.url}-${item.displayIndex}`}
+                    style={{
+                      padding: '10px',
+                      border: '1px solid #d7eadc',
+                      borderRadius: '10px',
+                      background: '#ffffff'
+                    }}
+                  >
+                    <strong>{item.displayIndex}. {item.tag.label}</strong>
+                    <p className="muted" style={{ margin: '4px 0 0' }}>{item.caption}</p>
+                    <small style={{ wordBreak: 'break-all' }}>{item.url}</small>
+                  </div>
+                ))
+              ) : (
+                <p className="muted">등록된 사진이 없어 사진 ZIP은 만들 수 없습니다.</p>
+              )}
+            </div>
+
+            <strong style={{ display: 'block', marginTop: '18px' }}>
+              사진 설명 미리보기
+            </strong>
+
+            <textarea
+              readOnly
+              value={blogAd.photoCaptionText}
+              rows={8}
+              style={{
+                width: '100%',
+                boxSizing: 'border-box',
+                marginTop: '8px',
+                padding: '12px',
+                borderRadius: '10px',
+                lineHeight: '1.6'
               }}
             />
 
@@ -5941,12 +7566,12 @@ JSON.stringify(advertisingProperty)
 
                   setBlogCopyStatus(
                     copied
-                      ? '블로그 태그 복사 완료'
+                      ? '블로그 검색어 묶음 복사 완료'
                       : '복사 실패'
                   );
                 }}
               >
-                태그 복사
+                검색어 복사
               </button>
 
               <button
@@ -5971,6 +7596,23 @@ JSON.stringify(advertisingProperty)
               <button
                 type="button"
                 className="small-btn"
+                disabled={!blogAd.selectedPhotos.length}
+                onClick={async () => {
+                  setBlogCopyStatus('블로그용 사진 ZIP을 만드는 중입니다.');
+                  try {
+                    await downloadBlogPhotosZip(property, blogAd.selectedPhotos);
+                    setBlogCopyStatus('블로그용 사진 ZIP 다운로드를 시작했습니다.');
+                  } catch (error) {
+                    setBlogCopyStatus(error?.message || '사진 ZIP 다운로드에 실패했습니다.');
+                  }
+                }}
+              >
+                블로그용 사진 ZIP 다운로드
+              </button>
+
+              <button
+                type="button"
+                className="small-btn"
                 onClick={() => {
                   window.open(
                     'https://blog.naver.com/atm750',
@@ -5988,6 +7630,67 @@ JSON.stringify(advertisingProperty)
                 {blogCopyStatus}
               </p>
             )}
+          </div>
+        );
+      })()}
+    </div>
+
+    <div
+      style={{
+        marginTop: '20px',
+        paddingTop: '20px',
+        borderTop: '1px solid #e5e7eb'
+      }}
+    >
+      <button
+        type="button"
+        className="primary-btn"
+        onClick={() => {
+          setSocialOpen((prev) => !prev);
+          setSocialCopyStatus('');
+        }}
+      >
+        {socialOpen ? '인스타·페북 문구 닫기' : '인스타·페북 문구 만들기'}
+      </button>
+
+      {socialOpen && (() => {
+        const socialAd = buildSocialAd(property);
+        return (
+          <div
+            style={{
+              marginTop: '16px',
+              padding: '16px',
+              border: '1px solid #c7c7dd',
+              borderRadius: '16px',
+              background: '#fafaff'
+            }}
+          >
+            <strong>후킹문구 · 핵심장점 · 문의유도</strong>
+            <textarea
+              readOnly
+              value={socialAd.body}
+              rows={12}
+              style={{ width: '100%', boxSizing: 'border-box', marginTop: '8px', padding: '12px', borderRadius: '10px', lineHeight: '1.6' }}
+            />
+            <strong style={{ display: 'block', marginTop: '18px' }}>해시태그</strong>
+            <textarea
+              readOnly
+              value={socialAd.tags}
+              rows={4}
+              style={{ width: '100%', boxSizing: 'border-box', marginTop: '8px', padding: '12px', borderRadius: '10px' }}
+            />
+            <button
+              type="button"
+              className="primary-btn"
+              style={{ marginTop: '10px' }}
+              onClick={async () => {
+                const copied = await copyAdvertisementText(`${socialAd.body}\n\n${socialAd.tags}`);
+                setSocialCopyStatus(copied ? '인스타·페북 문구 전체 복사 완료' : '복사 실패');
+              }}
+            >
+              전체 복사
+            </button>
+            {socialCopyStatus && <p className="status-text">{socialCopyStatus}</p>}
           </div>
         );
       })()}
@@ -6325,4 +8028,3 @@ function Footer() {
 }
 
 createRoot(document.getElementById('root')).render(<App />);
-
