@@ -10670,3 +10670,31 @@ button.property-list-item,
     box-sizing: border-box !important;
   }
 }
+
+/* 2026-07-04 모바일 지도 선택 매물 카드 사진 높이 보정 */
+@media (max-width: 768px) {
+  .hero-map-card.map-dashboard-card img {
+    width: 100% !important;
+    height: 260px !important;
+    max-height: 260px !important;
+    object-fit: cover !important;
+    object-position: center center !important;
+    display: block !important;
+  }
+
+  .hero-map-card.map-dashboard-card {
+    max-height: none !important;
+  }
+}
+
+/* 2026-07-04 모바일 지도 선택 매물 카드 사진 높이 보정 */
+@media (max-width: 768px) {
+  .hero-map-card.map-dashboard-card img {
+    width: 100% !important;
+    height: 260px !important;
+    max-height: 260px !important;
+    object-fit: cover !important;
+    object-position: center center !important;
+    display: block !important;
+  }
+}
