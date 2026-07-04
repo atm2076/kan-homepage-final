@@ -10885,3 +10885,35 @@ button.property-list-item,
     padding: 0 8px !important;
   }
 }
+
+/* 2026-07-04 모바일 지도 선택 매물 카드 설명문 축소 */
+@media (max-width: 768px) {
+  .map-property-panel .lead-text {
+    display: -webkit-box !important;
+    -webkit-line-clamp: 1 !important;
+    -webkit-box-orient: vertical !important;
+    overflow: hidden !important;
+    font-size: 13px !important;
+    line-height: 1.35 !important;
+    margin: 8px 0 6px !important;
+  }
+
+  .map-property-panel .lead-text ~ p:not(.map-panel-address) {
+    display: none !important;
+  }
+
+  .map-property-panel .map-panel-meta {
+    margin-top: 6px !important;
+    font-size: 12px !important;
+    line-height: 1.3 !important;
+  }
+
+  .map-property-panel .map-panel-meta span {
+    font-size: 12px !important;
+  }
+
+  .map-property-panel .map-panel-actions {
+    margin-top: 8px !important;
+    padding: 0 !important;
+  }
+}
