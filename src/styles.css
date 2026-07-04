@@ -10625,3 +10625,440 @@ button.property-list-item,
     min-height: 48px;
   }
 }
+
+
+/* KAN_MOBILE_OVERFLOW_FIX_V2_START
+   목적: 모바일에서 카드/지도/버튼/검색창/주문형 문의 영역이 화면 밖으로 잘리는 문제를 강제로 차단
+*/
+@media (max-width: 760px) {
+  html,
+  body,
+  #root {
+    width: 100% !important;
+    max-width: 100% !important;
+    overflow-x: hidden !important;
+  }
+
+  body {
+    margin: 0 !important;
+  }
+
+  *,
+  *::before,
+  *::after {
+    box-sizing: border-box !important;
+  }
+
+  img,
+  iframe,
+  video,
+  canvas,
+  svg {
+    max-width: 100% !important;
+  }
+
+  main,
+  section,
+  article,
+  aside,
+  footer,
+  header,
+  nav,
+  .app,
+  .consumer-only,
+  .customer-home,
+  .customer-page,
+  .customer-main,
+  .container,
+  .section,
+  .section-blue,
+  .section-white,
+  .section-inner,
+  .search-panel,
+  .customer-search-panel,
+  .customer-property-section,
+  .customer-property-grid,
+  .property-list,
+  .card-grid,
+  .detail-platform,
+  .detail-body-layout,
+  .detail-main,
+  .content-card,
+  .gallery-card,
+  .public-summary-card,
+  .detail-contact-section,
+  .detail-map-section,
+  .custom-request-section,
+  .request-section,
+  .site-footer {
+    width: 100% !important;
+    max-width: 100vw !important;
+    min-width: 0 !important;
+    overflow-x: hidden !important;
+  }
+
+  .container,
+  .section-inner,
+  .customer-property-section,
+  .detail-platform,
+  .detail-body-layout,
+  .detail-main {
+    padding-left: 12px !important;
+    padding-right: 12px !important;
+    margin-left: auto !important;
+    margin-right: auto !important;
+  }
+
+  /* 상단 큰 전화문의 버튼 잘림 방지 */
+  .hero-actions,
+  .side-actions,
+  .detail-contact-section .side-actions,
+  .sticky-contact-card .side-actions {
+    display: grid !important;
+    grid-template-columns: 1fr !important;
+    gap: 10px !important;
+    width: 100% !important;
+    max-width: 100% !important;
+  }
+
+  .hero-actions a,
+  .hero-actions button,
+  .side-actions a,
+  .side-actions button,
+  .primary-btn,
+  .secondary-btn,
+  .btn,
+  .btn-primary,
+  .btn-white,
+  .btn-ghost {
+    width: 100% !important;
+    max-width: 100% !important;
+    min-width: 0 !important;
+    margin-left: 0 !important;
+    margin-right: 0 !important;
+    padding-left: 14px !important;
+    padding-right: 14px !important;
+    white-space: nowrap !important;
+    text-align: center !important;
+    justify-content: center !important;
+  }
+
+  /* 검색창 오른쪽 잘림 방지 */
+  .keyword-search,
+  .customer-search-box,
+  .search-box,
+  .search-input-wrap {
+    width: 100% !important;
+    max-width: calc(100vw - 24px) !important;
+    min-width: 0 !important;
+    margin-left: auto !important;
+    margin-right: auto !important;
+    overflow: hidden !important;
+  }
+
+  .keyword-search input,
+  .customer-search-box input,
+  .search-box input {
+    min-width: 0 !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    font-size: 16px !important;
+  }
+
+  /* 매물카드 모바일 1열 고정 */
+  .customer-property-grid,
+  .property-list,
+  .card-grid,
+  .card-grid.four,
+  .related-grid {
+    display: grid !important;
+    grid-template-columns: minmax(0, 1fr) !important;
+    gap: 16px !important;
+  }
+
+  .customer-property-card,
+  .property-list-item,
+  .property-card,
+  .related-card,
+  .related-simple-card,
+  .sticky-contact-card {
+    width: 100% !important;
+    max-width: calc(100vw - 24px) !important;
+    min-width: 0 !important;
+    margin-left: auto !important;
+    margin-right: auto !important;
+    overflow: hidden !important;
+    border-radius: 22px !important;
+  }
+
+  .property-card-main,
+  .customer-property-card button,
+  .property-list-item button {
+    width: 100% !important;
+    max-width: 100% !important;
+    min-width: 0 !important;
+    overflow: hidden !important;
+  }
+
+  .customer-property-card img,
+  .property-card img,
+  .property-list-item img,
+  .sticky-card-photo,
+  .gallery-main img,
+  .related-card img,
+  .related-simple-card img {
+    width: 100% !important;
+    max-width: 100% !important;
+    min-width: 0 !important;
+    display: block !important;
+    object-fit: cover !important;
+  }
+
+  .list-thumb,
+  .photo-visual,
+  .gallery-main {
+    width: 100% !important;
+    max-width: 100% !important;
+    min-width: 0 !important;
+    overflow: hidden !important;
+  }
+
+  /* 카드 글자 과대/가로 삐져나감 방지 */
+  .customer-property-card h1,
+  .customer-property-card h2,
+  .customer-property-card h3,
+  .property-card h1,
+  .property-card h2,
+  .property-card h3,
+  .list-info h3,
+  .related-simple-title,
+  .customer-card-title {
+    max-width: 100% !important;
+    overflow-wrap: anywhere !important;
+    word-break: keep-all !important;
+    line-height: 1.28 !important;
+  }
+
+  .customer-property-card h1,
+  .customer-property-card h2,
+  .customer-property-card h3,
+  .customer-card-title {
+    font-size: clamp(22px, 6vw, 30px) !important;
+  }
+
+  .list-price,
+  .list-price b,
+  .big-price,
+  .big-price span,
+  .big-price strong,
+  .side-price,
+  .price {
+    max-width: 100% !important;
+    overflow-wrap: anywhere !important;
+    word-break: keep-all !important;
+    font-size: clamp(20px, 5.8vw, 28px) !important;
+    line-height: 1.28 !important;
+  }
+
+  .customer-card-summary,
+  .lead-text,
+  .description-card p,
+  .text-lines p {
+    max-width: 100% !important;
+    overflow-wrap: anywhere !important;
+    word-break: keep-all !important;
+    line-height: 1.55 !important;
+  }
+
+  .badge-line,
+  .customer-card-type-row,
+  .side-facts,
+  .mini-facts,
+  .mobile-card-extra-info {
+    max-width: 100% !important;
+    min-width: 0 !important;
+    display: flex !important;
+    flex-wrap: wrap !important;
+    gap: 8px !important;
+  }
+
+  .badge-line span,
+  .customer-card-type-row span,
+  .side-facts span,
+  .mini-facts span,
+  .mobile-card-extra-info span {
+    min-width: 0 !important;
+    max-width: 100% !important;
+    white-space: nowrap !important;
+  }
+
+  /* 마지막 카드 전화/문자 버튼 노출 */
+  .property-card-actions {
+    width: 100% !important;
+    max-width: 100% !important;
+    display: grid !important;
+    grid-template-columns: 1fr 1fr !important;
+    gap: 8px !important;
+    padding: 12px 14px 16px !important;
+    overflow: visible !important;
+  }
+
+  .property-card-actions a {
+    width: 100% !important;
+    min-width: 0 !important;
+    max-width: 100% !important;
+    min-height: 46px !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    border-radius: 999px !important;
+    background: #183a63 !important;
+    color: #fff !important;
+    font-weight: 900 !important;
+    text-decoration: none !important;
+  }
+
+  .property-card-actions a:last-child {
+    background: #0f172a !important;
+  }
+
+  /* 상세 하단 지도 / PC에서 만든 지도 박스가 모바일에서 잘리지 않게 */
+  .detail-map-section,
+  .map-preview-box,
+  .real-map-box,
+  .location-map,
+  .property-location-map,
+  .map-area,
+  #kakaoMap,
+  .map-fallback {
+    width: 100% !important;
+    max-width: calc(100vw - 24px) !important;
+    min-width: 0 !important;
+    margin-left: auto !important;
+    margin-right: auto !important;
+    overflow: hidden !important;
+    border-radius: 18px !important;
+  }
+
+  .map-preview-box,
+  .real-map-box,
+  .location-map,
+  .property-location-map,
+  .map-area,
+  #kakaoMap,
+  .map-fallback {
+    height: 300px !important;
+    min-height: 300px !important;
+  }
+
+  .map-preview-box iframe,
+  .real-map-box iframe,
+  .location-map iframe,
+  .property-location-map iframe,
+  .map-image {
+    width: 100% !important;
+    max-width: 100% !important;
+    height: 300px !important;
+    min-height: 300px !important;
+    display: block !important;
+    border: 0 !important;
+  }
+
+  .detail-map-head {
+    display: grid !important;
+    grid-template-columns: 1fr !important;
+    gap: 10px !important;
+    width: 100% !important;
+    max-width: 100% !important;
+  }
+
+  .map-link-button,
+  .map-link {
+    width: 100% !important;
+    max-width: 100% !important;
+    text-align: center !important;
+  }
+
+  /* 주문형 문의 영역: 모바일 1열, 글자/카드 폭 안정 */
+  .custom-request-section,
+  .request-section {
+    width: 100% !important;
+    max-width: calc(100vw - 24px) !important;
+    margin-left: auto !important;
+    margin-right: auto !important;
+    padding-left: 14px !important;
+    padding-right: 14px !important;
+    overflow: hidden !important;
+  }
+
+  .custom-request-grid,
+  .request-card-grid,
+  .custom-request-buttons {
+    width: 100% !important;
+    max-width: 100% !important;
+    display: grid !important;
+    grid-template-columns: 1fr !important;
+    gap: 12px !important;
+  }
+
+  .custom-request-card,
+  .request-card {
+    width: 100% !important;
+    max-width: 100% !important;
+    min-width: 0 !important;
+    display: block !important;
+    padding: 18px !important;
+    overflow: hidden !important;
+    border-radius: 20px !important;
+  }
+
+  .custom-request-section h2,
+  .request-section h2,
+  .custom-request-card strong,
+  .request-card strong {
+    max-width: 100% !important;
+    font-size: clamp(24px, 7vw, 34px) !important;
+    line-height: 1.25 !important;
+    overflow-wrap: anywhere !important;
+    word-break: keep-all !important;
+  }
+
+  .custom-request-section p,
+  .request-section p,
+  .custom-request-card span,
+  .request-card span {
+    max-width: 100% !important;
+    overflow-wrap: anywhere !important;
+    word-break: keep-all !important;
+    line-height: 1.5 !important;
+  }
+}
+
+@media (max-width: 420px) {
+  .container,
+  .section-inner,
+  .customer-property-section,
+  .detail-platform,
+  .detail-body-layout,
+  .detail-main {
+    padding-left: 10px !important;
+    padding-right: 10px !important;
+  }
+
+  .customer-property-card,
+  .property-list-item,
+  .property-card,
+  .related-card,
+  .related-simple-card,
+  .sticky-contact-card,
+  .custom-request-section,
+  .request-section,
+  .detail-map-section,
+  .map-preview-box,
+  .real-map-box,
+  .location-map,
+  .property-location-map {
+    max-width: calc(100vw - 20px) !important;
+  }
+}
+/* KAN_MOBILE_OVERFLOW_FIX_V2_END */
