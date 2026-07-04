@@ -10831,3 +10831,57 @@ button.property-list-item,
     box-sizing: border-box !important;
   }
 }
+
+/* 2026-07-04 모바일 지도 선택 매물 패널 일반 카드 크기화 */
+@media (max-width: 768px) {
+  .map-property-panel {
+    width: calc(100% - 20px) !important;
+    max-width: calc(100% - 20px) !important;
+    margin: 12px auto 0 !important;
+    border-radius: 16px !important;
+    box-shadow: 0 10px 24px rgba(15, 23, 42, 0.12) !important;
+  }
+
+  .map-property-panel .map-panel-scroll {
+    padding: 12px 12px 10px !important;
+  }
+
+  .map-property-panel .map-panel-photo {
+    height: 150px !important;
+    max-height: 150px !important;
+    border-radius: 14px !important;
+  }
+
+  .map-property-panel h2 {
+    font-size: 18px !important;
+    line-height: 1.22 !important;
+    margin: 8px 0 5px !important;
+  }
+
+  .map-property-panel .map-panel-price {
+    font-size: 19px !important;
+    line-height: 1.25 !important;
+    margin: 4px 0 4px !important;
+  }
+
+  .map-property-panel .map-panel-address,
+  .map-property-panel .map-panel-meta,
+  .map-property-panel p,
+  .map-property-panel span {
+    font-size: 13px !important;
+    line-height: 1.35 !important;
+  }
+
+  .map-property-panel .map-panel-actions {
+    gap: 8px !important;
+    margin-top: 10px !important;
+  }
+
+  .map-property-panel .map-panel-actions a {
+    min-height: 42px !important;
+    height: 42px !important;
+    font-size: 14px !important;
+    border-radius: 12px !important;
+    padding: 0 8px !important;
+  }
+}
