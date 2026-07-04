@@ -11062,3 +11062,899 @@ button.property-list-item,
   }
 }
 /* KAN_MOBILE_OVERFLOW_FIX_V2_END */
+/* KAN MOBILE FINAL OVERFLOW FIX V5
+   목적: 모바일에서 카드/버튼/검색창/지도/옵션/문의영역이 화면 밖으로 나가는 문제를 최종 보정
+   적용: src/styles.css 맨 아래에 추가되어 기존 CSS보다 우선 적용
+*/
+
+@media (max-width: 760px) {
+  html,
+  body,
+  #root {
+    width: 100% !important;
+    max-width: 100% !important;
+    overflow-x: hidden !important;
+  }
+
+  body {
+    margin: 0 !important;
+    padding-left: 0 !important;
+    padding-right: 0 !important;
+    background-position: center top !important;
+  }
+
+  *,
+  *::before,
+  *::after {
+    box-sizing: border-box !important;
+  }
+
+  main,
+  section,
+  article,
+  aside,
+  footer,
+  header,
+  nav,
+  form,
+  div {
+    min-width: 0 !important;
+  }
+
+  img,
+  video,
+  iframe,
+  canvas {
+    max-width: 100% !important;
+  }
+
+  .container,
+  .section,
+  .section-blue,
+  .section-white,
+  .search-panel,
+  .search-box,
+  .customer-property-section,
+  .customer-property-grid,
+  .property-grid,
+  .card-grid,
+  .map-layout,
+  .detail-platform,
+  .detail-body-layout,
+  .detail-main,
+  .content-card,
+  .gallery-card,
+  .public-summary-card,
+  .detail-contact-section,
+  .legal-box,
+  .contact-section,
+  .contact-box,
+  .custom-request-section,
+  .request-section,
+  .custom-request-grid,
+  .request-card-grid,
+  .related-grid,
+  .detail-map-section {
+    width: calc(100vw - 24px) !important;
+    max-width: calc(100vw - 24px) !important;
+    margin-left: auto !important;
+    margin-right: auto !important;
+    padding-left: 0 !important;
+    padding-right: 0 !important;
+    overflow-x: hidden !important;
+  }
+
+  .section,
+  .section-blue,
+  .section-white {
+    padding-top: 28px !important;
+    padding-bottom: 28px !important;
+  }
+
+  .card-grid,
+  .customer-property-grid,
+  .property-grid,
+  .related-grid,
+  .custom-request-grid,
+  .request-card-grid {
+    display: grid !important;
+    grid-template-columns: minmax(0, 1fr) !important;
+    gap: 14px !important;
+  }
+
+  .customer-property-card,
+  .property-list-item,
+  .property-card,
+  .related-card,
+  .related-simple-card,
+  .custom-request-card,
+  .request-card {
+    width: 100% !important;
+    max-width: 100% !important;
+    min-width: 0 !important;
+    margin-left: 0 !important;
+    margin-right: 0 !important;
+    overflow: hidden !important;
+    border-radius: 22px !important;
+  }
+
+  .property-card-main,
+  .customer-property-card > button,
+  .property-list-item > button {
+    width: 100% !important;
+    max-width: 100% !important;
+    min-width: 0 !important;
+    display: block !important;
+    overflow: hidden !important;
+    text-align: left !important;
+  }
+
+  .customer-property-card img,
+  .property-card img,
+  .related-card img,
+  .related-simple-card img,
+  .sticky-card-photo,
+  .list-thumb img,
+  .gallery-main img {
+    display: block !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    height: auto !important;
+    object-fit: cover !important;
+  }
+
+  .customer-property-card > img,
+  .property-card > img,
+  .related-card > img,
+  .related-simple-card > img,
+  .list-thumb,
+  .card-image,
+  .property-photo,
+  .customer-card-photo {
+    width: 100% !important;
+    max-width: 100% !important;
+    aspect-ratio: 4 / 3 !important;
+    max-height: 360px !important;
+    overflow: hidden !important;
+  }
+
+  .customer-property-card > img,
+  .property-card > img,
+  .card-image img,
+  .property-photo img,
+  .customer-card-photo img,
+  .list-thumb img {
+    height: 100% !important;
+  }
+
+  .list-info,
+  .mobile-card-text,
+  .property-body,
+  .customer-card-body,
+  .related-simple-info {
+    width: 100% !important;
+    max-width: 100% !important;
+    min-width: 0 !important;
+    padding-left: 18px !important;
+    padding-right: 18px !important;
+    overflow: hidden !important;
+  }
+
+  .customer-card-type-row,
+  .badge-line,
+  .side-facts,
+  .mini-facts,
+  .mobile-card-extra-info,
+  .tag-list {
+    display: flex !important;
+    flex-wrap: wrap !important;
+    gap: 8px !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    overflow: hidden !important;
+  }
+
+  .customer-card-type-row span,
+  .badge-line span,
+  .side-facts span,
+  .mini-facts span,
+  .mobile-card-extra-info span,
+  .tag-list span {
+    max-width: 100% !important;
+    min-width: 0 !important;
+    white-space: nowrap !important;
+  }
+
+  .customer-card-region,
+  .customer-card-summary,
+  .customer-card-title,
+  .list-price,
+  .list-price b,
+  .list-price em,
+  .price,
+  .sub,
+  .location,
+  .side-address,
+  .related-simple-title,
+  .related-simple-price,
+  .related-simple-maintenance,
+  .content-card p,
+  .description-card p {
+    max-width: 100% !important;
+    min-width: 0 !important;
+    white-space: normal !important;
+    overflow-wrap: anywhere !important;
+    word-break: keep-all !important;
+    overflow: hidden !important;
+  }
+
+  .customer-property-card h1,
+  .customer-property-card h2,
+  .customer-property-card h3,
+  .property-card h1,
+  .property-card h2,
+  .property-card h3,
+  .content-card h2,
+  .public-summary-card h2,
+  .related-simple-title {
+    max-width: 100% !important;
+    white-space: normal !important;
+    overflow-wrap: anywhere !important;
+    word-break: keep-all !important;
+    line-height: 1.28 !important;
+  }
+
+  .customer-property-card h3,
+  .property-card h3,
+  .customer-card-title {
+    font-size: clamp(22px, 6vw, 28px) !important;
+  }
+
+  .list-price b,
+  .price,
+  .big-price strong,
+  .big-price span {
+    font-size: clamp(24px, 7vw, 32px) !important;
+    line-height: 1.25 !important;
+  }
+
+  .property-card-actions,
+  .side-actions,
+  .detail-contact-section .side-actions {
+    width: 100% !important;
+    max-width: 100% !important;
+    min-width: 0 !important;
+    display: grid !important;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) !important;
+    gap: 8px !important;
+    padding: 12px !important;
+    margin: 0 !important;
+    overflow: hidden !important;
+  }
+
+  .property-card-actions a,
+  .side-actions a,
+  .detail-contact-section .side-actions a,
+  .primary-btn,
+  .secondary-btn,
+  .map-link-button {
+    width: 100% !important;
+    max-width: 100% !important;
+    min-width: 0 !important;
+    min-height: 48px !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    padding: 12px 6px !important;
+    border-radius: 22px !important;
+    font-size: 17px !important;
+    font-weight: 900 !important;
+    text-align: center !important;
+    white-space: nowrap !important;
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
+    text-decoration: none !important;
+  }
+
+  .property-card-actions a:last-child,
+  .side-actions a:last-child,
+  .detail-contact-section .side-actions a:last-child {
+    color: #fff !important;
+  }
+
+  .floating-buttons,
+  .floating-buttons.consumer-only,
+  .floating-mobile,
+  .floating-desktop {
+    display: none !important;
+  }
+
+  .keyword-search,
+  .search-input,
+  .search-form,
+  .map-filter,
+  .filter-panel,
+  .filter-box {
+    width: calc(100vw - 24px) !important;
+    max-width: calc(100vw - 24px) !important;
+    min-width: 0 !important;
+    margin-left: auto !important;
+    margin-right: auto !important;
+    overflow: hidden !important;
+  }
+
+  .keyword-search input,
+  .search-input input,
+  .search-form input,
+  .map-filter input,
+  .filter-panel input,
+  .filter-box input {
+    min-width: 0 !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    font-size: 16px !important;
+    text-overflow: ellipsis !important;
+  }
+
+  .map-filter,
+  .filter-panel {
+    position: relative !important;
+    top: auto !important;
+    display: grid !important;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) !important;
+    gap: 8px !important;
+    padding: 10px !important;
+    max-height: none !important;
+  }
+
+  .map-filter input,
+  .filter-panel input {
+    grid-column: 1 / -1 !important;
+  }
+
+  .map-filter button,
+  .filter-panel button,
+  .filter-button {
+    width: 100% !important;
+    max-width: 100% !important;
+    min-width: 0 !important;
+    white-space: nowrap !important;
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
+  }
+
+  .customer-map-view,
+  .map-area,
+  .map-fallback,
+  .map-preview-box,
+  .real-map-box,
+  .location-map,
+  .property-location-map,
+  .detail-location-map,
+  .naver-map,
+  .naver-map-box,
+  #kakaoMap,
+  #naverMap,
+  #naver-map {
+    position: relative !important;
+    left: auto !important;
+    right: auto !important;
+    top: auto !important;
+    transform: none !important;
+    width: calc(100vw - 24px) !important;
+    max-width: calc(100vw - 24px) !important;
+    min-width: 0 !important;
+    height: 320px !important;
+    min-height: 320px !important;
+    max-height: 320px !important;
+    margin: 12px auto !important;
+    padding: 0 !important;
+    overflow: hidden !important;
+    border-radius: 20px !important;
+  }
+
+  .customer-map-view > div,
+  .map-area > div,
+  .map-fallback > div,
+  .map-preview-box > div,
+  .real-map-box > div,
+  .location-map > div,
+  .property-location-map > div,
+  .detail-location-map > div,
+  .naver-map > div,
+  .naver-map-box > div,
+  #kakaoMap > div,
+  #naverMap > div,
+  #naver-map > div {
+    width: 100% !important;
+    max-width: 100% !important;
+    height: 100% !important;
+    min-height: 100% !important;
+    left: 0 !important;
+    right: auto !important;
+    top: 0 !important;
+    transform: none !important;
+    margin: 0 !important;
+    overflow: hidden !important;
+  }
+
+  .map-preview-box iframe,
+  .real-map-box iframe,
+  .location-map iframe,
+  .property-location-map iframe,
+  .detail-location-map iframe,
+  .map-image {
+    display: block !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    height: 320px !important;
+    min-height: 320px !important;
+    border: 0 !important;
+    object-fit: cover !important;
+  }
+
+  .detail-map-section {
+    padding: 14px !important;
+    margin-top: 14px !important;
+    border-radius: 22px !important;
+  }
+
+  .detail-map-head {
+    width: 100% !important;
+    max-width: 100% !important;
+    display: block !important;
+    padding: 0 !important;
+    margin: 0 0 12px !important;
+    overflow: hidden !important;
+  }
+
+  .detail-map-head h2 {
+    font-size: 28px !important;
+    line-height: 1.25 !important;
+    word-break: keep-all !important;
+    white-space: normal !important;
+    margin: 4px 0 8px !important;
+  }
+
+  .detail-map-head p {
+    font-size: 15px !important;
+    line-height: 1.55 !important;
+    word-break: keep-all !important;
+    white-space: normal !important;
+  }
+
+  .detail-map-head .map-link-button,
+  .map-link-button {
+    margin-top: 10px !important;
+  }
+
+  .option-grid {
+    width: 100% !important;
+    max-width: 100% !important;
+    display: grid !important;
+    grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+    gap: 8px !important;
+    margin-top: 12px !important;
+    overflow: hidden !important;
+  }
+
+  .option-grid .option-item,
+  .option-grid > div,
+  .option-grid > span {
+    width: 100% !important;
+    max-width: 100% !important;
+    min-width: 0 !important;
+    min-height: 86px !important;
+    padding: 10px 6px !important;
+    border-radius: 14px !important;
+    display: grid !important;
+    place-items: center !important;
+    text-align: center !important;
+    overflow: hidden !important;
+  }
+
+  .option-grid .option-item span,
+  .option-grid > div span {
+    width: 42px !important;
+    height: 42px !important;
+    display: grid !important;
+    place-items: center !important;
+    font-size: 20px !important;
+    margin: 0 auto 4px !important;
+  }
+
+  .option-grid .option-item strong,
+  .option-grid > div strong,
+  .option-grid > span {
+    max-width: 100% !important;
+    font-size: 13px !important;
+    line-height: 1.25 !important;
+    white-space: normal !important;
+    word-break: keep-all !important;
+  }
+
+  .custom-request-section,
+  .request-section,
+  .site-footer {
+    width: 100% !important;
+    max-width: 100% !important;
+    margin-left: 0 !important;
+    margin-right: 0 !important;
+    padding: 34px 18px !important;
+    overflow: hidden !important;
+  }
+
+  .custom-request-section h2,
+  .request-section h2,
+  .site-footer h2 {
+    font-size: clamp(28px, 8vw, 36px) !important;
+    line-height: 1.25 !important;
+    word-break: keep-all !important;
+  }
+
+  .custom-request-card,
+  .request-card {
+    padding: 18px !important;
+    text-decoration: none !important;
+  }
+
+  .custom-request-card strong,
+  .request-card strong {
+    display: block !important;
+    font-size: 20px !important;
+    line-height: 1.3 !important;
+    word-break: keep-all !important;
+  }
+
+  .custom-request-card span,
+  .request-card span {
+    display: block !important;
+    margin-top: 6px !important;
+    font-size: 14px !important;
+    line-height: 1.5 !important;
+    word-break: keep-all !important;
+  }
+}
+
+@media (max-width: 420px) {
+  .property-card-actions,
+  .side-actions,
+  .detail-contact-section .side-actions {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) !important;
+    gap: 6px !important;
+    padding: 10px !important;
+  }
+
+  .property-card-actions a,
+  .side-actions a,
+  .detail-contact-section .side-actions a,
+  .primary-btn,
+  .secondary-btn {
+    font-size: 15px !important;
+    min-height: 44px !important;
+    border-radius: 18px !important;
+  }
+
+  .option-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+  }
+}
+
+/* KAN MOBILE SAFE OVERFLOW REPAIR V6 START */
+@media (max-width: 760px) {
+  html,
+  body,
+  #root {
+    width: 100% !important;
+    max-width: 100% !important;
+    overflow-x: hidden !important;
+  }
+
+  body {
+    padding-bottom: 96px !important;
+  }
+
+  *,
+  *::before,
+  *::after {
+    box-sizing: border-box !important;
+  }
+
+  img,
+  iframe,
+  video,
+  canvas {
+    max-width: 100% !important;
+  }
+
+  .container,
+  .section,
+  .section-blue,
+  .section-white,
+  .detail-platform,
+  .detail-body-layout,
+  .detail-main,
+  .content-card,
+  .gallery-card,
+  .public-summary-card,
+  .description-card,
+  .detail-contact-section,
+  .legal-box,
+  .contact-section,
+  .contact-box,
+  .site-footer,
+  .request-section,
+  .custom-request-section,
+  .customer-property-grid,
+  .property-grid,
+  .card-grid,
+  .related-grid,
+  .map-layout,
+  .customer-map-view {
+    width: 100% !important;
+    max-width: 100% !important;
+    min-width: 0 !important;
+    overflow-x: hidden !important;
+  }
+
+  .container,
+  .detail-platform,
+  .detail-body-layout,
+  .detail-main {
+    padding-left: 10px !important;
+    padding-right: 10px !important;
+    margin-left: auto !important;
+    margin-right: auto !important;
+  }
+
+  .property-list-item,
+  .customer-property-card,
+  .property-card,
+  .related-card,
+  .related-simple-card {
+    width: 100% !important;
+    max-width: 100% !important;
+    min-width: 0 !important;
+    margin-left: 0 !important;
+    margin-right: 0 !important;
+    overflow: hidden !important;
+  }
+
+  .property-card-main,
+  .customer-property-card .property-card-main {
+    width: 100% !important;
+    max-width: 100% !important;
+    min-width: 0 !important;
+    overflow: hidden !important;
+  }
+
+  .customer-property-card img,
+  .property-card img,
+  .sticky-card-photo,
+  .gallery-main img,
+  .list-thumb img {
+    width: 100% !important;
+    max-width: 100% !important;
+    object-fit: cover !important;
+  }
+
+  .list-info,
+  .mobile-card-text,
+  .property-body,
+  .related-simple-info,
+  .sticky-contact-card,
+  .content-card {
+    min-width: 0 !important;
+    max-width: 100% !important;
+    overflow-wrap: anywhere !important;
+    word-break: keep-all !important;
+  }
+
+  .customer-card-region,
+  .customer-card-summary,
+  .list-price,
+  .list-price b,
+  .list-price em,
+  .side-address,
+  .lead-text,
+  .description-card p,
+  .public-summary-card h2,
+  .content-card h2,
+  .related-simple-title,
+  .related-simple-price {
+    max-width: 100% !important;
+    white-space: normal !important;
+    overflow-wrap: anywhere !important;
+    word-break: keep-all !important;
+  }
+
+  .property-card-actions,
+  .customer-property-card .property-card-actions,
+  .side-actions,
+  .detail-contact-section .side-actions {
+    width: 100% !important;
+    max-width: 100% !important;
+    min-width: 0 !important;
+    display: grid !important;
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+    gap: 8px !important;
+    padding: 10px !important;
+    overflow: hidden !important;
+  }
+
+  .property-card-actions a,
+  .customer-property-card .property-card-actions a,
+  .side-actions a,
+  .primary-btn,
+  .secondary-btn {
+    width: 100% !important;
+    max-width: 100% !important;
+    min-width: 0 !important;
+    min-height: 46px !important;
+    padding: 12px 6px !important;
+    border-radius: 18px !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    text-align: center !important;
+    white-space: nowrap !important;
+    overflow: hidden !important;
+    font-size: 15px !important;
+    line-height: 1.2 !important;
+  }
+
+  .search-panel,
+  .map-filter,
+  .customer-map-filter,
+  .filter-panel {
+    width: 100% !important;
+    max-width: 100% !important;
+    min-width: 0 !important;
+    margin-left: 0 !important;
+    margin-right: 0 !important;
+    padding: 12px !important;
+    overflow: hidden !important;
+  }
+
+  .keyword-search,
+  .keyword-search input,
+  .search-input,
+  .map-filter input,
+  .customer-map-filter input {
+    width: 100% !important;
+    max-width: 100% !important;
+    min-width: 0 !important;
+  }
+
+  .map-layout,
+  .customer-map-view,
+  .map-area,
+  #kakaoMap,
+  .naver-map,
+  .naver-map-box,
+  .map-fallback,
+  .map-preview-box,
+  .real-map-box,
+  .location-map,
+  .property-location-map,
+  .detail-map-section {
+    width: 100% !important;
+    max-width: 100% !important;
+    min-width: 0 !important;
+    margin-left: 0 !important;
+    margin-right: 0 !important;
+    overflow: hidden !important;
+    border-radius: 18px !important;
+  }
+
+  .map-area,
+  #kakaoMap,
+  .naver-map,
+  .naver-map-box,
+  .map-fallback,
+  .map-preview-box,
+  .real-map-box,
+  .location-map,
+  .property-location-map {
+    height: 300px !important;
+    min-height: 300px !important;
+    max-height: 300px !important;
+  }
+
+  .map-preview-box iframe,
+  .real-map-box iframe,
+  .location-map iframe,
+  .property-location-map iframe {
+    width: 100% !important;
+    max-width: 100% !important;
+    height: 300px !important;
+    min-height: 300px !important;
+    display: block !important;
+    border: 0 !important;
+  }
+
+  .detail-map-head {
+    display: grid !important;
+    grid-template-columns: 1fr !important;
+    gap: 12px !important;
+    padding: 14px !important;
+  }
+
+  .detail-map-head h2 {
+    white-space: normal !important;
+    word-break: keep-all !important;
+    font-size: 28px !important;
+    line-height: 1.15 !important;
+  }
+
+  .map-link-button {
+    width: 100% !important;
+    max-width: 100% !important;
+    text-align: center !important;
+  }
+
+  .option-grid {
+    display: grid !important;
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+    gap: 10px !important;
+  }
+
+  .option-grid span,
+  .option-item {
+    min-height: auto !important;
+    padding: 12px 8px !important;
+    border-radius: 16px !important;
+    font-size: 14px !important;
+  }
+
+  .option-item strong {
+    font-size: 15px !important;
+  }
+
+  .custom-request-section,
+  .request-section {
+    width: 100% !important;
+    max-width: 100% !important;
+    overflow: hidden !important;
+  }
+
+  .custom-request-grid,
+  .request-card-grid {
+    display: grid !important;
+    grid-template-columns: 1fr !important;
+    gap: 12px !important;
+    width: 100% !important;
+    max-width: 100% !important;
+  }
+
+  .custom-request-card,
+  .request-card {
+    width: 100% !important;
+    max-width: 100% !important;
+    min-width: 0 !important;
+  }
+
+  .floating-buttons,
+  .floating-mobile {
+    left: 10px !important;
+    right: 10px !important;
+    bottom: 10px !important;
+    width: calc(100vw - 20px) !important;
+    max-width: calc(100vw - 20px) !important;
+    display: grid !important;
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+    gap: 8px !important;
+    z-index: 60 !important;
+  }
+
+  .floating-buttons a,
+  .floating-mobile a {
+    width: 100% !important;
+    max-width: 100% !important;
+    min-width: 0 !important;
+    min-height: 48px !important;
+    border-radius: 16px !important;
+  }
+}
+/* KAN MOBILE SAFE OVERFLOW REPAIR V6 END */
+
