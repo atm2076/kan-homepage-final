@@ -10762,3 +10762,72 @@ button.property-list-item,
     box-sizing: border-box !important;
   }
 }
+
+/* 2026-07-04 모바일 지도 선택 실제 매물 패널 크기 보정 */
+@media (max-width: 768px) {
+  .map-property-panel {
+    width: 100% !important;
+    max-width: 100% !important;
+    min-height: 0 !important;
+    height: auto !important;
+    max-height: none !important;
+    display: block !important;
+    overflow: visible !important;
+    border-radius: 18px !important;
+    box-sizing: border-box !important;
+  }
+
+  .map-property-panel .map-panel-scroll {
+    height: auto !important;
+    max-height: none !important;
+    overflow: visible !important;
+    padding-bottom: 14px !important;
+  }
+
+  .map-property-panel .map-panel-photo {
+    width: 100% !important;
+    height: 180px !important;
+    max-height: 180px !important;
+    aspect-ratio: auto !important;
+    overflow: hidden !important;
+    border-radius: 16px !important;
+  }
+
+  .map-property-panel .map-panel-photo img {
+    width: 100% !important;
+    height: 100% !important;
+    object-fit: cover !important;
+    object-position: center center !important;
+    display: block !important;
+  }
+
+  .map-property-panel h2 {
+    font-size: 20px !important;
+    line-height: 1.25 !important;
+    margin: 10px 0 6px !important;
+  }
+
+  .map-property-panel .map-panel-address,
+  .map-property-panel .map-panel-meta,
+  .map-property-panel .map-panel-price {
+    height: auto !important;
+    max-height: none !important;
+    overflow: visible !important;
+    white-space: normal !important;
+  }
+
+  .map-property-panel .map-panel-actions {
+    position: static !important;
+    display: grid !important;
+    grid-template-columns: 1fr 1fr !important;
+    gap: 10px !important;
+    margin-top: 12px !important;
+    padding: 0 !important;
+  }
+
+  .map-property-panel .map-panel-actions a {
+    width: 100% !important;
+    min-width: 0 !important;
+    box-sizing: border-box !important;
+  }
+}
