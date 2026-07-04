@@ -11054,3 +11054,55 @@ button.property-list-item,
     overflow: hidden !important;
   }
 }
+
+/* 2026-07-04 모바일 지도 영역 부모 레이아웃 1열 고정 */
+@media (max-width: 768px) {
+  .customer-map-view {
+    display: grid !important;
+    grid-template-columns: 1fr !important;
+    grid-template-areas:
+      "panel"
+      "map" !important;
+    width: calc(100vw - 32px) !important;
+    max-width: calc(100vw - 32px) !important;
+    margin-left: auto !important;
+    margin-right: auto !important;
+    overflow: visible !important;
+    box-sizing: border-box !important;
+    gap: 12px !important;
+  }
+
+  .customer-map-canvas {
+    grid-area: map !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    min-width: 0 !important;
+    box-sizing: border-box !important;
+    overflow: hidden !important;
+  }
+
+  .map-property-panel {
+    grid-area: panel !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    min-width: 0 !important;
+    margin: 0 !important;
+    box-sizing: border-box !important;
+  }
+
+  .customer-real-map.map-area {
+    width: 100% !important;
+    max-width: 100% !important;
+    min-width: 0 !important;
+    box-sizing: border-box !important;
+  }
+
+  .customer-map-topbar,
+  .mobile-map-filter-panel,
+  .map-search-inline {
+    width: 100% !important;
+    max-width: 100% !important;
+    min-width: 0 !important;
+    box-sizing: border-box !important;
+  }
+}
