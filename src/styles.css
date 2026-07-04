@@ -10625,3 +10625,48 @@ button.property-list-item,
     min-height: 48px;
   }
 }
+
+/* 2026-07-04 모바일 지도 선택 매물 카드 크기 보정 */
+@media (max-width: 768px) {
+  .hero-map-card.map-dashboard-card {
+    width: 100% !important;
+    max-width: 100% !important;
+    min-width: 0 !important;
+    margin: 16px 0 0 !important;
+    box-sizing: border-box !important;
+    position: relative !important;
+    left: auto !important;
+    right: auto !important;
+    transform: none !important;
+    overflow: hidden !important;
+  }
+
+  .hero-map-card.map-dashboard-card .map-card,
+  .hero-map-card.map-dashboard-card .map-card-head,
+  .hero-map-card.map-dashboard-card .map-card-control-row {
+    width: 100% !important;
+    max-width: 100% !important;
+    min-width: 0 !important;
+    box-sizing: border-box !important;
+  }
+
+  .hero-map-card.map-dashboard-card img {
+    width: 100% !important;
+    max-width: 100% !important;
+    height: auto !important;
+    display: block !important;
+  }
+
+  .hero-map-card.map-dashboard-card .map-card-control-row {
+    display: grid !important;
+    grid-template-columns: 1fr 1fr !important;
+    gap: 10px !important;
+  }
+
+  .hero-map-card.map-dashboard-card .map-card-control-row a,
+  .hero-map-card.map-dashboard-card .map-card-control-row button {
+    width: 100% !important;
+    min-width: 0 !important;
+    box-sizing: border-box !important;
+  }
+}
