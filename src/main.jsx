@@ -1377,6 +1377,7 @@ async function handleQuickDeleteProperty(property) {
             />
           </>
       )}
+        <CustomRequestSection />
     </main>
       <Footer />
       {adminOpen && (
@@ -7380,6 +7381,33 @@ function FloatingButtons() {
       <a href={`tel:${OFFICE.phone}`}>전화</a>
       <a href={`sms:${OFFICE.phone}`}>문자</a>
     </div>
+  );
+}
+
+function CustomRequestSection() {
+  const buyMessage = encodeURIComponent('안녕하세요. 홈페이지 보고 문의드립니다. 물건 구해주세요. 희망지역/금액/종류: ');
+  const sellMessage = encodeURIComponent('안녕하세요. 홈페이지 보고 문의드립니다. 매물 팔아주세요. 매물주소/희망가격: ');
+
+  return (
+    <section className="custom-request-section" id="custom-request">
+      <div className="custom-request-head">
+        <p className="section-eyebrow">REQUEST</p>
+        <h2>원하는 매물을 못 찾으셨나요?</h2>
+        <p>찾는 방이나 수익형 매물이 있으면 조건을 남겨주세요. 맞는 매물을 확인해 연락드리겠습니다.</p>
+      </div>
+      <div className="custom-request-grid">
+        <article className="custom-request-card">
+          <h3>물건 구해주세요</h3>
+          <p>원룸·투룸·다가구·수익형 매물 조건을 알려주세요.</p>
+          <a className="custom-request-button" href={`sms:${OFFICE.phone}?body=${buyMessage}`}>조건 보내기</a>
+        </article>
+        <article className="custom-request-card">
+          <h3>매물 팔아주세요</h3>
+          <p>원룸건물·다가구·상가주택 매도 상담을 도와드립니다.</p>
+          <a className="custom-request-button" href={`sms:${OFFICE.phone}?body=${sellMessage}`}>매도 상담하기</a>
+        </article>
+      </div>
+    </section>
   );
 }
 
