@@ -10997,3 +10997,60 @@ button.property-list-item,
     overflow: hidden !important;
   }
 }
+
+/* 2026-07-04 모바일 지도 선택 패널/지도 가로 넘침 최종 보정 */
+@media (max-width: 768px) {
+  body {
+    overflow-x: hidden !important;
+  }
+
+  .map-property-panel {
+    width: calc(100vw - 32px) !important;
+    max-width: calc(100vw - 32px) !important;
+    margin-left: auto !important;
+    margin-right: auto !important;
+    overflow: hidden !important;
+    box-sizing: border-box !important;
+  }
+
+  .map-property-panel .map-panel-scroll {
+    width: 100% !important;
+    max-width: 100% !important;
+    box-sizing: border-box !important;
+    overflow: hidden !important;
+  }
+
+  .map-property-panel .map-panel-photo,
+  .map-property-panel .lead-text,
+  .map-property-panel .map-panel-facts,
+  .map-property-panel .map-panel-meta {
+    width: 100% !important;
+    max-width: 100% !important;
+    box-sizing: border-box !important;
+    overflow: hidden !important;
+  }
+
+  .map-property-panel .lead-text {
+    display: block !important;
+    white-space: nowrap !important;
+    text-overflow: ellipsis !important;
+  }
+
+  .map-property-panel .map-panel-actions {
+    width: 100% !important;
+    max-width: 100% !important;
+    display: grid !important;
+    grid-template-columns: 1fr 1fr !important;
+    gap: 8px !important;
+    box-sizing: border-box !important;
+    overflow: hidden !important;
+  }
+
+  .map-property-panel .map-panel-actions a {
+    width: 100% !important;
+    max-width: 100% !important;
+    min-width: 0 !important;
+    box-sizing: border-box !important;
+    overflow: hidden !important;
+  }
+}
