@@ -11106,3 +11106,19 @@ button.property-list-item,
     box-sizing: border-box !important;
   }
 }
+
+/* 2026-07-04 모바일 지도 선택 카드 문자문의 버튼 글씨 보정 */
+@media (max-width: 768px) {
+  .map-property-panel .map-panel-actions a,
+  .map-property-panel .map-panel-actions a:visited,
+  .map-property-panel .map-panel-actions a:hover,
+  .map-property-panel .map-panel-actions a:active {
+    color: #ffffff !important;
+    font-weight: 900 !important;
+    text-decoration: none !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    opacity: 1 !important;
+  }
+}
