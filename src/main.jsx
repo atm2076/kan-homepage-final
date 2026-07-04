@@ -1902,8 +1902,8 @@ function CustomerMapView({ properties, selected, onSelect, keyword, setKeyword, 
   return (
     <section className="customer-map-view" id="map-view">
       <div className="customer-map-canvas">
-        <div ref={mapElementRef} className="customer-real-map" />
-        <div className="customer-map-topbar">
+        <div ref={mapElementRef} className="customer-real-map map-area" />
+        <div className="customer-map-topbar mobile-map-filter-panel">
           <div className="map-search-inline">
             <span>⌕</span>
             <input value={keyword} onChange={(e) => setKeyword(e.target.value)} placeholder="인의동 원룸, 진평동 투룸, 옥계동 월세 검색" />
