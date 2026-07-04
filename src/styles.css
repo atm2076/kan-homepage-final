@@ -10917,3 +10917,30 @@ button.property-list-item,
     padding: 0 !important;
   }
 }
+
+/* 2026-07-04 모바일 지도 선택 카드 긴 설명문 실제 숨김 */
+@media (max-width: 768px) {
+  .map-property-panel .text-lines {
+    display: none !important;
+  }
+
+  .map-property-panel .lead-text {
+    display: block !important;
+    white-space: nowrap !important;
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
+    font-size: 13px !important;
+    line-height: 1.3 !important;
+    margin: 7px 0 5px !important;
+  }
+
+  .map-property-panel .map-panel-meta {
+    margin-top: 6px !important;
+    padding-top: 0 !important;
+    font-size: 11px !important;
+  }
+
+  .map-property-panel .map-panel-scroll {
+    padding-bottom: 8px !important;
+  }
+}
