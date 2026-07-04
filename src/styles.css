@@ -9938,162 +9938,6 @@ button.property-list-item,
   display: none !important;
 }
 
-@media (max-width: 768px) {
-  body {
-    padding-top: env(safe-area-inset-top);
-  }
-
-  .detail-platform {
-    padding-top: calc(8px + env(safe-area-inset-top));
-    padding-bottom: calc(140px + env(safe-area-inset-bottom)) !important;
-  }
-
-  .detail-tabs {
-    display: none !important;
-  }
-
-  .detail-main {
-    display: flex !important;
-    flex-direction: column !important;
-    gap: 14px !important;
-    padding-bottom: calc(140px + env(safe-area-inset-bottom)) !important;
-  }
-
-  #detail-gallery {
-    order: 1;
-  }
-
-  .public-summary-card {
-    order: 2;
-  }
-
-  #detail-info {
-    order: 3;
-  }
-
-  .investment-point-card {
-    order: 4;
-  }
-
-  #detail-desc {
-    order: 5;
-  }
-
-  #detail-options,
-  .maintenance-card,
-  .location-life-card,
-  .photo-caption-card {
-    order: 6;
-  }
-
-  #detail-location {
-    order: 7;
-  }
-
-  .legal-box {
-    order: 8;
-  }
-
-  #detail-related {
-    order: 9;
-  }
-
-  .detail-contact-section {
-    order: 10;
-  }
-
-  .detail-platform .content-card,
-  .detail-platform .gallery-card {
-    border-radius: 16px !important;
-  }
-
-  .mobile-hide-contact .side-actions,
-  .sticky-contact-card,
-  .related-location-duplicate,
-  .detail-platform .content-card a[href^="tel:"],
-  .detail-platform .content-card a[href^="sms:"] {
-    display: none !important;
-  }
-
-  .investment-summary-grid {
-    display: grid;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 8px;
-    margin-top: 6px;
-  }
-
-  .investment-summary-grid div {
-    padding: 12px;
-    border: 1px solid #d9e3ee;
-    border-radius: 12px;
-    background: #f8fafc;
-  }
-
-  .investment-summary-grid span,
-  .legal-summary-grid span {
-    display: block;
-    color: #64748b;
-    font-size: 12px;
-    font-weight: 900;
-  }
-
-  .investment-summary-grid strong {
-    display: block;
-    margin-top: 4px;
-    color: #173b67;
-    font-size: 18px;
-    line-height: 1.25;
-  }
-
-  .legal-summary-grid {
-    display: grid;
-    gap: 8px;
-  }
-
-  .legal-summary-grid p {
-    display: grid;
-    grid-template-columns: 86px minmax(0, 1fr);
-    gap: 8px;
-    align-items: start;
-    margin: 0;
-    padding: 9px 0;
-    border-bottom: 1px solid #e2e8f0;
-  }
-
-  .legal-summary-grid strong {
-    color: #0f172a;
-    font-size: 13px;
-    line-height: 1.35;
-  }
-
-  .legal-detail-more {
-    margin-top: 12px;
-  }
-
-  .legal-detail-more summary {
-    min-height: 42px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    border: 1px solid #d9e3ee;
-    border-radius: 999px;
-    background: #fff;
-    color: #1f3a5f;
-    font-weight: 900;
-    cursor: pointer;
-  }
-
-  .related-more-button {
-    width: 100%;
-    margin-top: 12px;
-  }
-
-  .floating-buttons.consumer-only,
-  .floating-buttons {
-    bottom: calc(12px + env(safe-area-inset-bottom)) !important;
-  }
-}
-
 /* 손님용 매물 카드 전화/문자 버튼 글씨 선명하게 */
 .property-card-actions a {
   color: #fff !important;
@@ -10147,224 +9991,149 @@ button.property-list-item,
   overflow: hidden !important;
 }
 
-@media (max-width: 768px) {
-  #property-detail.detail-platform {
-    padding-bottom: 92px;
-  }
-
-  #property-detail #detail-options.content-card,
-  #property-detail #detail-info.content-card {
-    padding: 18px 14px !important;
-    border-radius: 16px !important;
-  }
-
-  #property-detail #detail-options h2,
-  #property-detail #detail-info .content-title-row h2 {
-    margin: 0;
-    font-size: 30px;
-    line-height: 1.15;
-    letter-spacing: 0;
-  }
-
-  #property-detail #detail-info .content-title-row {
-    align-items: flex-start;
-    margin-bottom: 10px;
-  }
-
-  #property-detail #detail-info .content-title-row span {
-    padding: 5px 8px;
-    font-size: 11px;
-    line-height: 1.2;
-  }
-
-  #property-detail #detail-options .option-grid {
-    grid-template-columns: repeat(4, minmax(0, 1fr));
-    gap: 8px;
-    margin-top: 10px;
-  }
-
-  #property-detail #detail-options .option-item {
-    min-height: 64px;
-    gap: 5px;
-    padding: 8px 6px;
-    border-radius: 12px;
-    font-size: 12px;
-    line-height: 1.25;
-    font-weight: 800;
-  }
-
-  #property-detail #detail-options .option-item span {
-    width: 36px;
-    height: 36px;
-    font-size: 20px;
-  }
-
-  #property-detail #detail-info .info-table {
-    display: grid !important;
-    grid-template-columns: 1fr !important;
-    margin-top: 8px;
-    overflow: hidden;
-    border: 1px solid var(--line);
-    border-radius: 12px;
-  }
-
-  #property-detail #detail-info .info-row {
-    display: grid !important;
-    grid-template-columns: 94px minmax(0, 1fr) !important;
-    gap: 0 !important;
-    width: 100% !important;
-    min-height: 54px;
-    margin-top: 0 !important;
-    border-right: 0;
-    border-bottom: 1px solid var(--line);
-    overflow: visible !important;
-  }
-
-  #property-detail #detail-info .info-row:last-child {
-    border-bottom: 0;
-  }
-
-  #property-detail #detail-info .info-row span,
-  #property-detail #detail-info .info-row strong {
-    min-width: 0;
-    padding: 10px;
-    line-height: 1.35;
-    word-break: keep-all;
-    overflow-wrap: anywhere;
-  }
-
-  #property-detail #detail-info .info-row span {
-    font-size: 13px;
-    font-weight: 800;
-  }
-
-  #property-detail #detail-info .info-row strong {
-    font-size: 15px;
-    font-weight: 600;
-  }
-
-  #property-detail .detail-map-section {
-    margin: 10px 0 18px;
-    padding: 20px 16px;
-    border-radius: 18px;
-  }
-
-  #property-detail .detail-map-head {
-    display: grid;
-    grid-template-columns: 1fr;
-    align-items: start;
-    gap: 12px;
-    margin-bottom: 14px;
-  }
-
-  #property-detail .detail-map-head h2 {
-    font-size: 30px;
-    line-height: 1.15;
-    letter-spacing: 0;
-  }
-
-  #property-detail .detail-map-head p {
-    max-width: none;
-    margin-top: 7px;
-    font-size: 14px;
-    line-height: 1.5;
-  }
-
-  #property-detail .detail-map-head .section-eyebrow {
-    font-size: 13px !important;
-    line-height: 1.2;
-  }
-
-  #property-detail .map-link-button {
-    width: 100%;
-    height: 42px;
-    padding: 0 14px;
-    border-radius: 12px;
-    font-size: 14px;
-  }
-
-  #property-detail .real-map-box,
-  #property-detail .map-preview-box {
-    height: 280px;
-    border-radius: 18px;
-  }
+/* 2026-07-04 고객 모바일 매물 필터/목록 정리 */
+.deal-mode-toggle {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+  margin-bottom: 10px;
 }
 
-@media (max-width: 360px) {
-  #property-detail #detail-options .option-grid {
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-  }
+.deal-mode-toggle button {
+  min-height: 44px;
+  border: 1px solid #d8e2ee;
+  border-radius: 8px;
+  background: #ffffff;
+  color: #173b67;
+  font-size: 14px;
+  font-weight: 900;
 }
 
+.deal-mode-toggle button.active {
+  border-color: #173b67;
+  background: #173b67;
+  color: #ffffff;
+}
+
+.sale-highlight-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 8px;
+  margin-top: 14px;
+}
+
+.sale-highlight-card {
+  min-height: 72px;
+  padding: 12px;
+  border: 1px solid #d9e3ee;
+  border-radius: 8px;
+  background: #f8fafc;
+}
+
+.sale-highlight-card span {
+  display: block;
+  margin-bottom: 6px;
+  color: #64748b;
+  font-size: 12px;
+  font-weight: 900;
+}
+
+.sale-highlight-card strong {
+  display: block;
+  color: #0f172a;
+  font-size: 16px;
+  line-height: 1.25;
+  font-weight: 900;
+}
 
 @media (max-width: 760px) {
-  .admin-grid.simple-admin-grid {
-    margin-left: -8px;
-    margin-right: -8px;
+  .customer-search-panel {
+    padding-bottom: 10px !important;
   }
 
-  .property-form {
-    padding: 14px !important;
+  .popular-keyword-row {
+    display: flex !important;
+    gap: 8px !important;
+    overflow-x: auto !important;
+    padding-bottom: 2px !important;
   }
 
-  .entry-mode-tabs {
-    gap: 6px;
-    margin: 12px 0;
-    padding: 6px;
-    border-radius: 14px;
+  .popular-keyword-row button {
+    flex: 0 0 auto !important;
+    min-height: 36px !important;
+    border-radius: 999px !important;
+    white-space: nowrap !important;
   }
 
-  .entry-mode-tabs button {
-    min-height: 48px;
-    padding: 10px 8px;
-    font-size: 14px;
+  .customer-property-grid,
+  .customer-results-panel,
+  .customer-market-section,
+  .page-shell {
+    padding-bottom: 18px !important;
   }
 
-  .quick-simple-entry {
-    padding: 14px !important;
-    margin-top: 12px !important;
+  .floating-buttons.consumer-only,
+  .bottom-contact,
+  .fixed-contact,
+  .floating-contact {
+    display: none !important;
+    visibility: hidden !important;
   }
 
-  .quick-simple-entry .quick-field-section,
-  .quick-simple-entry .quick-choice-group {
-    padding: 12px;
-    margin-top: 10px;
-    border-radius: 14px;
+  .customer-property-card .list-thumb {
+    width: 100% !important;
+    height: 230px !important;
+    aspect-ratio: auto !important;
   }
 
-  .quick-simple-entry .field input,
-  .quick-simple-entry .field select,
-  .quick-simple-entry .field textarea,
-  .quick-simple-entry .quick-number-field input {
-    min-height: 52px;
-    font-size: 16px;
+  .customer-property-card .list-thumb img {
+    width: 100% !important;
+    height: 100% !important;
+    object-fit: cover !important;
   }
 
-  .quick-simple-entry .option-button-grid button {
-    min-height: 48px;
-    padding: 10px 12px;
+  .customer-property-card .customer-card-summary {
+    display: none !important;
   }
 
-  .quick-simple-entry .three-cols,
-  .quick-simple-entry .two-cols {
-    grid-template-columns: 1fr !important;
-    gap: 8px;
+  .customer-property-card .list-info {
+    gap: 7px !important;
+    padding: 12px 13px 10px !important;
   }
 
-  .quick-photo-section .upload-dropzone {
-    min-height: 118px;
-    border-width: 2px;
+  .customer-property-card .list-price {
+    gap: 5px !important;
   }
 
-  .quick-photo-section .upload-dropzone strong {
-    font-size: 17px;
+  .customer-property-card .list-price b {
+    font-size: 17px !important;
   }
 
-  .property-form > .form-actions,
-  .property-form .save-actions {
-    position: sticky;
-    bottom: 8px;
-    z-index: 5;
-    margin-top: 12px;
+  .property-card-actions {
+    padding: 0 13px 13px !important;
+  }
+
+  .gallery-main {
+    height: 340px !important;
+    min-height: 340px !important;
+    border-radius: 0 !important;
+  }
+
+  .gallery-main img {
+    width: 100% !important;
+    height: 100% !important;
+    object-fit: cover !important;
+  }
+
+  .photo-count {
+    right: 12px !important;
+    bottom: 12px !important;
+    border-radius: 999px !important;
+    background: rgba(15, 23, 42, 0.76) !important;
+    color: #fff !important;
+  }
+
+  .sale-highlight-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }
