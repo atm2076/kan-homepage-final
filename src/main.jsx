@@ -1249,11 +1249,25 @@ function App() {
     setSelected((prev) => filteredProperties.find((item) => item.id === prev?.id) || filteredProperties[0]);
   }, [filteredProperties]);
 
-  function selectProperty(property) {
-    setSelected(property);
-    const target = document.getElementById('property-detail');
-    if (target) target.scrollIntoView({ behavior: 'smooth', block: 'start' });
-  }
+function selectProperty(property) {
+  setSelected(property);
+
+  requestAnimationFrame(() => {
+    setTimeout(() => {
+      const target =
+        window.innerWidth <= 768
+          ? document.getElementById('detail-gallery')
+          : document.getElementById('property-detail');
+
+      if (target) {
+        target.scrollIntoView({
+          behavior: 'smooth',
+          block: 'start'
+        });
+      }
+    }, 100);
+  });
+}
 
  const isOwnerAdmin = portalMode === 'admin' && isAdmin;
 const isManagementMode = isOwnerAdmin;
@@ -2191,28 +2205,7 @@ function CustomerListingSection({
   key={property.id}
   property={property}
   active={selected?.id === property.id}
-onClick={() => {
-  onSelect(property);
-
-  if (window.innerWidth <= 768) {
-    requestAnimationFrame(() => {
-      setTimeout(() => {
-        const photoImage = document.querySelector('img[alt*="대표사진"]');
-        const target =
-          photoImage?.closest('section') ||
-          document.querySelector('.public-summary-card');
-
-        if (!target) return;
-
-        const top = target.getBoundingClientRect().top + window.scrollY - 72;
-        window.scrollTo({
-          top: Math.max(top, 0),
-          behavior: 'smooth'
-        });
-      }, 80);
-    });
-  }
-}}
+onClick={() => onSelect(property)}
   isManagementMode={isManagementMode}
   isOwnerAdmin={isOwnerAdmin}
   onEdit={onEditProperty}
