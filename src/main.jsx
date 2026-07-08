@@ -2191,7 +2191,28 @@ function CustomerListingSection({
   key={property.id}
   property={property}
   active={selected?.id === property.id}
-  onClick={() => onSelect(property)}
+onClick={() => {
+  onSelect(property);
+
+  if (window.innerWidth <= 768) {
+    requestAnimationFrame(() => {
+      setTimeout(() => {
+        const photoImage = document.querySelector('img[alt*="대표사진"]');
+        const target =
+          photoImage?.closest('section') ||
+          document.querySelector('.public-summary-card');
+
+        if (!target) return;
+
+        const top = target.getBoundingClientRect().top + window.scrollY - 72;
+        window.scrollTo({
+          top: Math.max(top, 0),
+          behavior: 'smooth'
+        });
+      }, 80);
+    });
+  }
+}}
   isManagementMode={isManagementMode}
   isOwnerAdmin={isOwnerAdmin}
   onEdit={onEditProperty}
