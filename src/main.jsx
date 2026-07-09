@@ -5800,10 +5800,24 @@ if (isStaffMode && currentStaff?.code) {
                 type="button"
                 onClick={async () => {
                   const blogAd = buildNaverBlogAd(property);
+                  try {
+                    window.open(
+                      'https://blog.naver.com/GoBlogWrite.naver',
+                      '_blank',
+                      'noopener,noreferrer'
+                    );
+                  } catch {
+                    // 팝업이 차단되어도 아래 복사 동작은 계속한다.
+                  }
                   const copied = await copyAdvertisementText(
                     `${blogAd.title}\n\n${blogAd.body}\n\n${blogAd.tags}`
                   );
-                  setStatus(copied ? '네이버 블로그 원고 복사 완료' : '복사 실패');
+                  const message =
+                    '네이버 블로그 문구가 복사되었습니다. 네이버 블로그 글쓰기 화면에 붙여넣으세요.';
+                  setStatus(copied ? message : '복사 실패');
+                  if (copied) {
+                    window.alert(message);
+                  }
                 }}
               >
                 네이버 블로그
