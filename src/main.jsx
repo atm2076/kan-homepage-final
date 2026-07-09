@@ -5799,6 +5799,7 @@ if (isStaffMode && currentStaff?.code) {
               <button
                 type="button"
                 onClick={async () => {
+                  setAdvertisingPropertyId(property.id);
                   const blogAd = buildNaverBlogAd(property);
                   try {
                     window.open(
@@ -6259,9 +6260,22 @@ function buildNaverBlogAd(property) {
   const compact = (value) => clean(value).replace(/\s+/g, ' ');
   const toList = (value) => toTextList(value).map(clean).filter(Boolean);
 
-  const photos = Array.isArray(property.photos)
-    ? property.photos.map(clean).filter(Boolean)
-    : toList(property.photos);
+  const photoSource =
+    property.photos?.length ? property.photos : property.photoUrls;
+  const photos = Array.isArray(photoSource)
+    ? photoSource.map(clean).filter(Boolean)
+    : toList(photoSource);
+
+  const salePrice = property.salePrice || property.sale_price;
+  const takeoverPrice =
+    property.takeoverPrice ||
+    property.acquisition_price ||
+    property.takeover_price;
+  const monthlyRent =
+    property.monthlyRent ||
+    property.total_monthly_rent ||
+    property.monthly_rent;
+  const netIncome = property.netIncome || property.net_profit || property.net_income;
 
   const options = [
     ...toList(property.convenience),
@@ -6302,10 +6316,10 @@ function buildNaverBlogAd(property) {
 
   const priceText = isSale
     ? [
-        property.sale_price ? `매매가 ${moneyText(property.sale_price)}` : '',
-        property.acquisition_price ? `인수가 ${moneyText(property.acquisition_price)}` : '',
-        property.total_monthly_rent ? `총월세 ${moneyText(property.total_monthly_rent)}` : '',
-        property.net_profit ? `월순수익 ${moneyText(property.net_profit)}` : ''
+        salePrice ? `매매가 ${moneyText(salePrice)}` : '',
+        takeoverPrice ? `인수금 ${moneyText(takeoverPrice)}` : '',
+        monthlyRent ? `월세수입 ${moneyText(monthlyRent)}` : '',
+        netIncome ? `월순수익 ${moneyText(netIncome)}` : ''
       ].filter(Boolean).join(' / ') || '가격 상담 시 확인'
     : [
         property.deposit ? `보증금 ${moneyText(property.deposit)}` : '',
@@ -6321,16 +6335,17 @@ function buildNaverBlogAd(property) {
   ].filter(Boolean)[0] || '';
 
   const generatedTitle = [
-    locationTitle,
-    category,
-    tradeType,
-    isSale
-      ? (property.acquisition_price ? `인수가 ${moneyText(property.acquisition_price)}` : moneyText(property.sale_price))
-      : [moneyText(property.deposit), moneyText(property.rent)].filter(Boolean).join('/'),
+    clean(property.title) || `${locationTitle} ${category} ${tradeType}`,
+    address,
+    isSale && salePrice ? `매매가 ${moneyText(salePrice)}` : '',
+    isSale && takeoverPrice ? `인수금 ${moneyText(takeoverPrice)}` : '',
+    isSale && monthlyRent ? `월세수입 ${moneyText(monthlyRent)}` : '',
+    isSale && netIncome ? `월순수익 ${moneyText(netIncome)}` : '',
+    !isSale ? [moneyText(property.deposit), moneyText(property.rent)].filter(Boolean).join('/') : '',
     titleBenefit
   ].filter(Boolean).join(' ');
 
-  const title = compact(generatedTitle || property.title || `${locationTitle} ${category}`);
+  const title = compact(generatedTitle);
 
   const addInfo = (label, value) => {
     const text = clean(value);
