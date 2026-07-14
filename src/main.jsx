@@ -428,8 +428,23 @@ function toPublicProperty(property = {}) {
   return clean;
 }
 
+function normalizeArrayValue(value) {
+  return toTextList(value);
+}
+
+function normalizePropertyRecord(property = {}) {
+  return {
+    ...property,
+    photos: normalizeArrayValue(property.photos),
+    badges: normalizeArrayValue(property.badges),
+    convenience: normalizeArrayValue(property.convenience),
+    safety: normalizeArrayValue(property.safety),
+    education: normalizeArrayValue(property.education)
+  };
+}
+
 function toPublicProperties(list = []) {
-  return list.map(toPublicProperty);
+  return list.map((item) => toPublicProperty(normalizePropertyRecord(item)));
 }
 
 function findDuplicateProperty(target, list = [], ignoreId) {
@@ -464,7 +479,7 @@ function dedupePublicProperties(list = []) {
 }
 
 function arrayToLines(value) {
-  return Array.isArray(value) ? value.join('\n') : '';
+  return toTextList(value).join('\n');
 }
 
 function normalizeBulkKey(key) {
@@ -681,8 +696,7 @@ function getBadgeClassName(badge) {
   return 'badge-default';
 }
 function getPropertyBadges(property) {
-  const savedBadges = Array.isArray(property.badges) ? property.badges : [];
-  const cleanedBadges = savedBadges
+  const cleanedBadges = toTextList(property.badges)
     .map((badge) => String(badge).trim())
     .filter(Boolean);
 
@@ -1392,6 +1406,7 @@ async function handleQuickDeleteProperty(property) {
           </>
       )}
         <CustomRequestSection />
+
     </main>
       <Footer />
       {adminOpen && (
@@ -1989,10 +2004,12 @@ function MapPropertyPanel({ property }) {
     return <aside className="map-property-panel empty-box">지도에서 매물을 선택하세요.</aside>;
   }
 
-  const cover = property.photos?.[0] || 'https://images.unsplash.com/photo-1564013799919-ab600027ffc6?auto=format&fit=crop&w=1000&q=80';
+  const photos = toTextList(property.photos);
+  const cover = photos[0] || 'https://images.unsplash.com/photo-1564013799919-ab600027ffc6?auto=format&fit=crop&w=1000&q=80';
   const isSale = property.category?.includes('매매') || property.trade_type === '매매';
   const inquiryBody = encodeURIComponent(buildInquiryMessage(property));
-  const photoCount = property.photos?.length || 0;
+  const photoCount = photos.length;
+
   const primarySalePrice = isSale ? getSaleCardPrimaryPrice(property) : null;
 
   return (
@@ -2343,8 +2360,9 @@ function ErrorNotice({ message }) {
   );
 }
 function PropertyListItem({ property, active, onClick, isManagementMode = false, isOwnerAdmin = false, onEdit, onHold, onDelete }) {
+  const photos = toTextList(property.photos);
   const cover =
-    property.photos?.[0] ||
+    photos[0] ||
     'https://images.unsplash.com/photo-1564013799919-ab600027ffc6?auto=format&fit=crop&w=1200&q=80';
 
   const isSale =
@@ -2484,22 +2502,28 @@ function PropertyListItem({ property, active, onClick, isManagementMode = false,
   );
 }
 
-function PropertyDetail({ property, allProperties = [], onSelect }) {
+function PropertyDetail({ property: inputProperty, allProperties = [], onSelect }) {
   const [activePhoto, setActivePhoto] = useState(0);
 
   useEffect(() => {
     setActivePhoto(0);
-  }, [property?.id]);
+  }, [inputProperty?.id]);
 
-  if (!property) {
+  if (!inputProperty) {
     return <section id="property-detail" className="detail-empty empty-box">매물을 선택하세요.</section>;
   }
 
-  const photos = property.photos?.length ? property.photos : [];
+  const photos = toTextList(inputProperty.photos);
+  const convenience = toTextList(inputProperty.convenience);
+  const safety = toTextList(inputProperty.safety);
+  const education = toTextList(inputProperty.education);
+  const badges = toTextList(inputProperty.badges);
+  const safeProperty = { ...inputProperty, photos, convenience, safety, education, badges };
   const mainPhoto = photos[activePhoto] || 'https://images.unsplash.com/photo-1564013799919-ab600027ffc6?auto=format&fit=crop&w=1600&q=80';
-  const inquiryBody = encodeURIComponent(buildInquiryMessage(property));
-  const related = allProperties.filter((item) => item.id !== property.id).slice(0, 4);
-  const hasMap = Boolean(property.map_image || property.map_link);
+  const inquiryBody = encodeURIComponent(buildInquiryMessage(safeProperty));
+  const related = allProperties.map(normalizePropertyRecord).filter((item) => item.id !== safeProperty.id).slice(0, 4);
+  const hasMap = Boolean(safeProperty.map_image || safeProperty.map_link);
+const property = safeProperty;
 const isSaleProperty = property.category?.includes('매매') || property.trade_type === '매매';
 const primarySummaryPrice = isSaleProperty
   ? (() => {
@@ -2530,8 +2554,8 @@ const publicMaintenanceItems = linesToArray(property.maintenance_includes).lengt
   : maintenanceInfo.includedItems;
 const locationLines = linesToArray(property.location_description).length
   ? linesToArray(property.location_description)
-  : property.education || [];
-const heatingText = (property.convenience || [])
+  : education;
+const heatingText = convenience
   .map((item) => String(item || ''))
   .find((item) => item.startsWith('난방:'))
   ?.replace('난방:', '')
@@ -2856,7 +2880,7 @@ const infoRows = isSaleProperty
           <img
   className="sticky-card-photo"
   src={
-    property.photos?.[0] ||
+    photos[0] ||
     'https://images.unsplash.com/photo-1564013799919-ab600027ffc6?auto=format&fit=crop&w=900&q=80'
   }
   alt={property.title || '매물 대표사진'}
@@ -2917,7 +2941,9 @@ const infoRows = isSaleProperty
 }
 
 function IconGrid({ items = [], fallback = [] }) {
-  const list = items?.length ? items : fallback;
+  const itemList = toTextList(items);
+  const fallbackList = toTextList(fallback);
+  const list = itemList.length ? itemList : fallbackList;
   return (
     <div className="option-grid">
       {list.map((item) => (
@@ -2931,7 +2957,8 @@ function IconGrid({ items = [], fallback = [] }) {
 }
 
 function TagList({ items = [] }) {
-  const list = items?.length ? items : ['계약 전 확인 후 안내'];
+  const itemList = toTextList(items);
+  const list = itemList.length ? itemList : ['계약 전 확인 후 안내'];
   return (
     <div className="tag-list">
       {list.map((item) => <span key={item}>{item}</span>)}
@@ -2951,13 +2978,14 @@ function TextLines({ value, fallback = '' }) {
 }
 
 function PhotoCaptionList({ photos = [], captions = '' }) {
+  const photoList = toTextList(photos);
   const captionLines = linesToArray(captions);
   if (!captionLines.length) return null;
   return (
     <div className="photo-caption-list">
       {captionLines.map((caption, index) => (
         <div key={`${caption}-${index}`} className="photo-caption-item">
-          <span>{photos[index] ? `${index + 1}번 사진` : '사진 설명'}</span>
+          <span>{photoList[index] ? `${index + 1}번 사진` : '사진 설명'}</span>
           <p>{caption}</p>
         </div>
       ))}
@@ -5665,8 +5693,8 @@ if (isStaffMode && currentStaff?.code) {
     property.trade_type === '매매';
 
   const representativePhoto =
-    Array.isArray(property.photos) && property.photos.length
-      ? property.photos[0]
+    toTextList(property.photos).length
+      ? toTextList(property.photos)[0]
       : '';
 
   const isAdvertisingOpen = advertisingPropertyId === property.id;
@@ -5973,12 +6001,8 @@ function buildDaangnRegistrationHelper(property) {
     property.structure,
     property.elevator,
     property.parking,
-    ...(Array.isArray(property.convenience)
-      ? property.convenience
-      : []),
-    ...(Array.isArray(property.safety)
-      ? property.safety
-      : [])
+    ...toTextList(property.convenience),
+    ...toTextList(property.safety)
   ]
     .filter(Boolean)
     .join(' ');
@@ -6223,8 +6247,8 @@ function buildDaangnRegistrationHelper(property) {
       items: [
         [
           '등록된 사진',
-          Array.isArray(property.photos)
-            ? `${property.photos.length}장`
+          toTextList(property.photos).length
+            ? `${toTextList(property.photos).length}장`
             : '확인 필요'
         ],
         ['평면도', '등록 여부 확인 필요']
@@ -6260,11 +6284,8 @@ function buildNaverBlogAd(property) {
   const compact = (value) => clean(value).replace(/\s+/g, ' ');
   const toList = (value) => toTextList(value).map(clean).filter(Boolean);
 
-  const photoSource =
-    property.photos?.length ? property.photos : property.photoUrls;
-  const photos = Array.isArray(photoSource)
-    ? photoSource.map(clean).filter(Boolean)
-    : toList(photoSource);
+  const photoSource = toTextList(property.photos).length ? property.photos : property.photoUrls;
+  const photos = toList(photoSource);
 
   const salePrice = property.salePrice || property.sale_price;
   const takeoverPrice =
@@ -6577,7 +6598,7 @@ JSON.stringify(advertisingProperty)
           <InfoLine label="한줄 요약" value={property.summary} />
           <InfoLine label="상세 설명" value={property.description} multiline />
           <InfoLine label="관리비 포함 항목" value={property.maintenance_includes || getMaintenanceInfo(property.maintenance_fee).includedItems.join(', ')} />
-          <InfoLine label="옵션" value={(property.convenience || []).join(', ')} />
+          <InfoLine label="옵션" value={toTextList(property.convenience).join(', ')} />
           <InfoLine label="위치 설명" value={property.location_description} multiline />
           <InfoLine label="추천 대상" value={property.recommended_for} multiline />
           <InfoLine label="사진 설명" value={property.photo_captions} multiline />
@@ -6621,7 +6642,7 @@ JSON.stringify(advertisingProperty)
     />
     <InfoLine
       label="배지"
-      value={(property.badges || []).join(', ')}
+      value={toTextList(property.badges).join(', ')}
     />
 
     <button
