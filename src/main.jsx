@@ -838,6 +838,9 @@ function shortAddress(address) {
   if (!address) return '위치 계약 전 확인';
   return address.replace('경상북도 ', '').replace('구미시 ', '구미 ');
 }
+function formatMoney(value) {
+  return formatAmount(value);
+}
 function formatAmount(value) {
   if (!value) return '-';
 
