@@ -2220,10 +2220,11 @@ function CustomerListingSection({
             <span>{properties.length}개 매물</span>
           </div>
           <div className="customer-property-grid">
-            {properties.map((property) => (
+           {properties.map((property, index) => (
              <PropertyListItem
   key={property.id}
   property={property}
+               index={index}
   active={selected?.id === property.id}
 onClick={() => onSelect(property)}
   isManagementMode={isManagementMode}
@@ -2362,10 +2363,10 @@ function ErrorNotice({ message }) {
     </div>
   );
 }
-function PropertyListItem({ property, active, onClick, isManagementMode = false, isOwnerAdmin = false, onEdit, onHold, onDelete }) {
+function PropertyListItem({ property, index = 0, active, onClick, isManagementMode = false, isOwnerAdmin = false, onEdit, onHold, onDelete }) {
   const photos = toTextList(property.photos);
   const cover =
-    photos[0] ||
+   photos.find(Boolean) ||
     'https://images.unsplash.com/photo-1564013799919-ab600027ffc6?auto=format&fit=crop&w=1200&q=80';
 
   const isSale =
@@ -2437,7 +2438,12 @@ function PropertyListItem({ property, active, onClick, isManagementMode = false,
     <article className={`property-list-item customer-property-card ${active ? 'active' : ''}`}>
       <button type="button" className="property-card-main" onClick={onClick}>
         <div className="list-thumb">
-          <img src={cover} alt={property.title} />
+         <img
+  src={cover}
+  alt={property.title}
+  loading={index < 6 ? 'eager' : 'lazy'}
+  decoding="async"
+/>
           <BadgeList property={property} />
         </div>
 
