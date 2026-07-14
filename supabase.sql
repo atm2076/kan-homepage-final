@@ -38,11 +38,6 @@ alter table public.properties
 
 alter table public.properties
   add column if not exists badges text[] default '{}',
-  add column if not exists latitude double precision,
-  add column if not exists longitude double precision,
-  add column if not exists geocode_status text default '',
-  add column if not exists geocoded_at timestamptz,
-  add column if not exists coords_source text default '',
   add column if not exists sale_price text default '',
   add column if not exists loan_amount text default '',
   add column if not exists interest_rate text default '',

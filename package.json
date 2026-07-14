@@ -6,7 +6,6 @@
   "scripts": {
     "dev": "vite",
     "build": "vite build",
-    "test:map-geocode": "node tests/map-geocode-regression.mjs",
     "preview": "vite preview"
   },
   "engines": {
