@@ -156,6 +156,11 @@ badgesText: '',
   created_by: '',
   updated_by: '',
   updated_at: '',
+  latitude: '',
+  longitude: '',
+  geocode_status: '',
+  geocoded_at: '',
+  coords_source: '',
   photosText: '',
   map_image: '',
   map_link: '',
@@ -279,6 +284,7 @@ const PUBLIC_PROPERTY_COLUMNS = [
  'longitude',
  'geocode_status',
   'geocoded_at',
+  'coords_source',
  'staff_name',
   'staff_code',
   'created_by',
@@ -819,7 +825,12 @@ badges: linesToArray(form.badgesText),
     safety: linesToArray(form.safetyText),
     education: linesToArray(form.educationText),
     is_featured: Boolean(form.is_featured),
-    status: form.status || 'pending'
+    status: form.status || 'pending',
+    latitude: form.latitude === '' || form.latitude === null || form.latitude === undefined ? null : Number(form.latitude),
+    longitude: form.longitude === '' || form.longitude === null || form.longitude === undefined ? null : Number(form.longitude),
+    geocode_status: form.geocode_status || '',
+    geocoded_at: form.geocoded_at || null,
+    coords_source: form.coords_source || ''
   };
 }
 function formatMoneyPair(property) {
@@ -1576,12 +1587,61 @@ function loadNaverMapScript() {
 
     const script = document.createElement('script');
     script.id = 'naver-map-script';
-    script.src = `https://oapi.map.naver.com/openapi/v3/maps.js?ncpKeyId=${NAVER_MAP_CLIENT_ID}`;
+    script.src = `https://oapi.map.naver.com/openapi/v3/maps.js?ncpKeyId=${NAVER_MAP_CLIENT_ID}&submodules=geocoder`;
     script.async = true;
     script.onload = resolve;
     script.onerror = reject;
     document.head.appendChild(script);
   });
+}
+
+function normalizeCoordinatePair(latValue, lngValue) {
+  if (String(latValue ?? '').trim() === '' || String(lngValue ?? '').trim() === '') return null;
+  const lat = Number(latValue);
+  const lng = Number(lngValue);
+  if (!Number.isFinite(lat) || !Number.isFinite(lng)) return null;
+  if (lat < -90 || lat > 90 || lng < -180 || lng > 180) return null;
+  return { lat, lng };
+}
+
+function extractAddressItemCoords(item = {}) {
+  const candidates = [
+    { lat: item.latitude, lng: item.longitude, source: 'address_search' },
+    { lat: item.lat, lng: item.lng, source: 'address_search' },
+    { lat: item.y, lng: item.x, source: 'address_search' },
+    { lat: item.entY, lng: item.entX, source: 'address_search' },
+    { lat: item.bdY, lng: item.bdX, source: 'address_search' }
+  ];
+
+  for (const candidate of candidates) {
+    const coords = normalizeCoordinatePair(candidate.lat, candidate.lng);
+    if (coords) return { ...coords, source: candidate.source };
+  }
+
+  return null;
+}
+
+function geocodeAddressWithNaver(address) {
+  const query = String(address || '').trim();
+  if (!query) return Promise.resolve(null);
+
+  return loadNaverMapScript().then(() => new Promise((resolve) => {
+    if (!window.naver?.maps?.Service?.geocode) {
+      resolve(null);
+      return;
+    }
+
+    window.naver.maps.Service.geocode({ query }, (status, response) => {
+      if (status !== window.naver.maps.Service.Status.OK) {
+        resolve(null);
+        return;
+      }
+
+      const result = response?.v2?.addresses?.[0];
+      const coords = normalizeCoordinatePair(result?.y, result?.x);
+      resolve(coords ? { ...coords, source: 'naver_geocode' } : null);
+    });
+  }));
 }
 
 function NaverMapBox({ setKeyword, setDealMode, setCategory, setFilters, setSelected }) {
@@ -1767,29 +1827,50 @@ const CUSTOMER_MAP_AREAS = [
   { key: '구미', lat: 36.1195, lng: 128.3446, x: 36, y: 45 }
 ];
 
-function getPropertyMapPoint(property = {}, index = 0) {
-  const lat = Number(property.latitude);
-  const lng = Number(property.longitude);
+function getPropertyCoords(property = {}) {
+  const coords = normalizeCoordinatePair(property.latitude, property.longitude);
+  if (coords) return { ...coords, source: 'latitude_longitude', isFallback: false };
 
-  if (Number.isFinite(lat) && Number.isFinite(lng)) {
-    return {
-      lat,
-      lng,
-      x: 50,
-      y: 50
-    };
-  }
+  const text = `${property.address || ''} ${property.title || ''}`;
+  const area = CUSTOMER_MAP_AREAS.find((item) => text.includes(item.key)) || CUSTOMER_MAP_AREAS[CUSTOMER_MAP_AREAS.length - 1];
+  return { lat: area.lat, lng: area.lng, source: 'area', isFallback: true };
+}
 
+function offsetOverlappingMapPoint(point, overlapIndex = 0) {
+  if (!point || overlapIndex <= 0) return point;
+  const ring = Math.ceil(overlapIndex / 8);
+  const angle = ((overlapIndex - 1) % 8) * (Math.PI / 4);
+  const distance = ring * 0.00008;
+
+  return {
+    ...point,
+    lat: point.lat + Math.sin(angle) * distance,
+    lng: point.lng + Math.cos(angle) * distance
+  };
+}
+
+function getPropertyMapPoint(property = {}, index = 0, overlapIndex = 0) {
+  const coords = getPropertyCoords(property);
   const text = `${property.address || ''} ${property.title || ''}`;
   const base = CUSTOMER_MAP_AREAS.find((area) => text.includes(area.key)) || CUSTOMER_MAP_AREAS[CUSTOMER_MAP_AREAS.length - 1];
   const offset = ((index % 5) - 2) * 0.004;
+  const point = coords.isFallback
+    ? {
+        lat: base.lat + offset,
+        lng: base.lng + ((index % 3) - 1) * 0.004,
+        x: Math.min(86, Math.max(14, base.x + ((index % 5) - 2) * 3)),
+        y: Math.min(84, Math.max(16, base.y + ((index % 4) - 1) * 4)),
+        isFallback: true
+      }
+    : {
+        lat: coords.lat,
+        lng: coords.lng,
+        x: 50,
+        y: 50,
+        isFallback: false
+      };
 
-  return {
-    lat: base.lat + offset,
-    lng: base.lng + ((index % 3) - 1) * 0.004,
-    x: Math.min(86, Math.max(14, base.x + ((index % 5) - 2) * 3)),
-    y: Math.min(84, Math.max(16, base.y + ((index % 4) - 1) * 4))
-  };
+  return offsetOverlappingMapPoint(point, overlapIndex);
 }
 
 function getCustomerMarkerClass(property = {}) {
@@ -1837,11 +1918,22 @@ function CustomerMapView({ properties, selected, onSelect, keyword, setKeyword, 
   const mapRef = useRef(null);
   const [activeTab, setActiveTab] = useState('');
   const selectedProperty = properties.find((item) => item.id === selected?.id) || properties[0];
-  const markerItems = useMemo(() => properties.slice(0, 60).map((property, index) => ({
-    property,
-    point: getPropertyMapPoint(property, index),
-    markerClass: getCustomerMarkerClass(property)
-  })), [properties]);
+  const markerItems = useMemo(() => {
+    const overlapCounts = new Map();
+
+    return properties.map((property, index) => {
+      const coords = getPropertyCoords(property);
+      const key = coords.isFallback ? `fallback:${property.id || index}` : `${coords.lat.toFixed(6)},${coords.lng.toFixed(6)}`;
+      const overlapIndex = overlapCounts.get(key) || 0;
+      overlapCounts.set(key, overlapIndex + 1);
+
+      return {
+        property,
+        point: getPropertyMapPoint(property, index, overlapIndex),
+        markerClass: getCustomerMarkerClass(property)
+      };
+    });
+  }, [properties]);
 
   useLayoutEffect(() => {
     let mounted = true;
@@ -3059,7 +3151,15 @@ function AddressLedgerSearchSection({
                 type="button"
                 className="address-result-item"
                 onClick={() => {
+                  const coords = extractAddressItemCoords(item);
                   updateField('address', item.roadAddr || item.jibunAddr || '');
+                  if (coords) {
+                    updateField('latitude', String(coords.lat));
+                    updateField('longitude', String(coords.lng));
+                    updateField('geocode_status', 'success');
+                    updateField('geocoded_at', new Date().toISOString());
+                    updateField('coords_source', coords.source);
+                  }
                   setSelectedAddressItem(item);
                   setAddressResults([]);
                   setStatus('주소를 선택했습니다. 건축물대장 조회를 진행할 수 있습니다.');
@@ -4350,6 +4450,41 @@ updated_by: isStaffMode ? (currentStaff?.name || saveForm.staff_name || '직원'
   updated_at: new Date().toISOString()
 };
 
+    const existingProperty = editingId ? properties.find((item) => item.id === editingId) : null;
+    const previousAddress = String(existingProperty?.address || '').trim();
+    const nextAddress = String(payload.address || '').trim();
+    const payloadCoords = normalizeCoordinatePair(payload.latitude, payload.longitude);
+    const addressChanged = Boolean(editingId && previousAddress && nextAddress && previousAddress !== nextAddress);
+    const needsGeocode = Boolean(nextAddress && (!payloadCoords || addressChanged));
+    let geocodeWarning = '';
+
+    if (needsGeocode) {
+      const selectedAddressText = String(selectedAddressItem?.roadAddr || selectedAddressItem?.jibunAddr || '').trim();
+      const selectedCoords = selectedAddressText === nextAddress ? extractAddressItemCoords(selectedAddressItem || {}) : null;
+      const coords = selectedCoords || await geocodeAddressWithNaver(nextAddress);
+
+      if (coords) {
+        payload.latitude = coords.lat;
+        payload.longitude = coords.lng;
+        payload.geocode_status = 'success';
+        payload.geocoded_at = new Date().toISOString();
+        payload.coords_source = coords.source;
+      } else {
+        payload.latitude = null;
+        payload.longitude = null;
+        payload.geocode_status = 'failed';
+        payload.geocoded_at = new Date().toISOString();
+        payload.coords_source = 'none';
+        geocodeWarning = '매물은 저장됐지만 지도 좌표 생성 실패: 주소를 지오코딩하지 못했습니다.';
+      }
+    } else if (payloadCoords) {
+      payload.latitude = payloadCoords.lat;
+      payload.longitude = payloadCoords.lng;
+      payload.geocode_status = payload.geocode_status || 'success';
+      payload.geocoded_at = payload.geocoded_at || new Date().toISOString();
+      payload.coords_source = payload.coords_source || 'saved';
+    }
+
     if (!forceDuplicateSave) {
       const { data: duplicateSource, error: duplicateError } = await supabase
         .from('properties')
@@ -4379,19 +4514,41 @@ updated_by: isStaffMode ? (currentStaff?.name || saveForm.staff_name || '직원'
     }
     
 const request = editingId && canEditExisting
-  ? supabase.from('properties').update(payload).eq('id', editingId)
+  ? supabase.from('properties').update(payload).eq('id', editingId).select('id,latitude,longitude,status,address').single()
   : editingId && isStaffMode && currentStaff?.code
     ? supabase
         .from('properties')
         .update(payload)
         .eq('id', editingId)
         .eq('staff_code', currentStaff.code)
-    : supabase.from('properties').insert(payload);
+        .select('id,latitude,longitude,status,address')
+        .single()
+    : supabase.from('properties').insert(payload).select('id,latitude,longitude,status,address').single();
 
-   const { error } = await request;
+   const { data: savedProperty, error } = await request;
     if (error) {
       setStatus(`저장 실패: ${error.message}`);
       return;
+    }
+
+    const savedId = savedProperty?.id || editingId;
+    if (savedId) {
+      const { data: verifiedProperty, error: verifyError } = await supabase
+        .from('properties')
+        .select('id,latitude,longitude,status,address')
+        .eq('id', savedId)
+        .single();
+
+      if (verifyError) {
+        setStatus(`저장 후 좌표 확인 실패: ${verifyError.message}`);
+        return;
+      }
+
+      const verifiedCoords = normalizeCoordinatePair(verifiedProperty?.latitude, verifiedProperty?.longitude);
+      if (verifiedProperty?.status === 'published' && verifiedProperty?.address && !verifiedCoords) {
+        setStatus('저장 후 좌표 확인 실패: 공개 매물에 latitude/longitude가 저장되지 않았습니다.');
+        return;
+      }
     }
 
     if (isStaffMode) {
@@ -4405,8 +4562,9 @@ const request = editingId && canEditExisting
         ...prev
       ]);
     }
-    setStatus(isStaffMode ? '임시저장 완료되었습니다. 대표 검수 후 홈페이지에 노출됩니다.' : (editingId ? '수정 완료되었습니다.' : '등록 완료되었습니다.'));
+    const saveResultMessage = geocodeWarning || (isStaffMode ? '임시저장 완료되었습니다. 대표 검수 후 홈페이지에 노출됩니다.' : (editingId ? '수정 완료되었습니다.' : '등록 완료되었습니다.'));
    resetForm();
+   setStatus(saveResultMessage);
 await reload();
 
 if (isStaffMode && currentStaff?.code) {
