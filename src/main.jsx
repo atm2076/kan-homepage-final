@@ -1396,7 +1396,7 @@ async function handleQuickDeleteProperty(property) {
             <CustomerMapView
               properties={filteredProperties}
               selected={selected || filteredProperties[0]}
-              onSelect={setSelected}
+              onSelect={selectProperty}
               keyword={keyword}
               setKeyword={setKeyword}
               dealMode={dealMode}
