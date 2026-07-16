@@ -81,6 +81,8 @@ const emptyForm = {
   category: '원룸 월세',
   trade_type: '월세',
   address: '',
+  latitude: '',
+  longitude: '',
 badgesText: '',
   // 임대용
   deposit: '',
@@ -3024,7 +3026,10 @@ function AddressLedgerSearchSection({
   fetchBuildingLedger,
   ledgerPreviewItems,
   status,
-  setStatus
+  setStatus,
+  isNewPropertyRegistration = false,
+  onNewAddressInput,
+  onNewAddressSelected
 }) {
   const visibleStatus = status && (status.includes('주소') || status.includes('건축물대장'));
   const isPositiveStatus = status?.includes('완료') || status?.includes('자동 입력') || status?.includes('선택했습니다');
@@ -3039,6 +3044,11 @@ function AddressLedgerSearchSection({
             value={form.address}
             onChange={(value) => {
               updateField('address', value);
+              if (isNewPropertyRegistration) {
+                updateField('latitude', '');
+                updateField('longitude', '');
+                onNewAddressInput?.();
+              }
               setSelectedAddressItem(null);
               setAddressResults([]);
             }}
@@ -3060,6 +3070,11 @@ function AddressLedgerSearchSection({
                 className="address-result-item"
                 onClick={() => {
                   updateField('address', item.roadAddr || item.jibunAddr || '');
+                  if (isNewPropertyRegistration) {
+                    updateField('latitude', '');
+                    updateField('longitude', '');
+                    onNewAddressSelected?.(item.roadAddr || item.jibunAddr || '');
+                  }
                   setSelectedAddressItem(item);
                   setAddressResults([]);
                   setStatus('주소를 선택했습니다. 건축물대장 조회를 진행할 수 있습니다.');
@@ -3152,6 +3167,7 @@ const [buildingLedgerSearching, setBuildingLedgerSearching] = useState(false);
   const [quickTitleKeyword, setQuickTitleKeyword] = useState('');
   const [publishTab, setPublishTab] = useState('');
   const latestFormRef = useRef(form);
+  const geocodeRequestRef = useRef({ sequence: 0, address: '', promise: null });
   const [advertisingPropertyId, setAdvertisingPropertyId] = useState(null);
   const adminPassword = import.meta.env.VITE_ADMIN_PASSWORD || ['3', '8', '8', '3'].join('');
   const staffPassword = import.meta.env.VITE_STAFF_PASSWORD || ['0', '0', '0', '0'].join('');
@@ -3319,6 +3335,113 @@ setStaffProperties(data || []);
 
   function updateField(name, value) {
     setLatestForm((prev) => ({ ...prev, [name]: value }));
+  }
+
+  function isValidLatLng(latitude, longitude) {
+    const lat = Number(latitude);
+    const lng = Number(longitude);
+    return (
+      Number.isFinite(lat) &&
+      Number.isFinite(lng) &&
+      lat >= -90 &&
+      lat <= 90 &&
+      lng >= -180 &&
+      lng <= 180 &&
+      !(lat === 0 && lng === 0)
+    );
+  }
+
+  function invalidateGeocodeRequest() {
+    geocodeRequestRef.current = {
+      sequence: geocodeRequestRef.current.sequence + 1,
+      address: '',
+      promise: null
+    };
+  }
+
+  function startGeocodeForNewAddress(address) {
+    const targetAddress = String(address || '').trim();
+    const sequence = geocodeRequestRef.current.sequence + 1;
+
+    geocodeRequestRef.current = { sequence, address: targetAddress, promise: null };
+
+    if (!targetAddress) return null;
+
+    setStatus('주소 좌표를 자동 조회하는 중입니다.');
+
+    const promise = (async () => {
+      const response = await fetch(`/api/geocode-address?address=${encodeURIComponent(targetAddress)}`);
+      const data = await response.json().catch(() => ({}));
+
+      if (!response.ok) {
+        throw new Error(data.error || '주소 좌표 조회에 실패했습니다.');
+      }
+
+      const latitude = Number(data.latitude);
+      const longitude = Number(data.longitude);
+
+      if (!isValidLatLng(latitude, longitude)) {
+        throw new Error('유효한 주소 좌표를 찾지 못했습니다.');
+      }
+
+      const currentAddress = String(latestFormRef.current?.address || '').trim();
+      const currentRequest = geocodeRequestRef.current;
+
+      if (currentRequest.sequence === sequence && currentRequest.address === targetAddress && currentAddress === targetAddress) {
+        setLatestForm((prev) => ({
+          ...prev,
+          latitude: String(latitude),
+          longitude: String(longitude)
+        }));
+        setStatus('주소 좌표가 자동 저장되었습니다.');
+      }
+
+      return { latitude, longitude, address: targetAddress };
+    })();
+
+    promise.catch((error) => {
+      const currentRequest = geocodeRequestRef.current;
+      const currentAddress = String(latestFormRef.current?.address || '').trim();
+
+      if (currentRequest.sequence === sequence && currentRequest.address === targetAddress && currentAddress === targetAddress) {
+        setLatestForm((prev) => ({ ...prev, latitude: '', longitude: '' }));
+        setStatus(error.message || '주소 좌표 조회에 실패했습니다.');
+      }
+    });
+
+    geocodeRequestRef.current = { sequence, address: targetAddress, promise };
+    return promise;
+  }
+
+  async function ensureGeocodedSaveForm(saveForm) {
+    const targetAddress = String(saveForm.address || '').trim();
+
+    if (!targetAddress) {
+      throw new Error('주소를 먼저 선택해주세요.');
+    }
+
+    const currentRequest = geocodeRequestRef.current;
+    let nextForm = saveForm;
+
+    if (currentRequest.promise && currentRequest.address === targetAddress) {
+      setStatus('주소 좌표 조회를 완료한 뒤 저장합니다.');
+      const result = await currentRequest.promise;
+      nextForm = { ...nextForm, latitude: result.latitude, longitude: result.longitude };
+    } else if (!isValidLatLng(nextForm.latitude, nextForm.longitude)) {
+      const result = await startGeocodeForNewAddress(targetAddress);
+      if (!result) throw new Error('주소 좌표 조회를 시작하지 못했습니다.');
+      nextForm = { ...nextForm, latitude: result.latitude, longitude: result.longitude };
+    }
+
+    if (String(latestFormRef.current?.address || '').trim() !== targetAddress) {
+      throw new Error('주소가 변경되었습니다. 주소검색 결과를 다시 선택해주세요.');
+    }
+
+    if (!isValidLatLng(nextForm.latitude, nextForm.longitude)) {
+      throw new Error('주소 좌표 확인 후 다시 저장해주세요.');
+    }
+
+    return nextForm;
   }
   async function handleAddressSearch() {
     const keyword = form.address?.trim();
@@ -3989,6 +4112,7 @@ setStaffStep(0);
     setPostStatusLabel(property.status === 'published' ? '공개중' : property.status === 'hold' ? '비공개' : '임시저장');
     setAddressResults([]);
     setSelectedAddressItem(null);
+    invalidateGeocodeRequest();
     setDetailFieldsOpen(true);
     setStatus('선택한 매물을 수정 중입니다.');
   }
@@ -3996,6 +4120,7 @@ setStaffStep(0);
   function resetForm() {
     const nextForm = { ...emptyForm, status: isAdminMode ? 'published' : 'pending' };
     setEditingId(null);
+    invalidateGeocodeRequest();
     latestFormRef.current = nextForm;
     setLatestForm(nextForm);
     setBulkText('');
@@ -4308,7 +4433,7 @@ function reorderPhoto(fromIndex, toIndex) {
       finalTradeType === '매매' && form.sale_price ? `매매 ${form.sale_price}` : '',
       maintenanceType === '관리비포함' ? '관리비포함' : '',
     ].filter(Boolean).join(' ');
-    const saveForm = isStaffMode
+    let saveForm = isStaffMode
       ? {
           ...form,
           title: form.title?.trim() || staffTitle || '직원 등록 매물',
@@ -4340,6 +4465,15 @@ function reorderPhoto(fromIndex, toIndex) {
       return;
     }
 
+    if (!editingId) {
+      try {
+        saveForm = await ensureGeocodedSaveForm(saveForm);
+      } catch (error) {
+        setStatus(error.message || '주소 좌표 조회에 실패했습니다.');
+        return;
+      }
+    }
+
     const payload = {
   ...formToPayload(saveForm),
   status: isStaffMode ? staffStatusValue : (saveForm.status || 'published'),
@@ -4348,6 +4482,11 @@ staff_code: isStaffMode ? (currentStaff?.code || saveForm.staff_code || 'staff')
 created_by: editingId ? (saveForm.created_by || currentStaff?.name || '') : (isStaffMode ? (currentStaff?.name || saveForm.staff_name || '직원') : '대표'),
 updated_by: isStaffMode ? (currentStaff?.name || saveForm.staff_name || '직원') : '대표',
   updated_at: new Date().toISOString()
+};
+const insertPayload = editingId ? payload : {
+  ...payload,
+  latitude: Number(saveForm.latitude),
+  longitude: Number(saveForm.longitude)
 };
 
     if (!forceDuplicateSave) {
@@ -4386,7 +4525,7 @@ const request = editingId && canEditExisting
         .update(payload)
         .eq('id', editingId)
         .eq('staff_code', currentStaff.code)
-    : supabase.from('properties').insert(payload);
+    : supabase.from('properties').insert(insertPayload);
 
    const { error } = await request;
     if (error) {
@@ -4627,6 +4766,9 @@ if (isStaffMode && currentStaff?.code) {
                         ledgerPreviewItems={ledgerPreviewItems}
                         status={status}
                         setStatus={setStatus}
+                        isNewPropertyRegistration={!editingId}
+                        onNewAddressInput={invalidateGeocodeRequest}
+                        onNewAddressSelected={startGeocodeForNewAddress}
                       />
                     )}
 
@@ -4921,6 +5063,9 @@ if (isStaffMode && currentStaff?.code) {
       ledgerPreviewItems={ledgerPreviewItems}
       status={status}
       setStatus={setStatus}
+      isNewPropertyRegistration={!editingId}
+      onNewAddressInput={invalidateGeocodeRequest}
+      onNewAddressSelected={startGeocodeForNewAddress}
     />
 
     <ButtonChoiceGroup
@@ -5173,6 +5318,9 @@ if (isStaffMode && currentStaff?.code) {
                   ledgerPreviewItems={ledgerPreviewItems}
                   status={status}
                   setStatus={setStatus}
+                  isNewPropertyRegistration={!editingId}
+                  onNewAddressInput={invalidateGeocodeRequest}
+                  onNewAddressSelected={startGeocodeForNewAddress}
                 />
                {(form.category?.includes('매매') || form.trade_type === '매매') ? (
   <div className="admin-sale-box">
