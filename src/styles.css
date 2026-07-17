@@ -11173,3 +11173,108 @@ button.property-list-item,
     font-size: 12px !important;
   }
 }
+
+/* REQUEST consultation modal */
+.request-modal-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 120;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  background: rgba(15, 23, 42, 0.52);
+}
+
+.request-modal {
+  width: min(720px, 100%);
+  max-height: min(86vh, 760px);
+  overflow: auto;
+  padding: 22px;
+  border-radius: 18px;
+  background: #fff;
+  box-shadow: 0 24px 70px rgba(15, 23, 42, 0.28);
+}
+
+.request-modal-head,
+.consultation-admin-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 16px;
+}
+
+.request-modal-head h3 {
+  margin: 0;
+  color: #0f172a;
+  font-size: 24px;
+  line-height: 1.25;
+}
+
+.request-form-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.request-form-grid .full {
+  grid-column: 1 / -1;
+}
+
+.request-modal-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  margin-top: 16px;
+}
+
+.request-status-text {
+  margin: 12px 0 0;
+}
+
+.consultation-admin-list {
+  max-height: 54vh;
+}
+
+.consultation-admin-item span {
+  white-space: pre-line;
+}
+
+.custom-request-button {
+  border: 0;
+  cursor: pointer;
+  font: inherit;
+}
+
+.custom-request-button:disabled,
+.request-modal button:disabled,
+.consultation-admin-head button:disabled {
+  cursor: not-allowed;
+  opacity: 0.65;
+}
+
+@media (max-width: 720px) {
+  .request-modal-backdrop {
+    align-items: flex-end;
+    padding: 10px;
+  }
+
+  .request-modal {
+    max-height: 90vh;
+    padding: 18px;
+    border-radius: 16px;
+  }
+
+  .request-form-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .request-modal-actions {
+    flex-direction: column-reverse;
+  }
+
+  .request-modal-actions button {
+    width: 100%;
+  }
+}

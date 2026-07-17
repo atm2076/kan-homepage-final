@@ -1,4 +1,4 @@
-import React, { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
+﻿import React, { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { createRoot } from 'react-dom/client';
 import { supabase, isSupabaseReady } from './supabaseClient';
 import './styles.css';
@@ -1212,6 +1212,54 @@ function App() {
   const [adminOpen, setAdminOpen] = useState(Boolean(queryMode));
   const [portalMode, setPortalMode] = useState(queryMode);
   const [isAdmin, setIsAdmin] = useState(false);
+  const [adminAuthMessage, setAdminAuthMessage] = useState('');
+
+  async function verifyAdminSession(session) {
+    if (!session?.user?.id || !isSupabaseReady) {
+      setIsAdmin(false);
+      return false;
+    }
+
+    const { data, error } = await supabase
+      .from('admin_users')
+      .select('user_id')
+      .eq('user_id', session.user.id)
+      .maybeSingle();
+
+    if (error || !data) {
+      setIsAdmin(false);
+      setAdminAuthMessage('관리자 권한이 없는 계정입니다.');
+      await supabase.auth.signOut();
+      return false;
+    }
+
+    setAdminAuthMessage('');
+    setIsAdmin(true);
+    return true;
+  }
+
+  useEffect(() => {
+    if (!isSupabaseReady) return;
+    let mounted = true;
+
+    supabase.auth.getSession().then(({ data }) => {
+      if (mounted) verifyAdminSession(data?.session);
+    });
+
+    const { data } = supabase.auth.onAuthStateChange((_event, session) => {
+      if (session) {
+        verifyAdminSession(session);
+      } else {
+        setIsAdmin(false);
+      }
+    });
+
+    return () => {
+      mounted = false;
+      data?.subscription?.unsubscribe();
+    };
+  }, []);
+
   const canManageAll = portalMode === 'admin' && isAdmin;
   const isAdminRoute = portalMode === 'admin' || portalMode === 'staff';
 
@@ -1430,6 +1478,9 @@ async function handleQuickDeleteProperty(property) {
           setMode={setPortalMode}
           isAdmin={isAdmin}
           setIsAdmin={setIsAdmin}
+          adminAuthMessage={adminAuthMessage}
+          setAdminAuthMessage={setAdminAuthMessage}
+          verifyAdminSession={verifyAdminSession}
          onClose={() => setAdminOpen(false)}
           properties={properties}
           reload={loadProperties}
@@ -3277,7 +3328,8 @@ function AddressLedgerSearchSection({
   );
 }
 
-function AdminModal({ mode, setMode, isAdmin, setIsAdmin, onClose, properties, reload }) {
+function AdminModal({ mode, setMode, isAdmin, setIsAdmin, adminAuthMessage, setAdminAuthMessage, verifyAdminSession, onClose, properties, reload }) {
+  const [authEmail, setAuthEmail] = useState('');
   const [password, setPassword] = useState('');
   const [form, setForm] = useState(emptyForm);
   const [bulkText, setBulkText] = useState('');
@@ -3286,6 +3338,9 @@ function AdminModal({ mode, setMode, isAdmin, setIsAdmin, onClose, properties, r
   const [staffSavedItems, setStaffSavedItems] = useState([]);
   const [staffProperties, setStaffProperties] = useState([]);
   const [duplicateWarning, setDuplicateWarning] = useState(null);
+  const [consultationRequests, setConsultationRequests] = useState([]);
+  const [consultationLoading, setConsultationLoading] = useState(false);
+  const [consultationStatus, setConsultationStatus] = useState('');
   const [adminDetailProperty, setAdminDetailProperty] = useState(null);
   const [adminDetailTab, setAdminDetailTab] = useState('public');
   const [photoEnhanceLevel, setPhotoEnhanceLevel] = useState('bright');
@@ -3326,8 +3381,6 @@ const [buildingLedgerSearching, setBuildingLedgerSearching] = useState(false);
   const [publishTab, setPublishTab] = useState('');
   const latestFormRef = useRef(form);
   const [advertisingPropertyId, setAdvertisingPropertyId] = useState(null);
-  const adminPassword = import.meta.env.VITE_ADMIN_PASSWORD || ['3', '8', '8', '3'].join('');
-  const staffPassword = import.meta.env.VITE_STAFF_PASSWORD || ['0', '0', '0', '0'].join('');
   const isStaffMode = mode === 'staff';
   const isAdminMode = mode === 'admin';
   const canEditExisting = isAdminMode && isAdmin;
@@ -3427,8 +3480,10 @@ const ledgerPreviewItems = [
   function chooseMode(nextMode) {
     setMode(nextMode);
     setIsAdmin(false);
+    setAuthEmail('');
     setPassword('');
     setStatus('');
+    setAdminAuthMessage('');
     setStaffStep(0);
     const url = new URL(window.location.href);
     url.searchParams.delete('staff');
@@ -3456,31 +3511,110 @@ return;
 
 setStaffProperties(data || []);
 }
+async function loadConsultationRequests() {
+if (!canEditExisting) {
+setConsultationRequests([]);
+setConsultationStatus('');
+return;
+}
+
+if (!isSupabaseReady) {
+setConsultationRequests([]);
+setConsultationStatus('Supabase 연결 전에는 상담 문의를 불러올 수 없습니다.');
+return;
+}
+
+setConsultationLoading(true);
+setConsultationStatus('');
+
+try {
+const { data, error } = await supabase
+.from('consultation_requests')
+.select('id,request_type,name,phone,region,property_type,deposit,monthly_rent,budget,move_in_date,property_address,desired_price,message,status,created_at')
+.order('created_at', { ascending: false });
+
+if (error) {
+setConsultationRequests([]);
+setConsultationStatus(`상담 문의를 불러오지 못했습니다: ${error.message}`);
+return;
+}
+
+setConsultationRequests(data || []);
+} catch (error) {
+setConsultationRequests([]);
+setConsultationStatus(`상담 문의를 불러오지 못했습니다: ${error.message || error}`);
+} finally {
+setConsultationLoading(false);
+}
+}
+
+useEffect(() => {
+if (canEditExisting) {
+loadConsultationRequests();
+} else {
+setConsultationRequests([]);
+setConsultationStatus('');
+}
+}, [canEditExisting]);
+
     async function login(e) {
     e.preventDefault();
-    const expectedPassword = isStaffMode ? staffPassword : adminPassword;
-   if (password === expectedPassword) {
-  if (isStaffMode && (!form.staff_name.trim() || !form.staff_code.trim())) {
-    setStatus('담당자 이름과 담당자 코드를 입력해주세요.');
-    return;
-  }
-
-  if (isStaffMode) {
-    setCurrentStaff({
-      name: form.staff_name.trim(),
-      code: form.staff_code.trim()
-    });
-    await loadStaffProperties(form.staff_code.trim());
-    setStaffView('register');
-  } else {
-    setCurrentStaff(null);
-  }
-
-  setIsAdmin(true);
-  setStatus(isStaffMode ? `${form.staff_name.trim()}님 직원용 관리자 모드로 들어왔습니다.` : '대표 관리자 모드로 들어왔습니다.');
-} else {
-      setStatus('비밀번호가 맞지 않습니다.');
+    if (!isSupabaseReady) {
+      setStatus('Supabase 연결 전에는 관리자 로그인이 되지 않습니다.');
+      return;
     }
+
+    if (!authEmail.trim() || !password.trim()) {
+      setStatus('이메일과 비밀번호를 입력해주세요.');
+      return;
+    }
+
+    if (isStaffMode && (!form.staff_name.trim() || !form.staff_code.trim())) {
+      setStatus('담당자 이름과 담당자 코드를 입력해주세요.');
+      return;
+    }
+
+    const { data, error } = await supabase.auth.signInWithPassword({
+      email: authEmail.trim(),
+      password
+    });
+
+    if (error) {
+      setStatus(`로그인 실패: ${error.message}`);
+      return;
+    }
+
+    const hasAdminAccess = await verifyAdminSession(data?.session);
+    if (!hasAdminAccess) {
+      setStatus('관리자 권한이 없는 계정입니다.');
+      return;
+    }
+
+    if (isStaffMode) {
+      setCurrentStaff({
+        name: form.staff_name.trim(),
+        code: form.staff_code.trim()
+      });
+      await loadStaffProperties(form.staff_code.trim());
+      setStaffView('register');
+    } else {
+      setCurrentStaff(null);
+    }
+
+    setIsAdmin(true);
+    setStatus(isStaffMode ? `${form.staff_name.trim()}님 직원용 관리자 모드로 들어왔습니다.` : '대표 관리자 모드로 들어왔습니다.');
+  }
+
+  async function logout() {
+    if (isSupabaseReady) {
+      await supabase.auth.signOut();
+    }
+    setIsAdmin(false);
+    setAuthEmail('');
+    setPassword('');
+    setCurrentStaff(null);
+    setAdminAuthMessage('');
+    setStatus('로그아웃되었습니다.');
   }
 
   function setLatestForm(updater) {
@@ -4713,12 +4847,19 @@ if (isStaffMode && currentStaff?.code) {
             </button>
             <button type="button" onClick={() => chooseMode('admin')}>
               <strong>대표 관리자</strong>
-              <span>기존 비밀번호로 로그인해 검수대기 매물을 수정, 승인, 보류, 삭제합니다.</span>
+              <span>Supabase Auth 계정으로 로그인해 검수대기 매물을 수정, 승인, 보류, 삭제합니다.</span>
             </button>
           </div>
         ) : !isAdmin ? (
              <form className="login-box" onSubmit={login}>
-            <label>{isStaffMode ? '직원용 비밀번호' : '대표 관리자 비밀번호'}</label>
+            <label>{isStaffMode ? '직원용 이메일' : '대표 관리자 이메일'}</label>
+
+            <input
+              type="email"
+              value={authEmail}
+              onChange={(e) => setAuthEmail(e.target.value)}
+              placeholder="이메일 입력"
+            />
 
             {isStaffMode && (
               <>
@@ -4740,6 +4881,7 @@ if (isStaffMode && currentStaff?.code) {
               </>
             )}
 
+            <label>비밀번호</label>
             <input
               type="password"
               value={password}
@@ -4752,7 +4894,7 @@ if (isStaffMode && currentStaff?.code) {
             </button>
 
             <p className="status-text">
-              {status || '접속 권한을 확인합니다. 관리자 비밀번호를 입력해주세요.'}
+              {status || adminAuthMessage || 'Supabase Auth 계정으로 접속 권한을 확인합니다.'}
             </p>
           </form>
         ) : (
@@ -4761,6 +4903,7 @@ if (isStaffMode && currentStaff?.code) {
               <div className="form-topline">
                 <h3>{editingId ? '매물 수정' : isStaffMode ? '직원 간단등록' : '간단 매물 등록'}</h3>
                 <button type="button" className="small-btn" onClick={resetForm}>새 등록</button>
+                <button type="button" className="small-btn" onClick={logout}>로그아웃</button>
               </div>
 
               {isStaffMode && (
@@ -5912,6 +6055,15 @@ if (isStaffMode && currentStaff?.code) {
                   <div className="empty-box">이번 접속에서 임시저장한 매물이 아직 없습니다.</div>
                 )}
               </div>
+            )}
+
+            {canEditExisting && (
+              <ConsultationRequestsList
+                requests={consultationRequests}
+                loading={consultationLoading}
+                status={consultationStatus}
+                onRefresh={loadConsultationRequests}
+              />
             )}
 
             {canEditExisting && (
@@ -7682,9 +7834,238 @@ function FloatingButtons() {
   );
 }
 
+function getConsultationTypeLabel(type) {
+  return type === 'sell' ? '매도 상담하기' : '조건 보내기';
+}
+
+function formatConsultationDate(value) {
+  if (!value) return '-';
+  try {
+    return new Date(value).toLocaleString('ko-KR', {
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+      hour: '2-digit',
+      minute: '2-digit'
+    });
+  } catch (error) {
+    return String(value);
+  }
+}
+
+function getConsultationPlace(item = {}) {
+  return item.request_type === 'sell'
+    ? item.property_address || '-'
+    : item.region || '-';
+}
+
+function getConsultationSummary(item = {}) {
+  if (item.request_type === 'sell') {
+    return [
+      item.property_type && `종류: ${item.property_type}`,
+      item.desired_price && `희망가: ${item.desired_price}`,
+      item.message
+    ].filter(Boolean).join(' / ') || '-';
+  }
+
+  return [
+    item.property_type && `종류: ${item.property_type}`,
+    item.deposit && `보증금: ${item.deposit}`,
+    item.monthly_rent && `월세: ${item.monthly_rent}`,
+    item.budget && `예산: ${item.budget}`,
+    item.move_in_date && `입주: ${item.move_in_date}`,
+    item.message
+  ].filter(Boolean).join(' / ') || '-';
+}
+
+function ConsultationRequestsList({ requests, loading, status, onRefresh }) {
+  return (
+    <section className="admin-list consultation-admin-list" id="admin-consultation">
+      <div className="consultation-admin-head">
+        <div>
+          <h3>상담 문의</h3>
+          <p className="muted">홈페이지 REQUEST 영역에서 접수된 상담 요청입니다.</p>
+        </div>
+        <button type="button" className="small-btn" onClick={onRefresh} disabled={loading}>
+          {loading ? '불러오는 중' : '새로고침'}
+        </button>
+      </div>
+
+      {status && <p className="status-text">{status}</p>}
+
+      {requests.length ? requests.map((item) => (
+        <div className="admin-list-item consultation-admin-item" key={item.id}>
+          <div className="admin-item-title">
+            <strong>{getConsultationTypeLabel(item.request_type)}</strong>
+            <em className="status-chip status-pending">{item.status || 'new'}</em>
+          </div>
+          <span>{item.name || '-'} / {item.phone || '-'}</span>
+          <span>{getConsultationPlace(item)}</span>
+          <span>{getConsultationSummary(item)}</span>
+          <span>접수 일시 {formatConsultationDate(item.created_at)}</span>
+        </div>
+      )) : !status && (
+        <div className="empty-box">접수된 상담 문의가 아직 없습니다.</div>
+      )}
+    </section>
+  );
+}
+
+const EMPTY_CONSULTATION_FORM = {
+  name: '',
+  phone: '',
+  region: '',
+  property_type: '',
+  deposit: '',
+  monthly_rent: '',
+  budget: '',
+  move_in_date: '',
+  property_address: '',
+  desired_price: '',
+  message: ''
+};
+
+function isMobileDevice() {
+  if (typeof window === 'undefined') return false;
+  return /Android|iPhone|iPad|iPod|Mobile/i.test(window.navigator.userAgent) ||
+    window.matchMedia?.('(pointer: coarse)')?.matches;
+}
+
+function buildConsultationSmsBody(type, form) {
+  const lines = type === 'sell'
+    ? [
+      '[칸공인중개사 매도 상담]',
+      `이름: ${form.name}`,
+      `연락처: ${form.phone}`,
+      `매물 주소: ${form.property_address}`,
+      `매물 종류: ${form.property_type}`,
+      `희망 매도가: ${form.desired_price}`,
+      `상담 내용: ${form.message || '-'}`
+    ]
+    : [
+      '[칸공인중개사 조건 문의]',
+      `이름: ${form.name}`,
+      `연락처: ${form.phone}`,
+      `희망 지역: ${form.region}`,
+      `매물 종류: ${form.property_type}`,
+      `보증금: ${form.deposit}`,
+      `월세 또는 매매 예산: ${form.monthly_rent || form.budget}`,
+      `입주 예정일: ${form.move_in_date}`,
+      `요청 내용: ${form.message || '-'}`
+    ];
+
+  return lines.join('\n');
+}
+
 function CustomRequestSection() {
-  const buyMessage = encodeURIComponent('안녕하세요. 홈페이지 보고 문의드립니다. 물건 구해주세요. 희망지역/금액/종류: ');
-  const sellMessage = encodeURIComponent('안녕하세요. 홈페이지 보고 문의드립니다. 매물 팔아주세요. 매물주소/희망가격: ');
+  const [activeType, setActiveType] = useState('');
+  const [form, setForm] = useState(EMPTY_CONSULTATION_FORM);
+  const [submitStatus, setSubmitStatus] = useState('');
+  const [submitting, setSubmitting] = useState(false);
+
+  const isOpen = Boolean(activeType);
+  const isSell = activeType === 'sell';
+
+  function openModal(type) {
+    setActiveType(type);
+    setSubmitStatus('');
+    setSubmitting(false);
+    setForm(EMPTY_CONSULTATION_FORM);
+  }
+
+  function closeModal() {
+    if (submitting) return;
+    setActiveType('');
+    setSubmitStatus('');
+  }
+
+  function updateConsultationField(name, value) {
+    setForm((prev) => ({ ...prev, [name]: value }));
+  }
+
+  function validateForm() {
+    const required = isSell
+      ? [
+        ['name', '이름'],
+        ['phone', '연락처'],
+        ['property_address', '매물 주소'],
+        ['property_type', '매물 종류'],
+        ['desired_price', '희망 매도가']
+      ]
+      : [
+        ['name', '이름'],
+        ['phone', '연락처'],
+        ['region', '희망 지역'],
+        ['property_type', '매물 종류'],
+        ['deposit', '보증금'],
+        ['monthly_rent', '월세 또는 매매 예산'],
+        ['move_in_date', '입주 예정일']
+      ];
+
+    const missing = required.find(([key]) => !String(form[key] || '').trim());
+    if (missing) {
+      setSubmitStatus(`${missing[1]}을(를) 입력해주세요.`);
+      return false;
+    }
+
+    return true;
+  }
+
+  async function saveConsultationRequest(payload) {
+    if (!isSupabaseReady) {
+      return { error: new Error('Supabase 연결 정보가 없습니다.') };
+    }
+
+    const { error } = await supabase.from('consultation_requests').insert(payload);
+    return { error };
+  }
+
+  async function submitConsultation(event) {
+    event.preventDefault();
+    if (submitting || !activeType) return;
+    if (!validateForm()) return;
+
+    const payload = {
+      request_type: activeType,
+      name: form.name.trim(),
+      phone: form.phone.trim(),
+      region: isSell ? null : form.region.trim(),
+      property_type: form.property_type.trim(),
+      deposit: isSell ? null : form.deposit.trim(),
+      monthly_rent: isSell ? null : form.monthly_rent.trim(),
+      budget: isSell ? null : form.budget.trim(),
+      move_in_date: isSell ? null : form.move_in_date.trim(),
+      property_address: isSell ? form.property_address.trim() : null,
+      desired_price: isSell ? form.desired_price.trim() : null,
+      message: form.message.trim(),
+      status: 'new'
+    };
+
+    const mobile = isMobileDevice();
+    setSubmitting(true);
+    setSubmitStatus(mobile ? '상담 내용을 저장한 뒤 문자 앱을 엽니다.' : '상담 요청을 접수하는 중입니다.');
+
+    const { error } = await saveConsultationRequest(payload);
+
+    if (mobile) {
+      if (error) {
+        setSubmitStatus(`저장은 실패했지만 문자 앱을 엽니다: ${error.message}`);
+      }
+      window.location.href = `sms:${OFFICE.phone}?body=${encodeURIComponent(buildConsultationSmsBody(activeType, form))}`;
+      setSubmitting(false);
+      return;
+    }
+
+    if (error) {
+      setSubmitStatus(`상담 요청 저장 실패: ${error.message}`);
+      setSubmitting(false);
+      return;
+    }
+
+    setSubmitStatus('상담 요청이 접수되었습니다. 확인 후 연락드리겠습니다.');
+    setSubmitting(false);
+    setForm(EMPTY_CONSULTATION_FORM);
+  }
 
   return (
     <section className="custom-request-section" id="custom-request">
@@ -7697,18 +8078,94 @@ function CustomRequestSection() {
         <article className="custom-request-card">
           <h3>물건 구해주세요</h3>
           <p>원룸·투룸·다가구·수익형 매물 조건을 알려주세요.</p>
-          <a className="custom-request-button" href={`sms:${OFFICE.phone}?body=${buyMessage}`}>조건 보내기</a>
+          <button className="custom-request-button" type="button" onClick={() => openModal('buy')}>조건 보내기</button>
         </article>
         <article className="custom-request-card">
           <h3>매물 팔아주세요</h3>
           <p>원룸건물·다가구·상가주택 매도 상담을 도와드립니다.</p>
-          <a className="custom-request-button" href={`sms:${OFFICE.phone}?body=${sellMessage}`}>매도 상담하기</a>
+          <button className="custom-request-button" type="button" onClick={() => openModal('sell')}>매도 상담하기</button>
         </article>
       </div>
+
+      {isOpen && (
+        <div className="request-modal-backdrop" role="presentation">
+          <form className="request-modal" onSubmit={submitConsultation}>
+            <div className="request-modal-head">
+              <div>
+                <p className="section-eyebrow">REQUEST</p>
+                <h3>{isSell ? '매도 상담하기' : '조건 보내기'}</h3>
+              </div>
+              <button type="button" className="icon-btn" onClick={closeModal} aria-label="닫기">×</button>
+            </div>
+
+            <div className="request-form-grid">
+              <label className="field">
+                <span>이름</span>
+                <input value={form.name} onChange={(event) => updateConsultationField('name', event.target.value)} placeholder="홍길동" />
+              </label>
+              <label className="field">
+                <span>연락처</span>
+                <input value={form.phone} onChange={(event) => updateConsultationField('phone', event.target.value)} placeholder="010-0000-0000" inputMode="tel" />
+              </label>
+
+              {isSell ? (
+                <>
+                  <label className="field full">
+                    <span>매물 주소</span>
+                    <input value={form.property_address} onChange={(event) => updateConsultationField('property_address', event.target.value)} placeholder="경상북도 구미시 ..." />
+                  </label>
+                  <label className="field">
+                    <span>매물 종류</span>
+                    <input value={form.property_type} onChange={(event) => updateConsultationField('property_type', event.target.value)} placeholder="다가구, 원룸건물, 상가" />
+                  </label>
+                  <label className="field">
+                    <span>희망 매도가</span>
+                    <input value={form.desired_price} onChange={(event) => updateConsultationField('desired_price', event.target.value)} placeholder="예: 8억 5천" />
+                  </label>
+                </>
+              ) : (
+                <>
+                  <label className="field">
+                    <span>희망 지역</span>
+                    <input value={form.region} onChange={(event) => updateConsultationField('region', event.target.value)} placeholder="인의동, 진평동" />
+                  </label>
+                  <label className="field">
+                    <span>매물 종류</span>
+                    <input value={form.property_type} onChange={(event) => updateConsultationField('property_type', event.target.value)} placeholder="원룸, 미니투룸, 투룸" />
+                  </label>
+                  <label className="field">
+                    <span>보증금</span>
+                    <input value={form.deposit} onChange={(event) => updateConsultationField('deposit', event.target.value)} placeholder="예: 300만원" />
+                  </label>
+                  <label className="field">
+                    <span>월세 또는 매매 예산</span>
+                    <input value={form.monthly_rent} onChange={(event) => updateConsultationField('monthly_rent', event.target.value)} placeholder="예: 월세 35만원" />
+                  </label>
+                  <label className="field full">
+                    <span>입주 예정일</span>
+                    <input value={form.move_in_date} onChange={(event) => updateConsultationField('move_in_date', event.target.value)} placeholder="즉시, 8월 초, 협의" />
+                  </label>
+                </>
+              )}
+
+              <label className="field full">
+                <span>{isSell ? '상담 내용' : '요청 내용'}</span>
+                <textarea value={form.message} onChange={(event) => updateConsultationField('message', event.target.value)} rows={4} placeholder="추가로 원하는 조건이나 상담 내용을 적어주세요." />
+              </label>
+            </div>
+
+            {submitStatus && <p className="status-text request-status-text">{submitStatus}</p>}
+
+            <div className="request-modal-actions">
+              <button type="button" className="secondary-btn" onClick={closeModal} disabled={submitting}>닫기</button>
+              <button type="submit" className="primary-btn" disabled={submitting}>{submitting ? '처리 중' : '작성 완료'}</button>
+            </div>
+          </form>
+        </div>
+      )}
     </section>
   );
 }
-
 function Footer() {
   return (
     <footer id="request" className="site-footer">
