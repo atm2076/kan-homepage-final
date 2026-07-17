@@ -73,6 +73,34 @@ function buildMessage(payload) {
   ].join('\n');
 }
 
+function parseSolapiResponse(rawBody) {
+  if (!rawBody) return {};
+
+  try {
+    return JSON.parse(rawBody);
+  } catch {
+    return { message: rawBody };
+  }
+}
+
+function getSolapiError(parsedBody) {
+  const errorCode = parsedBody?.errorCode || parsedBody?.code || 'SOLAPI_REQUEST_FAILED';
+  const errorMessage = parsedBody?.errorMessage || parsedBody?.message || 'SOLAPI request failed.';
+
+  return { errorCode, errorMessage };
+}
+
+function buildSolapiPayload({ receiver, sender, message }) {
+  return {
+    message: {
+      to: normalizePhone(receiver),
+      from: normalizePhone(sender),
+      text: message,
+      autoTypeDetect: true,
+    },
+  };
+}
+
 export default async function handler(req, res) {
   try {
     if (req.method !== 'POST') {
@@ -81,14 +109,16 @@ export default async function handler(req, res) {
 
     const apiKey = process.env.SOLAPI_API_KEY;
     const apiSecret = process.env.SOLAPI_API_SECRET;
-    const sender = normalizePhone(process.env.SOLAPI_SENDER_NUMBER);
-    const receiver = normalizePhone(process.env.CONSULTATION_SMS_RECEIVER);
+    const sender = process.env.SOLAPI_SENDER_NUMBER;
+    const receiver = process.env.CONSULTATION_SMS_RECEIVER;
+    const normalizedSender = normalizePhone(sender);
+    const normalizedReceiver = normalizePhone(receiver);
 
     const missing = [
       ['SOLAPI_API_KEY', apiKey],
       ['SOLAPI_API_SECRET', apiSecret],
-      ['SOLAPI_SENDER_NUMBER', sender],
-      ['CONSULTATION_SMS_RECEIVER', receiver],
+      ['SOLAPI_SENDER_NUMBER', normalizedSender],
+      ['CONSULTATION_SMS_RECEIVER', normalizedReceiver],
     ].filter(([, value]) => !value).map(([name]) => name);
 
     if (missing.length) {
@@ -110,21 +140,44 @@ export default async function handler(req, res) {
         Authorization: createAuthHeader(apiKey, apiSecret),
         'Content-Type': 'application/json',
       },
-      body: JSON.stringify({
-        message: {
-          to: receiver,
-          from: sender,
-          text: buildMessage(payload),
-        },
-      }),
+      body: JSON.stringify(buildSolapiPayload({
+        receiver: normalizedReceiver,
+        sender: normalizedSender,
+        message: buildMessage(payload),
+      })),
     });
 
+    const rawBody = await response.text();
+    const parsedBody = parseSolapiResponse(rawBody);
+
     if (!response.ok) {
-      return res.status(502).json({ error: 'SMS request failed.' });
+      const { errorCode, errorMessage } = getSolapiError(parsedBody);
+      console.error('SOLAPI consultation SMS failed.', {
+        status: response.status,
+        errorCode,
+        errorMessage,
+      });
+
+      return res.status(502).json({
+        ok: false,
+        status: response.status,
+        errorCode,
+        errorMessage,
+      });
     }
 
     return res.status(200).json({ ok: true });
   } catch (error) {
+    console.error('Consultation SMS server error.', {
+      message: error instanceof Error ? error.message : 'Unknown server error.',
+    });
     return res.status(500).json({ error: 'SMS server error.' });
   }
 }
+
+export const __testables = {
+  buildMessage,
+  buildSolapiPayload,
+  getSolapiError,
+  parseSolapiResponse,
+};
