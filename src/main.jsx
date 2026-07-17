@@ -8020,6 +8020,27 @@ function CustomRequestSection() {
     return { error };
   }
 
+  async function sendConsultationSmsNotice(payload) {
+    try {
+      const response = await fetch('/api/send-consultation-sms', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          ...payload,
+          submitted_at: new Date().toISOString(),
+        }),
+      });
+
+      if (!response.ok) {
+        console.warn('Consultation SMS notice failed.');
+      }
+    } catch (error) {
+      console.warn('Consultation SMS notice failed.');
+    }
+  }
+
   async function submitConsultation(event) {
     event.preventDefault();
     if (submitting || !activeType) return;
@@ -8046,6 +8067,10 @@ function CustomRequestSection() {
     setSubmitStatus(mobile ? '상담 내용을 저장한 뒤 문자 앱을 엽니다.' : '상담 요청을 접수하는 중입니다.');
 
     const { error } = await saveConsultationRequest(payload);
+
+    if (!error) {
+      await sendConsultationSmsNotice(payload);
+    }
 
     if (mobile) {
       if (error) {
