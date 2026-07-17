@@ -92,12 +92,14 @@ function getSolapiError(parsedBody) {
 
 function buildSolapiPayload({ receiver, sender, message }) {
   return {
-    message: {
-      to: normalizePhone(receiver),
-      from: normalizePhone(sender),
-      text: message,
-      autoTypeDetect: true,
-    },
+    messages: [
+      {
+        to: normalizePhone(receiver),
+        from: normalizePhone(sender),
+        text: message,
+        autoTypeDetect: true,
+      },
+    ],
   };
 }
 
