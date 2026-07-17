@@ -32,16 +32,36 @@ function formatKoreanTime(value) {
   }).format(safeDate).replace(/\. /g, '-').replace('.', '');
 }
 
+function text(value, fallback = '-') {
+  return String(value || '').trim() || fallback;
+}
+
 function getRequestTypeLabel(type) {
-  return type === 'sell' ? '매도 상담' : '조건 문의';
+  return type === 'sell' ? '매도 상담' : '임대 상담';
 }
 
 function buildMessage(payload) {
-  const name = String(payload.name || '').trim();
-  const phone = String(payload.phone || '').trim();
+  const name = text(payload.name);
+  const phone = text(payload.phone);
   const requestType = getRequestTypeLabel(payload.request_type);
-  const message = String(payload.message || '').trim() || '상담 요청';
+  const message = text(payload.message, '상담 요청');
   const submittedAt = formatKoreanTime(payload.submitted_at);
+
+  if (payload.request_type === 'buy') {
+    return [
+      '[칸공인중개사 상담접수]',
+      `이름: ${name}`,
+      `연락처: ${phone}`,
+      `문의유형: ${requestType}`,
+      `희망지역: ${text(payload.region)}`,
+      `매물종류: ${text(payload.property_type)}`,
+      `보증금: ${text(payload.deposit)}`,
+      `월세 또는 매매예산: ${text(payload.monthly_rent || payload.budget)}`,
+      `입주예정일: ${text(payload.move_in_date)}`,
+      `요청내용: ${message}`,
+      `접수시간: ${submittedAt}`,
+    ].join('\n');
+  }
 
   return [
     '[칸공인중개사 상담접수]',
@@ -76,9 +96,9 @@ export default async function handler(req, res) {
     }
 
     const payload = req.body || {};
-    const name = String(payload.name || '').trim();
-    const phone = String(payload.phone || '').trim();
-    const requestType = String(payload.request_type || '').trim();
+    const name = text(payload.name, '');
+    const phone = text(payload.phone, '');
+    const requestType = text(payload.request_type, '');
 
     if (!name || !phone || !['buy', 'sell'].includes(requestType)) {
       return res.status(400).json({ error: 'Invalid consultation payload.' });
