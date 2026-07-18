@@ -594,6 +594,9 @@ function parseBulkText(text) {
     관리비항목: 'maintenance_includes',
     위치설명: 'location_description',
     위치생활권: 'location_description',
+    대표입지: 'investment_point',
+    대표입지키워드: 'investment_point',
+    핵심입지: 'investment_point',
     추천대상: 'recommended_for',
     사진설명: 'photo_captions',
     중개대상물표시광고사항: 'legal_notice',
@@ -3947,6 +3950,13 @@ function handleCopy(label, text) {
 
 const blogPublishData = buildBlogPublishData();
 const instagramPublishData = buildInstagramPublishData();
+function handleBlogPublishCopy(label, text) {
+  if (blogPublishData.warnings?.length) {
+    setStatus(`블로그 검증 경고: ${blogPublishData.warnings.join(' / ')}`);
+    return;
+  }
+  handleCopy(label, text);
+}
 function startEdit(property) {
   if (
     isStaffMode &&
@@ -5342,9 +5352,9 @@ if (isStaffMode && currentStaff?.code) {
           <h4>블로그 발행자료</h4>
 
           <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', marginBottom: '8px' }}>
-            <button type="button" onClick={() => handleCopy('블로그 제목', blogPublishData.title)}>제목 복사</button>
-            <button type="button" onClick={() => handleCopy('블로그 본문', blogPublishData.body)}>본문 복사</button>
-            <button type="button" onClick={() => handleCopy('블로그 태그', blogPublishData.tags)}>태그 복사</button>
+            <button type="button" onClick={() => handleBlogPublishCopy('블로그 제목', blogPublishData.title)}>제목 복사</button>
+            <button type="button" onClick={() => handleBlogPublishCopy('블로그 본문', blogPublishData.body)}>본문 복사</button>
+            <button type="button" onClick={() => handleBlogPublishCopy('블로그 태그', blogPublishData.tags)}>태그 복사</button>
           </div>
 
           <label style={{ display: 'block', fontWeight: 'bold', marginTop: '8px' }}>제목</label>
@@ -5355,6 +5365,9 @@ if (isStaffMode && currentStaff?.code) {
 
           <label style={{ display: 'block', fontWeight: 'bold', marginTop: '8px' }}>태그</label>
           <textarea readOnly value={blogPublishData.tags} rows={3} style={{ width: '100%', padding: '8px' }} />
+          {blogPublishData.warnings?.length > 0 && (
+            <p className="status-text">블로그 검증 경고: {blogPublishData.warnings.join(' / ')}</p>
+          )}
         </section>
       )}
 
@@ -5477,6 +5490,15 @@ if (isStaffMode && currentStaff?.code) {
   placeholder="융자, 공실, 수리 필요사항 등"
 />
 </div>
+)}
+
+{!(form.category?.includes('매매') || form.trade_type === '매매') && (
+  <Field
+    label="대표 입지 키워드"
+    value={form.investment_point || ''}
+    onChange={(v) => updateField('investment_point', v)}
+    placeholder="예: 통근버스 노선·도서관 인근"
+  />
 )}
 
 <TextArea
@@ -5838,6 +5860,10 @@ if (isStaffMode && currentStaff?.code) {
                 onClick={async () => {
                   setAdvertisingPropertyId(property.id);
                   const blogAd = buildNaverBlogAd(property);
+                  if (blogAd.warnings.length) {
+                    setStatus(`블로그 검증 경고: ${blogAd.warnings.join(' / ')}`);
+                    return;
+                  }
                   try {
                     window.open(
                       'https://blog.naver.com/GoBlogWrite.naver',
@@ -6288,7 +6314,7 @@ function cleanBlogBodyStart(text) {
   return String(text || '').trimStart();
 }
 
-function buildNaverBlogAd(property) {
+function buildNaverBlogAdLegacy(property) {
   const clean = (value) => String(value || '').trim();
   const compact = (value) => clean(value).replace(/\s+/g, ' ');
   const toList = (value) => toTextList(value).map(clean).filter(Boolean);
@@ -6522,6 +6548,345 @@ function buildNaverBlogAd(property) {
     body,
     tags
   };
+}
+
+function normalizeBlogText(value) {
+  return String(value || '')
+    .replace(/빔프로잭트|빔프로젝트/gu, '빔프로젝터')
+    .replace(/가스렌지/gu, '가스레인지')
+    .replace(/천장형실링펜/gu, '천장형 실링팬')
+    .replace(/해당층/gu, '해당 층')
+    .replace(/수도용금|수고요금/gu, '수도요금')
+    .replace(/[ \t]+/g, ' ')
+    .trim();
+}
+
+function normalizeBlogList(...sources) {
+  const result = [];
+  const seen = new Set();
+  const append = (source) => {
+    if (Array.isArray(source)) {
+      source.forEach(append);
+      return;
+    }
+    String(source || '')
+      .split(/[\n,]+/u)
+      .map(normalizeBlogText)
+      .filter(Boolean)
+      .forEach((item) => {
+        const key = item.replace(/\s+/gu, ' ');
+        if (seen.has(key)) return;
+        seen.add(key);
+        result.push(item);
+      });
+  };
+  sources.forEach(append);
+  return result;
+}
+
+function normalizePhotoCaption(value) {
+  return normalizeBlogText(value)
+    .replace(/^\s*(?:사진\s*)?\d+\s*(?:번\s*사진)?\s*[.)\-–—:]?\s*/u, '')
+    .trim();
+}
+
+function normalizeBlogProperty(property = {}) {
+  const clean = normalizeBlogText;
+  const category = clean(property.category) || '부동산 매물';
+  const tradeType = clean(property.trade_type || property.tradeType) || '거래형태 확인';
+  const isSale = tradeType === '매매' || category.includes('매매');
+  const propertyType = clean(
+    category.replace(/월세|전세|반전세|단기임대|매매/gu, '').replace(/\s+/gu, ' ')
+  ) || (isSale ? '건물' : '매물');
+  const address = clean(property.address) || '소재지 계약 전 확인';
+  const dongMatches = [...address.matchAll(/([가-힣0-9]+(?:동|읍|면|리))/gu)];
+  const dong = dongMatches.length ? dongMatches[dongMatches.length - 1][1] : '';
+
+  const floorSource = clean(property.floor_info || property.floorInfo);
+  const floorParts = floorSource.split('/').map(clean).filter(Boolean);
+  const narrative = [property.description, property.legal_notice].map(clean).join(' ');
+  const floor = clean(
+    property.current_floor || property.currentFloor ||
+    floorParts.find((part) => !/(총|지상|지하)/u.test(part)) ||
+    narrative.match(/해당\s*층\s*:?\s*(\d+\s*층)/u)?.[1]
+  );
+  let totalFloors = clean(
+    property.total_floor_info || property.totalFloors ||
+    floorParts.find((part) => /(총|지상)/u.test(part)) || property.floor_count
+  );
+  if (/^\d+$/u.test(totalFloors)) totalFloors = `지상 ${totalFloors}층`;
+
+  const roomBath = clean(property.room_bath || property.roomBath);
+  const roomBathNumbers = roomBath.match(/(?:방\s*)?(\d+(?:\.\d+)?)\s*(?:개)?\s*[\/.]\s*(?:욕실\s*)?(\d+(?:\.\d+)?)/u) ||
+    roomBath.match(/방\s*(\d+(?:\.\d+)?).*욕실\s*(\d+(?:\.\d+)?)/u);
+  const rooms = clean(property.rooms || property.room) || (roomBathNumbers?.[1] || '');
+  const bathrooms = clean(property.bathrooms || property.bathroom) || (roomBathNumbers?.[2] || '');
+
+  const directionSource = clean(property.direction);
+  const directionMatch = directionSource.match(/^(\S+향)\s*\/?\s*(.*?기준)?$/u);
+  const direction = clean(directionMatch?.[1] || directionSource);
+  const directionBasis = clean(property.direction_basis || directionMatch?.[2]);
+
+  const parkingSource = clean(property.parking);
+  const parkingMatch = parkingSource.match(/(?:총\s*)?(\d+(?:\.\d+)?\s*대)/u);
+  const maintenanceFeeSource = clean(property.maintenance_fee || property.maintenanceFee);
+  const maintenanceFee = clean(
+    maintenanceFeeSource
+      .replace(/^관리비\s*/u, '')
+      .replace(/\s*(?:별도|포함)(?:\s*\(.*)?$/u, '')
+  ) || maintenanceFeeSource;
+  const maintenanceFromFee = maintenanceFeeSource.match(/포함\s*항목\s*:\s*([^)]*)/u)?.[1] || '';
+
+  const photoSource = normalizeBlogList(property.photos, property.photoUrls);
+  const photoCaptions = normalizeBlogList(property.photo_captions, property.photoCaptions)
+    .map(normalizePhotoCaption)
+    .filter(Boolean);
+  const options = normalizeBlogList(property.convenience, property.options)
+    .filter((item) => !/(인근|생활권|출퇴근|통근|버스|편의점|마트|병원|학교|산업단지)/u.test(item));
+
+  return {
+    raw: property,
+    is_sale: isSale,
+    title: String(property.title || '').trim(),
+    address,
+    dong,
+    property_type: propertyType,
+    legal_property_type: clean(property.main_use) && !clean(property.main_use).includes(propertyType)
+      ? `${clean(property.main_use)}(${propertyType})`
+      : propertyType,
+    trade_type: tradeType,
+    deposit: clean(property.deposit),
+    monthly_rent: clean(property.rent || property.monthly_rent),
+    sale_price: clean(property.sale_price || property.salePrice || (isSale ? property.deposit : '')),
+    maintenance_fee: maintenanceFee,
+    maintenance_includes: normalizeBlogList(property.maintenance_includes, maintenanceFromFee),
+    exclusive_area: clean(property.area || property.exclusive_area),
+    floor,
+    total_floors: totalFloors,
+    rooms,
+    bathrooms,
+    room_bath: rooms || bathrooms ? `${rooms || '확인 필요'}/${bathrooms || '확인 필요'}` : roomBath,
+    direction,
+    direction_basis: directionBasis,
+    parking_total: clean(parkingMatch?.[1]),
+    move_in_date: clean(property.move_in || property.move_in_date),
+    approval_date: clean(property.approval_date),
+    main_use: clean(property.main_use),
+    building_structure: clean(property.structure || property.building_structure),
+    short_description: clean(property.summary || property.short_description),
+    detailed_description: clean(property.description || property.detailed_description),
+    location_description: normalizeBlogList(property.location_description).join(' '),
+    representative_location: normalizeBlogList(
+      property.representative_location,
+      property.location_keyword,
+      !isSale ? property.investment_point : ''
+    )[0] || '',
+    recommended_for: normalizeBlogList(property.recommended_for).join(', '),
+    remodeling: clean(property.remodeling),
+    options,
+    photos: photoSource,
+    photo_captions: photoCaptions,
+    legal_notice: clean(property.legal_notice),
+    total_units: clean(property.total_units),
+    elevator: clean(property.elevator),
+    takeover_price: clean(property.acquisition_price || property.takeover_price || property.takeoverPrice),
+    total_monthly_rent: clean(property.total_monthly_rent || property.monthlyRent),
+    net_income: clean(property.net_profit || property.netIncome),
+    investment_point: clean(property.investment_point),
+    building_condition: clean(property.building_condition)
+  };
+}
+
+function validateNaverBlogAd({ body, normalized }) {
+  const warnings = [];
+  const sectionTitles = [...body.matchAll(/^([^\n]+)$/gmu)]
+    .map((match) => match[1])
+    .filter((line) => /^(?:🏠|📍|🛋️|💳|📷|🙋|📋|📈|🏢|💹)/u.test(line));
+  const duplicateSections = sectionTitles.filter((title, index) => sectionTitles.indexOf(title) !== index);
+  if (duplicateSections.length) warnings.push(`중복 섹션: ${[...new Set(duplicateSections)].join(', ')}`);
+  if ((body.match(/📋 중개대상물 표시·광고 사항/gu) || []).length !== 1) {
+    warnings.push('표시·광고 사항 섹션은 한 번만 있어야 합니다.');
+  }
+  if (normalized.maintenance_includes.length !== new Set(normalized.maintenance_includes).size) {
+    warnings.push('관리비 포함 항목에 중복이 있습니다.');
+  }
+  const floorValues = [...body.matchAll(/(?:해당\s*층|해당층)(?:\/총층수)?\s*:\s*([^\n/]+)/gu)]
+    .map((match) => normalizeBlogText(match[1]));
+  if (new Set(floorValues.filter(Boolean)).size > 1) warnings.push('해당 층 값이 서로 충돌합니다.');
+  const photoNumbers = [...body.matchAll(/📷\s*(\d+)번\s*사진/gu)].map((match) => match[1]);
+  if (photoNumbers.length !== new Set(photoNumbers).size) warnings.push('사진 번호가 중복됐습니다.');
+  const requiredLegalLabels = ['중개대상물 종류', '거래형태', '소재지', '거래가격', '관리비', '면적', '해당 층', '총층수', '방/욕실', '방향', '입주가능일', '사용승인일'];
+  const missingLabels = requiredLegalLabels.filter((label) => !body.includes(`- ${label}:`));
+  if (!normalized.is_sale && missingLabels.length) warnings.push(`필수 표시·광고 누락: ${missingLabels.join(', ')}`);
+  return warnings;
+}
+
+function buildNaverBlogAd(property) {
+  const data = normalizeBlogProperty(property);
+  const moneyText = (value) => {
+    const text = normalizeBlogText(value);
+    if (!text) return '';
+    if (/억|만|원/u.test(text)) return text;
+    const number = Number(text.replaceAll(',', ''));
+    if (!Number.isFinite(number)) return text;
+    if (number >= 10000) {
+      const eok = Math.floor(number / 10000);
+      const man = number % 10000;
+      return man ? `${eok}억 ${man.toLocaleString()}만원` : `${eok}억원`;
+    }
+    return `${number.toLocaleString()}만원`;
+  };
+  const titleMoney = (value) => moneyText(value).replace(/만원$/u, '');
+  const rentalTitlePrice = [titleMoney(data.deposit), titleMoney(data.monthly_rent)].filter(Boolean).join('/');
+  const locationTitle = data.dong ? `구미 ${data.dong}` : '구미';
+  const automaticFeature = data.representative_location || data.remodeling || data.short_description.split(/[,.]/u)[0];
+  const automaticTitle = data.is_sale
+    ? `${locationTitle} ${data.property_type} 매매｜${data.sale_price ? `매매가 ${moneyText(data.sale_price)}` : '가격 확인'}`
+    : [
+        `${locationTitle} ${data.property_type} ${data.trade_type}｜${rentalTitlePrice || '가격 확인'}`,
+        automaticFeature
+      ].filter(Boolean).join(' ');
+  const title = data.title || automaticTitle;
+  const priceText = data.is_sale
+    ? (data.sale_price ? `매매가 ${moneyText(data.sale_price)}` : '매매가 계약 전 확인')
+    : [
+        data.deposit ? `보증금 ${moneyText(data.deposit)}` : '',
+        data.monthly_rent ? `월세 ${moneyText(data.monthly_rent)}` : ''
+      ].filter(Boolean).join(' / ') || '가격 계약 전 확인';
+  const directionText = [data.direction, data.direction_basis ? `(${data.direction_basis})` : ''].join('');
+  const floorText = [data.floor, data.total_floors].filter(Boolean).join(' / ');
+  const infoLine = (icon, label, value) => `${icon} ${label}: ${value || '계약 전 확인'}`;
+  const legalLine = (label, value) => `- ${label}: ${value || '계약 전 확인'}`;
+  const section = (heading, lines) => [
+    '━━━━━━━━━━━━━━━━━━', heading, '━━━━━━━━━━━━━━━━━━', '', ...lines.filter(Boolean)
+  ];
+
+  const basicInfo = [
+    infoLine('📍', '소재지', data.address),
+    infoLine('🏢', '매물종류', data.property_type),
+    infoLine('🔑', '거래형태', data.trade_type),
+    infoLine('💰', '가격', priceText),
+    !data.is_sale ? infoLine('🧾', '관리비', data.maintenance_fee) : '',
+    infoLine('📐', data.is_sale ? '연면적' : '면적', data.exclusive_area),
+    infoLine('🏠', '해당층/총층수', floorText),
+    infoLine('🚪', '방/욕실', data.room_bath),
+    infoLine('🧭', '방향', directionText),
+    infoLine('🚗', '총주차대수', data.parking_total),
+    !data.is_sale ? infoLine('📅', '입주가능일', data.move_in_date) : '',
+    infoLine('✅', '사용승인일', data.approval_date)
+  ];
+  const introduction = data.is_sale
+    ? [`${locationTitle}에 위치한 ${data.property_type} 매매 매물입니다.`, `${priceText} 조건입니다.`]
+    : [
+        `${locationTitle}에 위치한 ${data.property_type} ${data.trade_type} 매물입니다.`,
+        `${priceText} 조건이며 ${data.room_bath ? `방/욕실 ${data.room_bath}` : '구조는 계약 전 확인'}${data.exclusive_area ? `, 전용면적 ${data.exclusive_area}` : ''}입니다.`
+      ];
+  const structureLines = [
+    data.detailed_description,
+    data.remodeling ? `리모델링: ${data.remodeling}` : '',
+    data.options.length ? `옵션: ${data.options.join(', ')}` : '',
+    data.building_structure ? `건물 구조: ${data.building_structure}` : '',
+    data.elevator ? `엘리베이터: ${data.elevator}` : ''
+  ];
+  const conditionLines = data.is_sale
+    ? [
+        data.sale_price ? `매매가: ${moneyText(data.sale_price)}` : '',
+        data.takeover_price ? `인수금: ${moneyText(data.takeover_price)}` : '',
+        data.total_monthly_rent ? `월세수입: ${moneyText(data.total_monthly_rent)}` : '',
+        data.net_income ? `월순수익: ${moneyText(data.net_income)}` : ''
+      ]
+    : [
+        `관리비: ${data.maintenance_fee || '계약 전 확인'}`,
+        data.maintenance_includes.length ? `관리비 포함 항목: ${data.maintenance_includes.join(', ')}` : '',
+        `총주차대수: ${data.parking_total || '계약 전 확인'}`,
+        `입주가능일: ${data.move_in_date || '계약 전 확인'}`
+      ];
+  const photoCount = Math.max(data.photos.length, data.photo_captions.length);
+  const photoLines = photoCount
+    ? Array.from({ length: photoCount }, (_, index) =>
+        `📷 ${index + 1}번 사진 — ${data.photo_captions[index] || '매물 내부 모습'}`
+      )
+    : ['등록된 사진이 없습니다.'];
+  const recommendedLines = [
+    data.recommended_for || `${locationTitle}에서 ${data.property_type}을 찾는 분께 추천드립니다.`
+  ];
+  const legalNoticeExtra = data.legal_notice
+    .split(/\n|(?<=[.!?])\s+/u)
+    .map(normalizeBlogText)
+    .filter(Boolean)
+    .filter((line) => !/^\[?중개대상물\s*표시[·\s-]*광고\s*사항\]?$/u.test(line))
+    .filter((line) => !/^(?:-\s*)?(?:중개대상물 종류|거래형태|소재지|거래가격|가격|관리비|면적|전용면적|해당\s*층|총층수|방\/욕실|총주차대수|주차|방향|입주가능일|사용승인일)\s*:/u.test(line))
+    .join(' ');
+  const legalLines = data.is_sale
+    ? [
+        legalLine('중개대상물 종류', data.legal_property_type),
+        legalLine('거래형태', data.trade_type),
+        legalLine('소재지', data.address),
+        legalLine('거래가격', priceText),
+        legalLine('면적', data.exclusive_area),
+        legalLine('해당 층', data.floor),
+        legalLine('총층수', data.total_floors),
+        legalLine('방/욕실', data.room_bath),
+        legalLine('총주차대수', data.parking_total),
+        legalLine('방향', directionText),
+        legalLine('사용승인일', data.approval_date)
+      ]
+    : [
+        legalLine('중개대상물 종류', data.legal_property_type),
+        legalLine('거래형태', data.trade_type),
+        legalLine('소재지', data.address),
+        legalLine('거래가격', priceText),
+        legalLine('관리비', data.maintenance_fee),
+        legalLine('면적', data.exclusive_area),
+        legalLine('해당 층', data.floor),
+        legalLine('총층수', data.total_floors),
+        legalLine('방/욕실', data.room_bath),
+        legalLine('총주차대수', data.parking_total),
+        legalLine('방향', directionText),
+        legalLine('입주가능일', data.move_in_date),
+        legalLine('사용승인일', data.approval_date)
+      ];
+
+  const bodyLines = [
+    '안녕하세요.',
+    '구미 원룸·미니투룸·투룸 임대와 상가·다가구·원룸건물 매매를 전문으로 안내하는 칸공인중개사입니다.',
+    '', ...introduction, '',
+    ...section(`🏠 ${locationTitle} ${data.property_type} ${data.trade_type} 기본정보`, basicInfo), '',
+    ...section('📍 위치와 생활권', [data.location_description || '정확한 위치와 생활권은 상담 시 안내드립니다.']), '',
+    ...section(data.is_sale ? '🏢 건물 구성과 상태' : '🛋️ 구조와 옵션', structureLines), '',
+    ...section(data.is_sale ? '💹 매매·수익 조건' : '💳 관리비·주차·입주 조건', conditionLines), '',
+    ...section(`📷 ${locationTitle} ${data.property_type} ${data.trade_type} 내부사진`, photoLines), '',
+    ...section(data.is_sale ? '📈 투자 포인트' : '🙋 이런 분께 추천드립니다', data.is_sale ? [data.investment_point] : recommendedLines), '',
+    ...section('🌐 칸공인중개사 홈페이지·앱 안내', [
+      '더 많은 구미 임대·매매 매물은 칸공인중개사 홈페이지에서 확인하실 수 있습니다.',
+      '홈페이지: https://kan-homepage-final.vercel.app'
+    ]), '',
+    ...section('📞 전화·문자·상담 문의', [
+      '방문 전 전화 또는 문자로 매물 가능 여부를 확인해 주세요.',
+      `문의: ${OFFICE.phone} / ${OFFICE.tel}`
+    ]), '',
+    ...section('🏠 칸공인중개사사무소', [
+      `대표공인중개사: ${OFFICE.broker}`,
+      `주소: ${OFFICE.address}`,
+      `등록번호: ${OFFICE.regNo}`
+    ]), '',
+    ...section('📋 중개대상물 표시·광고 사항', [
+      ...legalLines,
+      legalNoticeExtra,
+      '※ 세부 조건은 계약 전 현장 및 공부서류 확인 후 최종 안내드립니다.'
+    ])
+  ];
+  const body = cleanBlogBodyStart(bodyLines.join('\n'));
+  const makeTag = (value) => String(value || '').replace(/[#\s]/gu, '').replace(/[^0-9A-Za-z가-힣_]/gu, '');
+  const tags = [...new Set([
+    '구미부동산', '칸공인중개사', data.dong ? `구미${data.dong}` : '',
+    data.property_type ? `구미${data.property_type}` : '',
+    data.dong && data.property_type ? `${data.dong}${data.property_type}` : '',
+    data.trade_type.includes('월세') ? '구미월세' : '',
+    `${data.property_type}${data.trade_type}`
+  ].map(makeTag).filter(Boolean))].map((tag) => `#${tag}`).join(' ');
+  const warnings = validateNaverBlogAd({ body, normalized: data });
+  return { title, body, tags, warnings, normalized: data };
 }
 
 async function copyAdvertisementText(text) {
@@ -6969,6 +7334,14 @@ JSON.stringify(advertisingProperty)
 
       {blogOpen && (() => {
         const blogAd = buildNaverBlogAd(property);
+        const copyBlogPart = async (text, successMessage) => {
+          if (blogAd.warnings.length) {
+            setBlogCopyStatus(`블로그 검증 경고: ${blogAd.warnings.join(' / ')}`);
+            return;
+          }
+          const copied = await copyAdvertisementText(text);
+          setBlogCopyStatus(copied ? successMessage : '복사 실패');
+        };
 
         return (
           <div
@@ -6981,6 +7354,9 @@ JSON.stringify(advertisingProperty)
             }}
           >
             <strong>네이버 블로그 제목</strong>
+            {blogAd.warnings.length > 0 && (
+              <p className="status-text">블로그 검증 경고: {blogAd.warnings.join(' / ')}</p>
+            )}
 
             <textarea
               readOnly
@@ -6999,14 +7375,7 @@ JSON.stringify(advertisingProperty)
               type="button"
               className="small-btn"
               onClick={async () => {
-                const copied =
-                  await copyAdvertisementText(blogAd.title);
-
-                setBlogCopyStatus(
-                  copied
-                    ? '블로그 제목 복사 완료'
-                    : '복사 실패'
-                );
+                await copyBlogPart(blogAd.title, '블로그 제목 복사 완료');
               }}
             >
               제목 복사
@@ -7039,14 +7408,7 @@ JSON.stringify(advertisingProperty)
               type="button"
               className="small-btn"
               onClick={async () => {
-                const copied =
-                  await copyAdvertisementText(blogAd.body);
-
-                setBlogCopyStatus(
-                  copied
-                    ? '블로그 본문 복사 완료'
-                    : '복사 실패'
-                );
+                await copyBlogPart(blogAd.body, '블로그 본문 복사 완료');
               }}
             >
               본문 복사
@@ -7086,14 +7448,7 @@ JSON.stringify(advertisingProperty)
                 type="button"
                 className="small-btn"
                 onClick={async () => {
-                  const copied =
-                    await copyAdvertisementText(blogAd.tags);
-
-                  setBlogCopyStatus(
-                    copied
-                      ? '블로그 태그 복사 완료'
-                      : '복사 실패'
-                  );
+                  await copyBlogPart(blogAd.tags, '블로그 태그 복사 완료');
                 }}
               >
                 태그 복사
@@ -7103,15 +7458,9 @@ JSON.stringify(advertisingProperty)
                 type="button"
                 className="primary-btn"
                 onClick={async () => {
-                  const copied =
-                    await copyAdvertisementText(
-                      `${blogAd.title}\n\n${blogAd.body}\n\n${blogAd.tags}`
-                    );
-
-                  setBlogCopyStatus(
-                    copied
-                      ? '블로그 전체 원고 복사 완료'
-                      : '복사 실패'
+                  await copyBlogPart(
+                    `${blogAd.title}\n\n${blogAd.body}\n\n${blogAd.tags}`,
+                    '블로그 전체 원고 복사 완료'
                   );
                 }}
               >
