@@ -6883,7 +6883,11 @@ function buildNaverBlogAd(property) {
 
   const floorInfo = clean(property.floor_info);
   const floorParts = floorInfo.split('/').map(compact).filter(Boolean);
-  const currentFloor = floorParts.find((part) => !/(총|지상|지하)/u.test(part)) || '';
+  const narrativeCurrentFloor = [property.description, property.legal_notice]
+    .map(clean)
+    .join(' ')
+    .match(/해당\s*층\s*:?\s*(\d+\s*층)/u)?.[1] || '';
+  const currentFloor = floorParts.find((part) => !/(총|지상|지하)/u.test(part)) || narrativeCurrentFloor;
   const totalFloor = clean(property.total_floor_info) ||
     floorParts.find((part) => /(총|지상)/u.test(part)) ||
     clean(property.floor_count);
