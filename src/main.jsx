@@ -6684,9 +6684,14 @@ function buildNaverBlogAd(property) {
     property.monthly_rent;
   const netIncome = property.netIncome || property.net_profit || property.net_income;
 
-  const options = toList(property.convenience);
-
-  const maintenanceItems = toList(property.maintenance_includes);
+  const uniqueList = (values) => [...new Set(values.map(compact).filter(Boolean))];
+  const options = uniqueList(toList(property.convenience)).filter(
+    (item) => !/(인근|생활권|출퇴근|통근|버스|편의점|마트|병원|학교|산업단지)/u.test(item)
+  );
+  const maintenanceItems = uniqueList(
+    toList(property.maintenance_includes).map((item) => item.replace(/수고요금/g, '수도요금'))
+  );
+  const maintenanceFeeText = clean(property.maintenance_fee).replace(/수고요금/g, '수도요금');
 
   const category = clean(property.category) || '부동산 매물';
   const tradeType = clean(property.trade_type) || '거래형태 확인';
@@ -6700,6 +6705,22 @@ function buildNaverBlogAd(property) {
       .replace(/월세|전세|반전세|매매/g, '')
       .replace(/\s+/g, ' ')
   ) || (isSale ? '건물' : '매물');
+
+  const rawParking = clean(property.parking);
+  const parkingCountMatch = rawParking.match(/(?:총\s*)?\d+(?:\.\d+)?\s*대/u);
+  const parkingTotal = parkingCountMatch
+    ? `총 ${parkingCountMatch[0].replace(/총\s*/u, '').trim()}`
+    : '';
+  const sanitizeNarrative = (value) => {
+    const text = clean(value);
+    if (!text || parkingTotal) return text;
+
+    return text
+      .split(/(?<=[.!?])\s+/u)
+      .filter((sentence) => !/주차(?:가|는)?\s*(?:가능|편리)|주차\s*편리/u.test(sentence))
+      .join(' ')
+      .trim();
+  };
 
   const getDong = (value) => {
     const text = clean(value)
@@ -6736,8 +6757,7 @@ function buildNaverBlogAd(property) {
     ? (salePrice ? `매매가 ${moneyText(salePrice)}` : '매매가 계약 전 확인')
     : [
         property.deposit ? `보증금 ${moneyText(property.deposit)}` : '',
-        property.rent ? `월세 ${moneyText(property.rent)}` : '',
-        property.maintenance_fee ? `관리비 ${clean(property.maintenance_fee)}` : ''
+        property.rent ? `월세 ${moneyText(property.rent)}` : ''
       ].filter(Boolean).join(' / ') || '가격 상담 시 확인';
 
   const titleMoney = (value) => moneyText(value).replace(/만원$/u, '');
@@ -6761,14 +6781,16 @@ function buildNaverBlogAd(property) {
       .replace(/ 임대수요.*$/u, ' 임대수요')
       .replace(/(?:입니다|합니다|있습니다)$/u, '')
       .trim();
+    const nearbyPhrase = phrase.match(/^(.{2,40}?인근)/u);
+    if (nearbyPhrase) return nearbyPhrase[1];
     return phrase.length > 32 ? phrase.slice(0, 32).trim() : phrase;
   };
   const rentalBenefit = [
-    titleBenefitText(toList(property.education)[0]),
-    titleBenefitText(property.location_description),
+    titleBenefitText(sanitizeNarrative(property.summary)),
+    titleBenefitText(sanitizeNarrative(property.title)),
+    titleBenefitText(sanitizeNarrative(property.location_description)),
     clean(property.move_in).includes('즉시') ? '즉시입주' : '',
-    clean(property.remodeling) ? titleBenefitText(property.remodeling) : '',
-    titleBenefitText(property.summary)
+    clean(property.remodeling) ? titleBenefitText(property.remodeling) : ''
   ].filter(Boolean)[0] || '';
 
   const saleBenefit = [
@@ -6789,7 +6811,7 @@ function buildNaverBlogAd(property) {
       : [
           `${locationTitle} ${propertyType} ${tradeType}`,
           rentalPriceTitle,
-          clean(property.maintenance_fee).includes('포함') ? '관리비 포함' : '',
+          maintenanceFeeText.includes('포함') ? '관리비 포함' : '',
           rentalBenefit
         ].filter(Boolean).join(' ').replace(` ${rentalPriceTitle}`, `｜${rentalPriceTitle}`)
   );
@@ -6823,7 +6845,7 @@ function buildNaverBlogAd(property) {
     ? [`📷 등록된 매물사진 ${photos.length}장 삽입 위치`]
     : ['등록된 사진이 없습니다.'];
 
-  const recommendText = clean(property.recommended_for) ||
+  const recommendText = sanitizeNarrative(property.recommended_for) ||
     (isSale
       ? '구미 수익형 부동산, 다가구주택, 원룸건물 투자를 검토하시는 분께 추천드립니다.'
       : `${locationTitle}에서 월세 조건, 생활권, 출퇴근 동선을 함께 보고 싶은 분께 추천드립니다.`);
@@ -6831,8 +6853,6 @@ function buildNaverBlogAd(property) {
   const optionText = options.length ? options.join(', ') : '';
 
   const maintenanceText = maintenanceItems.length ? maintenanceItems.join(', ') : '';
-  const educationText = toList(property.education).join(', ');
-
   const introduction = isSale
     ? [
         `오늘 소개드릴 매물은 ${locationSentence}에 위치한 ${propertyType}입니다.`,
@@ -6842,15 +6862,22 @@ function buildNaverBlogAd(property) {
       ]
     : [
         `오늘 소개드릴 매물은 ${locationSentence}에 위치한 ${propertyType} ${tradeType} 매물입니다.`,
-        [priceText, clean(property.summary) || clean(property.location_description)].filter(Boolean).join(' 조건이며, ')
+        [priceText, sanitizeNarrative(property.summary) || sanitizeNarrative(property.title)].filter(Boolean).join(' 조건이며, ')
       ];
 
   const floorInfo = clean(property.floor_info);
-  const currentFloor = floorInfo.includes('총') ? '' : floorInfo;
+  const floorParts = floorInfo.split('/').map(compact).filter(Boolean);
+  const currentFloor = floorParts.find((part) => !/(총|지상|지하)/u.test(part)) || '';
   const totalFloor = clean(property.total_floor_info) ||
-    (floorInfo.includes('총') ? floorInfo : clean(property.floor_count));
-  const parkingText = clean(property.parking);
-  const parkingTotal = /\d+(?:\.\d+)?\s*대/u.test(parkingText) ? parkingText : '';
+    floorParts.find((part) => /(총|지상)/u.test(part)) ||
+    clean(property.floor_count);
+  const legalNoticeText = isSale
+    ? sanitizeNarrative(property.legal_notice)
+    : sanitizeNarrative(property.legal_notice)
+        .split(/(?<=[.!?])\s+/u)
+        .filter((sentence) => !/(해당\s*층|관리비\s*월|전용면적)/u.test(sentence))
+        .join(' ')
+        .trim();
   const rawDirection = clean(property.direction);
   const directionText = rawDirection
     .replace(/\s*주인세대\s*없음\s*/u, '')
@@ -6870,7 +6897,6 @@ function buildNaverBlogAd(property) {
     optionalInfo('🏢', '매물종류', propertyType),
     optionalInfo('🔑', '거래형태', tradeType),
     optionalInfo('💰', '가격', priceText),
-    optionalInfo('🧾', '관리비', property.maintenance_fee),
     optionalInfo('📐', isSale ? '연면적' : '면적', isSale ? (property.building_area || property.area) : property.area),
     optionalInfo('🏙️', '해당 층', currentFloor),
     optionalInfo('🏢', '총층수', totalFloor),
@@ -6879,13 +6905,11 @@ function buildNaverBlogAd(property) {
     optionalInfo('🧭', '방향', directionText),
     optionalInfo('🏠', '주인세대', ownerUnitText),
     optionalInfo('🚗', '총주차대수', parkingTotal),
-    optionalInfo('📅', '입주가능일', property.move_in),
     optionalInfo('✅', '사용승인일', property.approval_date)
   ];
 
   const locationLines = [
-    clean(property.location_description),
-    educationText
+    sanitizeNarrative(property.location_description)
   ];
 
   const structureLines = isSale
@@ -6910,7 +6934,6 @@ function buildNaverBlogAd(property) {
         rentalComposition ? `임대구성: ${rentalComposition}` : ''
       ]
     : [
-        clean(property.description),
         optionText ? `옵션: ${optionText}` : '',
         clean(property.structure) ? `건물 구조: ${clean(property.structure)}` : '',
         clean(property.elevator) ? `엘리베이터: ${clean(property.elevator)}` : ''
@@ -6924,7 +6947,7 @@ function buildNaverBlogAd(property) {
         netIncome ? `월순수익: ${moneyText(netIncome)}` : ''
       ]
     : [
-        clean(property.maintenance_fee) ? `관리비: ${clean(property.maintenance_fee)}` : '',
+        maintenanceFeeText ? `관리비: ${maintenanceFeeText}` : '',
         maintenanceText ? `관리비 포함 항목: ${maintenanceText}` : '',
         parkingTotal ? `총주차대수: ${parkingTotal}` : '',
         clean(property.move_in) ? `입주가능일: ${clean(property.move_in)}` : ''
@@ -6967,7 +6990,7 @@ function buildNaverBlogAd(property) {
           property.deposit ? `보증금 ${moneyText(property.deposit)}` : '',
           property.rent ? `월세 ${moneyText(property.rent)}` : ''
         ].filter(Boolean).join(' / ')),
-        addInfo('관리비', property.maintenance_fee),
+        addInfo('관리비', maintenanceFeeText),
         addInfo('면적', property.area),
         addInfo('해당 층', currentFloor),
         addInfo('총층수', totalFloor),
@@ -6993,7 +7016,13 @@ function buildNaverBlogAd(property) {
     '',
     ...section(isSale ? '💹 매매·수익 조건' : '💳 관리비·주차·입주 조건', conditionLines.filter(Boolean)),
     '',
-    ...section('📷 사진 삽입 안내', photoGuide),
+    ...(isSale
+      ? section('📷 사진 삽입 안내', photoGuide)
+      : [
+          '━━━━━━━━━━━━━━━━━━',
+          `📷 ${locationTitle} ${propertyType} ${tradeType} 내부사진`,
+          '━━━━━━━━━━━━━━━━━━'
+        ]),
     '',
     ...section(isSale ? '📈 투자 포인트' : '🙋 이런 분께 추천드립니다', recommendationLines),
     '',
@@ -7020,7 +7049,7 @@ function buildNaverBlogAd(property) {
     '',
     ...section('📋 중개대상물 표시·광고 사항', [
       ...legalInfoLines.filter(Boolean),
-      clean(property.legal_notice),
+      legalNoticeText,
       '',
       '※ 위 내용은 등록된 매물 정보를 기준으로 작성되었으며, 세부 조건은 계약 전 현장 및 공부서류 확인 후 최종 안내드립니다.'
     ])
