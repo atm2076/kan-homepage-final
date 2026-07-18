@@ -6673,7 +6673,7 @@ function buildNaverBlogAd(property) {
   const photoSource = toTextList(property.photos).length ? property.photos : property.photoUrls;
   const photos = toList(photoSource);
 
-  const salePrice = property.salePrice || property.sale_price;
+  const salePrice = property.sale_price || property.salePrice || property.deposit;
   const takeoverPrice =
     property.takeoverPrice ||
     property.acquisition_price ||
@@ -6684,11 +6684,7 @@ function buildNaverBlogAd(property) {
     property.monthly_rent;
   const netIncome = property.netIncome || property.net_profit || property.net_income;
 
-  const options = [
-    ...toList(property.convenience),
-    ...toList(property.safety),
-    ...toList(property.education)
-  ];
+  const options = toList(property.convenience);
 
   const maintenanceItems = toList(property.maintenance_includes);
 
@@ -6699,6 +6695,12 @@ function buildNaverBlogAd(property) {
     category.includes('매매') ||
     tradeType === '매매';
 
+  const propertyType = compact(
+    category
+      .replace(/월세|전세|반전세|매매/g, '')
+      .replace(/\s+/g, ' ')
+  ) || (isSale ? '건물' : '매물');
+
   const getDong = (value) => {
     const text = clean(value)
       .replace('경상북도', '')
@@ -6706,189 +6708,351 @@ function buildNaverBlogAd(property) {
       .replace('구미시', '')
       .trim();
 
-    const match = text.match(/([가-힣0-9]+(?:동|읍|면|리))/);
-    return match ? match[1] : '';
+    const matches = [...text.matchAll(/([가-힣0-9]+(?:동|읍|면|리))/g)];
+    return matches.length ? matches[matches.length - 1][1] : '';
   };
 
   const dong = getDong(address);
   const locationTitle = dong ? `구미 ${dong}` : '구미';
+  const locationSentence = dong ? `구미시 ${dong}` : '구미시';
 
   const moneyText = (value) => {
     const text = clean(value);
     if (!text) return '';
     if (text.includes('억') || text.includes('만') || text.includes('원')) return text;
-    if (/^\d+(\.\d+)?$/.test(text.replaceAll(',', ''))) return `${Number(text.replaceAll(',', '')).toLocaleString()}만원`;
+    if (/^\d+(\.\d+)?$/.test(text.replaceAll(',', ''))) {
+      const amount = Number(text.replaceAll(',', ''));
+      if (amount >= 10000) {
+        const eok = Math.floor(amount / 10000);
+        const manwon = amount % 10000;
+        return manwon ? `${eok}억 ${manwon.toLocaleString()}만원` : `${eok}억원`;
+      }
+      return `${amount.toLocaleString()}만원`;
+    }
     return text;
   };
 
   const priceText = isSale
-    ? [
-        salePrice ? `매매가 ${moneyText(salePrice)}` : '',
-        takeoverPrice ? `인수금 ${moneyText(takeoverPrice)}` : '',
-        monthlyRent ? `월세수입 ${moneyText(monthlyRent)}` : '',
-        netIncome ? `월순수익 ${moneyText(netIncome)}` : ''
-      ].filter(Boolean).join(' / ') || '가격 상담 시 확인'
+    ? (salePrice ? `매매가 ${moneyText(salePrice)}` : '매매가 계약 전 확인')
     : [
         property.deposit ? `보증금 ${moneyText(property.deposit)}` : '',
         property.rent ? `월세 ${moneyText(property.rent)}` : '',
         property.maintenance_fee ? `관리비 ${clean(property.maintenance_fee)}` : ''
       ].filter(Boolean).join(' / ') || '가격 상담 시 확인';
 
-  const titleBenefit = [
-    clean(property.maintenance_fee).includes('포함') ? '관리비포함' : '',
+  const titleMoney = (value) => moneyText(value).replace(/만원$/u, '');
+  const usablePrice = (value) => {
+    const text = clean(value);
+    return text && !/확인|문의|상담|입력/u.test(text) ? text : '';
+  };
+  const titleSalePrice = usablePrice(salePrice);
+  const titleTakeoverPrice = usablePrice(takeoverPrice);
+  const titleMonthlyRent = usablePrice(monthlyRent);
+  const titleNetIncome = usablePrice(netIncome);
+  const rentalPriceTitle = [
+    titleMoney(property.deposit),
+    titleMoney(property.rent)
+  ].filter(Boolean).join('/');
+
+  const titleBenefitText = (value) => {
+    const phrase = compact(value)
+      .split(/[.,。\n]/u)[0]
+      .replace(/(?:으로|로) 출퇴근.*$/u, '')
+      .replace(/ 임대수요.*$/u, ' 임대수요')
+      .replace(/(?:입니다|합니다|있습니다)$/u, '')
+      .trim();
+    return phrase.length > 32 ? phrase.slice(0, 32).trim() : phrase;
+  };
+  const rentalBenefit = [
+    titleBenefitText(toList(property.education)[0]),
+    titleBenefitText(property.location_description),
     clean(property.move_in).includes('즉시') ? '즉시입주' : '',
-    clean(property.parking).includes('가능') ? '주차가능' : '',
-    clean(property.remodeling) ? '리모델링' : ''
+    clean(property.remodeling) ? titleBenefitText(property.remodeling) : '',
+    titleBenefitText(property.summary)
   ].filter(Boolean)[0] || '';
 
-  const generatedTitle = [
-    clean(property.title) || `${locationTitle} ${category} ${tradeType}`,
-    address,
-    isSale && salePrice ? `매매가 ${moneyText(salePrice)}` : '',
-    isSale && takeoverPrice ? `인수금 ${moneyText(takeoverPrice)}` : '',
-    isSale && monthlyRent ? `월세수입 ${moneyText(monthlyRent)}` : '',
-    isSale && netIncome ? `월순수익 ${moneyText(netIncome)}` : '',
-    !isSale ? [moneyText(property.deposit), moneyText(property.rent)].filter(Boolean).join('/') : '',
-    titleBenefit
-  ].filter(Boolean).join(' ');
+  const saleBenefit = [
+    titleBenefitText(property.investment_point),
+    titleBenefitText(property.location_description),
+    titleBenefitText(property.building_condition),
+    titleBenefitText(property.remodeling),
+    titleBenefitText(property.summary)
+  ].filter(Boolean)[0] || '';
 
-  const title = compact(generatedTitle);
+  const title = compact(
+    isSale
+      ? [
+          `${locationTitle} ${propertyType} 매매｜${titleSalePrice ? `매매가 ${moneyText(titleSalePrice)}` : (titleTakeoverPrice ? `인수금 ${moneyText(titleTakeoverPrice)}` : '')}${titleMonthlyRent ? `·월세수입 ${moneyText(titleMonthlyRent)}` : ''}`,
+          !titleMonthlyRent && titleNetIncome ? `월순수익 ${moneyText(titleNetIncome)}` : '',
+          saleBenefit
+        ].filter(Boolean).join(' ')
+      : [
+          `${locationTitle} ${propertyType} ${tradeType}`,
+          rentalPriceTitle,
+          clean(property.maintenance_fee).includes('포함') ? '관리비 포함' : '',
+          rentalBenefit
+        ].filter(Boolean).join(' ').replace(` ${rentalPriceTitle}`, `｜${rentalPriceTitle}`)
+  );
 
   const addInfo = (label, value) => {
     const text = clean(value);
     return `- ${label}: ${text || '계약 전 확인'}`;
   };
 
-  const photoGuide = photos.length
-    ? photos.map((url, index) => {
-        const guide =
-          index === 0 ? '대표사진 또는 외관 사진' :
-          index === 1 ? '방 내부 전체 모습' :
-          index === 2 ? '주방 또는 옵션 사진' :
-          index === 3 ? '욕실 또는 세탁공간' :
-          index === 4 ? '현관/수납/주차 등 추가 사진' :
-          '추가 상세 사진';
+  const optionalInfo = (icon, label, value) => {
+    const text = clean(value);
+    return text ? `${icon} ${label}\n${text}` : '';
+  };
 
-        return `사진 ${index + 1}. ${guide}\n${url}`;
-      }).join('\n\n')
-    : '사진은 상담 시 확인 가능합니다.';
+  const section = (heading, lines) => {
+    const content = [...lines];
+    while (content.length && !clean(content[0])) content.shift();
+    while (content.length && !clean(content[content.length - 1])) content.pop();
+    if (!content.some((line) => clean(line))) return [];
+
+    return [
+      '━━━━━━━━━━━━━━━━━━',
+      heading,
+      '━━━━━━━━━━━━━━━━━━',
+      '',
+      ...content
+    ];
+  };
+
+  const photoGuide = photos.length
+    ? [`📷 등록된 매물사진 ${photos.length}장 삽입 위치`]
+    : ['등록된 사진이 없습니다.'];
 
   const recommendText = clean(property.recommended_for) ||
     (isSale
       ? '구미 수익형 부동산, 다가구주택, 원룸건물 투자를 검토하시는 분께 추천드립니다.'
       : `${locationTitle}에서 월세 조건, 생활권, 출퇴근 동선을 함께 보고 싶은 분께 추천드립니다.`);
 
-  const optionText = options.length
-    ? options.join(', ')
-    : '옵션 및 내부 상태는 현장 확인 후 안내드립니다.';
+  const optionText = options.length ? options.join(', ') : '';
 
-  const maintenanceText = maintenanceItems.length
-    ? maintenanceItems.join(', ')
-    : clean(property.maintenance_fee) || '계약 전 확인';
+  const maintenanceText = maintenanceItems.length ? maintenanceItems.join(', ') : '';
+  const educationText = toList(property.education).join(', ');
 
-  const body = cleanBlogBodyStart([
-    title,
+  const introduction = isSale
+    ? [
+        `오늘 소개드릴 매물은 ${locationSentence}에 위치한 ${propertyType}입니다.`,
+        saleBenefit
+          ? `${priceText} 조건이며, ${saleBenefit}이라는 장점이 있습니다.`
+          : `${priceText} 조건으로 안내드리는 건물입니다.`
+      ]
+    : [
+        `오늘 소개드릴 매물은 ${locationSentence}에 위치한 ${propertyType} ${tradeType} 매물입니다.`,
+        [priceText, clean(property.summary) || clean(property.location_description)].filter(Boolean).join(' 조건이며, ')
+      ];
+
+  const floorInfo = clean(property.floor_info);
+  const currentFloor = floorInfo.includes('총') ? '' : floorInfo;
+  const totalFloor = clean(property.total_floor_info) ||
+    (floorInfo.includes('총') ? floorInfo : clean(property.floor_count));
+  const parkingText = clean(property.parking);
+  const parkingTotal = /\d+(?:\.\d+)?\s*대/u.test(parkingText) ? parkingText : '';
+  const rawDirection = clean(property.direction);
+  const directionText = rawDirection
+    .replace(/\s*주인세대\s*없음\s*/u, '')
+    .replace(/^(\S+향)\s*주출입구\s*기준$/u, '$1(주출입구 기준)')
+    .trim();
+  const ownerUnitText = clean(property.owner_unit) ||
+    (/주인세대\s*없음/u.test(rawDirection) ? '없음' : '');
+  const rentalComposition = [
+    clean(property.room_count) ? `원룸 ${clean(property.room_count)}` : '',
+    clean(property.mini_two_count) ? `미니투룸 ${clean(property.mini_two_count)}` : '',
+    clean(property.two_room_count) ? `투룸 ${clean(property.two_room_count)}` : '',
+    clean(property.owner_unit) ? `주인세대 ${clean(property.owner_unit)}` : ''
+  ].filter(Boolean).join(' / ') || clean(property.room_bath);
+
+  const basicInfo = [
+    optionalInfo('📍', '소재지', address),
+    optionalInfo('🏢', '매물종류', propertyType),
+    optionalInfo('🔑', '거래형태', tradeType),
+    optionalInfo('💰', '가격', priceText),
+    optionalInfo('🧾', '관리비', property.maintenance_fee),
+    optionalInfo('📐', isSale ? '연면적' : '면적', isSale ? (property.building_area || property.area) : property.area),
+    optionalInfo('🏙️', '해당 층', currentFloor),
+    optionalInfo('🏢', '총층수', totalFloor),
+    optionalInfo('🚪', '방/욕실', property.room_bath),
+    optionalInfo('🏘️', '총세대수', property.total_units),
+    optionalInfo('🧭', '방향', directionText),
+    optionalInfo('🏠', '주인세대', ownerUnitText),
+    optionalInfo('🚗', '총주차대수', parkingTotal),
+    optionalInfo('📅', '입주가능일', property.move_in),
+    optionalInfo('✅', '사용승인일', property.approval_date)
+  ];
+
+  const locationLines = [
+    clean(property.location_description),
+    educationText
+  ];
+
+  const structureLines = isSale
+    ? [
+        clean(property.description),
+        clean(property.land_area) ? `대지면적: ${clean(property.land_area)}` : '',
+        clean(property.total_area) ? `건축면적: ${clean(property.total_area)}` : '',
+        clean(property.building_area) ? `연면적: ${clean(property.building_area)}` : '',
+        currentFloor ? `해당 층: ${currentFloor}` : '',
+        totalFloor ? `총층수: ${totalFloor}` : '',
+        clean(property.approval_date) ? `사용승인일: ${clean(property.approval_date)}` : '',
+        clean(property.structure) ? `건물 구조: ${clean(property.structure)}` : '',
+        clean(property.elevator) ? `엘리베이터: ${clean(property.elevator)}` : '',
+        directionText ? `방향: ${directionText}` : '',
+        ownerUnitText ? `주인세대: ${ownerUnitText}` : '',
+        parkingTotal ? `총주차대수: ${parkingTotal}` : '',
+        clean(property.remodeling) ? `리모델링: ${clean(property.remodeling)}` : '',
+        clean(property.building_condition) ? `건물 상태: ${clean(property.building_condition)}` : '',
+        clean(property.total_units) ? `총 세대수: ${clean(property.total_units)}` : '',
+        clean(property.rented_units) ? `임대중 세대수: ${clean(property.rented_units)}` : '',
+        clean(property.vacant_units) ? `공실 수: ${clean(property.vacant_units)}` : '',
+        rentalComposition ? `임대구성: ${rentalComposition}` : ''
+      ]
+    : [
+        clean(property.description),
+        optionText ? `옵션: ${optionText}` : '',
+        clean(property.structure) ? `건물 구조: ${clean(property.structure)}` : '',
+        clean(property.elevator) ? `엘리베이터: ${clean(property.elevator)}` : ''
+      ];
+
+  const conditionLines = isSale
+    ? [
+        salePrice ? `매매가: ${moneyText(salePrice)}` : '',
+        takeoverPrice ? `인수금: ${moneyText(takeoverPrice)}` : '',
+        monthlyRent ? `월세수입: ${moneyText(monthlyRent)}` : '',
+        netIncome ? `월순수익: ${moneyText(netIncome)}` : ''
+      ]
+    : [
+        clean(property.maintenance_fee) ? `관리비: ${clean(property.maintenance_fee)}` : '',
+        maintenanceText ? `관리비 포함 항목: ${maintenanceText}` : '',
+        parkingTotal ? `총주차대수: ${parkingTotal}` : '',
+        clean(property.move_in) ? `입주가능일: ${clean(property.move_in)}` : ''
+      ];
+
+  const recommendationLines = isSale
+    ? [
+        clean(property.investment_point) || clean(property.recommended_for)
+      ]
+    : [recommendText];
+
+  const legalInfoLines = isSale
+    ? [
+        addInfo('중개대상물 종류', category),
+        addInfo('거래형태', tradeType),
+        addInfo('소재지', address),
+        addInfo('거래가격', salePrice ? `매매가 ${moneyText(salePrice)}` : ''),
+        takeoverPrice ? addInfo('인수금', moneyText(takeoverPrice)) : '',
+        monthlyRent ? addInfo('월세수입', moneyText(monthlyRent)) : '',
+        netIncome ? addInfo('월순수익', moneyText(netIncome)) : '',
+        clean(property.land_area) ? addInfo('대지면적', property.land_area) : '',
+        clean(property.total_area) ? addInfo('건축면적', property.total_area) : '',
+        clean(property.building_area) ? addInfo('연면적', property.building_area) : '',
+        currentFloor ? addInfo('해당 층', currentFloor) : '',
+        totalFloor ? addInfo('총층수', totalFloor) : '',
+        clean(property.approval_date) ? addInfo('사용승인일', property.approval_date) : '',
+        clean(property.structure) ? addInfo('건물구조', property.structure) : '',
+        clean(property.total_units) ? addInfo('총세대수', property.total_units) : '',
+        parkingTotal ? addInfo('총주차대수', parkingTotal) : '',
+        clean(property.elevator) ? addInfo('엘리베이터', property.elevator) : '',
+        directionText ? addInfo('방향', directionText) : '',
+        ownerUnitText ? addInfo('주인세대', ownerUnitText) : '',
+        rentalComposition ? addInfo('임대구성', rentalComposition) : ''
+      ]
+    : [
+        addInfo('중개대상물 종류', category),
+        addInfo('거래형태', tradeType),
+        addInfo('소재지', address),
+        addInfo('거래가격', [
+          property.deposit ? `보증금 ${moneyText(property.deposit)}` : '',
+          property.rent ? `월세 ${moneyText(property.rent)}` : ''
+        ].filter(Boolean).join(' / ')),
+        addInfo('관리비', property.maintenance_fee),
+        addInfo('면적', property.area),
+        addInfo('해당 층', currentFloor),
+        addInfo('총층수', totalFloor),
+        addInfo('방/욕실', property.room_bath),
+        clean(property.total_units) ? addInfo('총세대수', property.total_units) : '',
+        parkingTotal ? addInfo('총주차대수', parkingTotal) : '',
+        addInfo('방향', property.direction),
+        addInfo('입주가능일', property.move_in),
+        addInfo('사용승인일', property.approval_date)
+      ];
+
+  const bodyLines = [
+    '안녕하세요.',
+    '구미 원룸·미니투룸·투룸 임대와 상가·다가구·원룸건물 매매를 전문으로 안내하는 칸공인중개사입니다.',
     '',
-    `안녕하세요. 구미 원룸·투룸·상가·다가구 매매를 안내하는 칸공인중개사입니다.`,
-    `오늘 소개드릴 매물은 ${locationTitle}에 위치한 ${category} ${tradeType} 매물입니다.`,
-    `${locationTitle} ${category}를 찾고 계신 분들이 가격, 위치, 구조, 관리비 조건을 한 번에 비교해 보실 수 있도록 핵심 내용을 정리해 드립니다.`,
+    ...introduction.filter(Boolean),
     '',
-    '[매물 핵심 요약]',
-    addInfo('소재지', address),
-    addInfo('매물종류', category),
-    addInfo('거래형태', tradeType),
-    addInfo('가격조건', priceText),
-    addInfo('관리비', property.maintenance_fee),
-    addInfo('면적', property.area),
-    addInfo('층수', property.total_floor_info || property.floor_info),
-    addInfo('방/욕실', property.room_bath),
-    addInfo('방향', property.direction),
-    addInfo('주차', property.parking),
-    addInfo('입주가능일', property.move_in),
-    addInfo('사용승인일', property.approval_date),
+    ...section(`🏠 ${locationTitle} ${propertyType} ${tradeType} 기본정보`, basicInfo.filter(Boolean)),
     '',
-    '[위치와 생활권]',
-    clean(property.location_description) ||
-      `${locationTitle} 생활권에 있는 매물입니다. 주변 편의시설, 출퇴근 동선, 대중교통 이용 여부는 상담 시 매물 위치 기준으로 자세히 안내드리겠습니다.`,
-    property.education?.length ? property.education.join(', ') : '',
+    ...section('📍 위치와 생활권', locationLines),
     '',
-    '[구조와 내부 상태]',
-    clean(property.summary) || `${category} 구조의 매물로, 실제 조건은 현장 확인 후 안내드립니다.`,
-    clean(property.description) || '사진과 현장 상태를 기준으로 내부 구조, 옵션, 채광, 소음 여부 등을 확인해 드리겠습니다.',
-    property.room_bath ? `방/욕실 구성은 ${property.room_bath}입니다.` : '',
-    property.area ? `면적은 ${property.area} 기준으로 안내드립니다.` : '',
-    property.floor_info ? `층수 정보는 ${property.floor_info}입니다.` : '',
+    ...section(isSale ? '🏢 건물 구성과 상태' : '🛋️ 구조와 옵션', structureLines.filter(Boolean)),
     '',
-    '[옵션 및 관리비]',
-    `옵션: ${optionText}`,
-    `관리비 포함 항목: ${maintenanceText}`,
-    clean(property.elevator) ? `엘리베이터: ${property.elevator}` : '',
-    clean(property.structure) ? `건물 구조: ${property.structure}` : '',
+    ...section(isSale ? '💹 매매·수익 조건' : '💳 관리비·주차·입주 조건', conditionLines.filter(Boolean)),
     '',
-    '[주차·입주·방향]',
-    `주차: ${clean(property.parking) || '계약 전 확인'}`,
-    `입주가능일: ${clean(property.move_in) || '계약 전 확인'}`,
-    `방향: ${clean(property.direction) || '계약 전 확인'}`,
+    ...section('📷 사진 삽입 안내', photoGuide),
     '',
-    '[이런 분께 추천드립니다]',
-    recommendText,
+    ...section(isSale ? '📈 투자 포인트' : '🙋 이런 분께 추천드립니다', recommendationLines),
     '',
-    isSale ? '[투자 검토 포인트]' : '[임대 검토 포인트]',
-    isSale
-      ? [
-          property.investment_point ? clean(property.investment_point) : '월세수입, 인수가, 융자 조건, 공실 여부를 함께 검토해 볼 수 있는 매물입니다.',
-          property.risk_note ? `참고사항: ${clean(property.risk_note)}` : ''
-        ].filter(Boolean).join('\n')
-      : '보증금, 월세, 관리비, 입주일, 옵션 상태를 함께 비교하시면 실제 월 지출을 판단하기 좋습니다.',
+    ...section('🌐 칸공인중개사 홈페이지·앱 안내', [
+      '더 많은 구미 원룸·미니투룸·투룸 임대와 상가·다가구·원룸건물 매매 매물은 칸공인중개사 홈페이지에서 확인하실 수 있습니다.',
+      '',
+      '홈페이지: https://kan-homepage-final.vercel.app',
+      '',
+      '스마트폰에서는 “칸 공인중개사” 앱을 이용하시면 매물 확인과 전화·문자·상담 문의를 더욱 편리하게 이용하실 수 있습니다.'
+    ]),
     '',
-    '[사진 안내]',
-    photoGuide,
+    ...section('📞 전화·문자·상담 문의', [
+      '매물은 현장 상황에 따라 계약 진행 여부나 조건이 달라질 수 있습니다.',
+      '방문 전 전화 또는 문자로 매물 가능 여부를 확인해 주시면 빠르게 안내드리겠습니다.',
+      `문의: ${OFFICE.phone} / ${OFFICE.tel}`
+    ]),
     '',
-    '[문의 안내]',
-    '매물은 현장 상황에 따라 계약 진행 여부나 조건이 달라질 수 있습니다.',
-    '방문 전 전화 또는 문자로 매물 가능 여부를 확인해 주시면 빠르게 안내드리겠습니다.',
+    ...section('🏠 칸공인중개사사무소', [
+      `대표공인중개사: ${OFFICE.broker}`,
+      `문의: ${OFFICE.phone} / ${OFFICE.tel}`,
+      `주소: ${OFFICE.address}`,
+      `등록번호: ${OFFICE.regNo}`
+    ]),
     '',
-    `칸공인중개사사무소`,
-    `대표공인중개사: ${OFFICE.broker}`,
-    `문의: ${OFFICE.phone} / ${OFFICE.tel}`,
-    `주소: ${OFFICE.address}`,
-    `등록번호: ${OFFICE.regNo}`,
-    '',
-    '[중개대상물 표시·광고 사항]',
-    addInfo('중개대상물 종류', category),
-    addInfo('거래형태', tradeType),
-    addInfo('소재지', address),
-    addInfo('거래가격', priceText),
-    addInfo('관리비', property.maintenance_fee),
-    addInfo('면적', property.area),
-    addInfo('층수', property.total_floor_info || property.floor_info),
-    addInfo('방/욕실', property.room_bath),
-    addInfo('방향', property.direction),
-    addInfo('입주가능일', property.move_in),
-    addInfo('주차', property.parking),
-    addInfo('사용승인일', property.approval_date),
-    clean(property.legal_notice),
-    '',
-    '※ 위 내용은 등록된 매물 정보를 기준으로 작성되었으며, 세부 조건은 계약 전 현장 및 공부서류 확인 후 최종 안내드립니다.'
-  ].filter((line) => line !== '').join('\n'));
+    ...section('📋 중개대상물 표시·광고 사항', [
+      ...legalInfoLines.filter(Boolean),
+      clean(property.legal_notice),
+      '',
+      '※ 위 내용은 등록된 매물 정보를 기준으로 작성되었으며, 세부 조건은 계약 전 현장 및 공부서류 확인 후 최종 안내드립니다.'
+    ])
+  ];
+
+  const body = cleanBlogBodyStart(bodyLines.join('\n'));
 
   const makeTag = (value) => String(value || '')
     .replace(/[#\s]/g, '')
     .replace(/[^0-9A-Za-z가-힣_]/g, '');
 
-  const tagSeeds = [
-    '구미부동산',
-    '칸공인중개사',
-    dong ? `구미${dong}` : '',
-    dong && category ? `${dong}${category}` : '',
-    category.includes('원룸') ? '구미원룸' : '',
-    category.includes('투룸') ? '구미투룸' : '',
-    category.includes('상가') ? '구미상가임대' : '',
-    isSale ? '구미다가구매매' : '',
-    isSale ? '구미수익형부동산' : '',
-    tradeType.includes('월세') ? '구미월세' : '',
-    `${makeTag(category)}${makeTag(tradeType)}`
-  ];
+  const tagSeeds = isSale
+    ? [
+        '구미부동산',
+        '칸공인중개사',
+        dong ? `구미${dong}` : '',
+        dong && propertyType ? `${dong}${propertyType}매매` : '',
+        propertyType.includes('원룸') ? '구미원룸건물매매' : '',
+        propertyType.includes('다가구') ? '구미다가구매매' : '',
+        propertyType.includes('상가') ? '구미상가매매' : '',
+        '구미건물매매',
+        '구미수익형부동산'
+      ]
+    : [
+        '구미부동산',
+        '칸공인중개사',
+        dong ? `구미${dong}` : '',
+        propertyType ? `구미${propertyType}` : '',
+        dong && propertyType ? `${dong}${propertyType}` : '',
+        tradeType.includes('월세') ? '구미월세' : '',
+        `${makeTag(propertyType)}${makeTag(tradeType)}`
+      ];
 
   const tags = [...new Set(tagSeeds.map(makeTag).filter(Boolean))]
     .map((tag) => `#${tag}`)
