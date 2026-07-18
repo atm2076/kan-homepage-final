@@ -6672,6 +6672,7 @@ function buildNaverBlogAd(property) {
 
   const photoSource = toTextList(property.photos).length ? property.photos : property.photoUrls;
   const photos = toList(photoSource);
+  const photoCaptions = toList(property.photo_captions);
 
   const salePrice = property.sale_price || property.salePrice || property.deposit;
   const takeoverPrice =
@@ -6787,7 +6788,6 @@ function buildNaverBlogAd(property) {
   };
   const rentalBenefit = [
     titleBenefitText(sanitizeNarrative(property.summary)),
-    titleBenefitText(sanitizeNarrative(property.title)),
     titleBenefitText(sanitizeNarrative(property.location_description)),
     clean(property.move_in).includes('즉시') ? '즉시입주' : '',
     clean(property.remodeling) ? titleBenefitText(property.remodeling) : ''
@@ -6801,7 +6801,21 @@ function buildNaverBlogAd(property) {
     titleBenefitText(property.summary)
   ].filter(Boolean)[0] || '';
 
-  const title = compact(
+  const distinctiveTitleText = [
+    clean(property.location_description),
+    clean(property.summary),
+    clean(property.remodeling)
+  ].join(' ');
+  const distinctiveTitleFeatures = uniqueList([
+    /통근버스(?:\s*노선)?/u.exec(distinctiveTitleText)?.[0],
+    /도서관(?:\s*인근)?/u.exec(distinctiveTitleText)?.[0],
+    /전체\s*리모델링/u.exec(distinctiveTitleText)?.[0],
+    /산업단지(?:\s*인근)?/u.exec(distinctiveTitleText)?.[0],
+    /초역세권/u.exec(distinctiveTitleText)?.[0],
+    /대학가(?:\s*인근)?/u.exec(distinctiveTitleText)?.[0]
+  ]).slice(0, 2).join('·');
+
+  const automaticTitle = compact(
     isSale
       ? [
           `${locationTitle} ${propertyType} 매매｜${titleSalePrice ? `매매가 ${moneyText(titleSalePrice)}` : (titleTakeoverPrice ? `인수금 ${moneyText(titleTakeoverPrice)}` : '')}${titleMonthlyRent ? `·월세수입 ${moneyText(titleMonthlyRent)}` : ''}`,
@@ -6811,10 +6825,10 @@ function buildNaverBlogAd(property) {
       : [
           `${locationTitle} ${propertyType} ${tradeType}`,
           rentalPriceTitle,
-          maintenanceFeeText.includes('포함') ? '관리비 포함' : '',
-          rentalBenefit
+          distinctiveTitleFeatures
         ].filter(Boolean).join(' ').replace(` ${rentalPriceTitle}`, `｜${rentalPriceTitle}`)
   );
+  const title = clean(property.title) || automaticTitle;
 
   const addInfo = (label, value) => {
     const text = clean(value);
@@ -6823,7 +6837,7 @@ function buildNaverBlogAd(property) {
 
   const optionalInfo = (icon, label, value) => {
     const text = clean(value);
-    return text ? `${icon} ${label}\n${text}` : '';
+    return text ? `${icon} ${label}: ${text}` : '';
   };
 
   const section = (heading, lines) => {
@@ -6842,7 +6856,9 @@ function buildNaverBlogAd(property) {
   };
 
   const photoGuide = photos.length
-    ? [`📷 등록된 매물사진 ${photos.length}장 삽입 위치`]
+    ? photos.map((_, index) => `📷 ${index + 1}번 사진${photoCaptions[index] ? ` — ${photoCaptions[index]}` : ''}`)
+    : photoCaptions.length
+      ? photoCaptions.map((caption, index) => `📷 ${index + 1}번 사진 — ${caption}`)
     : ['등록된 사진이 없습니다.'];
 
   const recommendText = sanitizeNarrative(property.recommended_for) ||
@@ -6881,7 +6897,7 @@ function buildNaverBlogAd(property) {
   const rawDirection = clean(property.direction);
   const directionText = rawDirection
     .replace(/\s*주인세대\s*없음\s*/u, '')
-    .replace(/^(\S+향)\s*주출입구\s*기준$/u, '$1(주출입구 기준)')
+    .replace(/^(\S+향)\s*\/?\s*((?:주출입구|방)\s*기준)$/u, '$1($2)')
     .trim();
   const ownerUnitText = clean(property.owner_unit) ||
     (/주인세대\s*없음/u.test(rawDirection) ? '없음' : '');
@@ -6892,19 +6908,30 @@ function buildNaverBlogAd(property) {
     clean(property.owner_unit) ? `주인세대 ${clean(property.owner_unit)}` : ''
   ].filter(Boolean).join(' / ') || clean(property.room_bath);
 
+  const maintenanceDisplaySource = maintenanceFeeText
+    .replace(/^관리비\s*/u, '')
+    .replace(/\s*(?:별도|포함)(?:\s*\(.*)?$/u, '')
+    .trim();
+  const maintenanceDisplay = maintenanceDisplaySource
+    ? moneyText(maintenanceDisplaySource)
+    : maintenanceFeeText;
+  const parkingDisplay = parkingTotal.replace(/^총\s*/u, '');
+  const floorDisplay = [currentFloor, totalFloor].filter(Boolean).join(' / ');
+
   const basicInfo = [
     optionalInfo('📍', '소재지', address),
     optionalInfo('🏢', '매물종류', propertyType),
     optionalInfo('🔑', '거래형태', tradeType),
     optionalInfo('💰', '가격', priceText),
+    !isSale ? optionalInfo('🧾', '관리비', maintenanceDisplay) : '',
     optionalInfo('📐', isSale ? '연면적' : '면적', isSale ? (property.building_area || property.area) : property.area),
-    optionalInfo('🏙️', '해당 층', currentFloor),
-    optionalInfo('🏢', '총층수', totalFloor),
+    optionalInfo('🏠', '해당층/총층수', floorDisplay),
     optionalInfo('🚪', '방/욕실', property.room_bath),
     optionalInfo('🏘️', '총세대수', property.total_units),
     optionalInfo('🧭', '방향', directionText),
-    optionalInfo('🏠', '주인세대', ownerUnitText),
-    optionalInfo('🚗', '총주차대수', parkingTotal),
+    isSale ? optionalInfo('🏠', '주인세대', ownerUnitText) : '',
+    optionalInfo('🚗', '총주차대수', parkingDisplay),
+    !isSale ? optionalInfo('📅', '입주가능일', property.move_in) : '',
     optionalInfo('✅', '사용승인일', property.approval_date)
   ];
 
@@ -6934,6 +6961,11 @@ function buildNaverBlogAd(property) {
         rentalComposition ? `임대구성: ${rentalComposition}` : ''
       ]
     : [
+        clean(property.description),
+        clean(property.area) ? `전용면적: ${clean(property.area)}` : '',
+        currentFloor ? `해당 층: ${currentFloor}` : '',
+        directionText ? `방향: ${directionText}` : '',
+        clean(property.remodeling) ? `리모델링: ${clean(property.remodeling)}` : '',
         optionText ? `옵션: ${optionText}` : '',
         clean(property.structure) ? `건물 구조: ${clean(property.structure)}` : '',
         clean(property.elevator) ? `엘리베이터: ${clean(property.elevator)}` : ''
@@ -7016,13 +7048,10 @@ function buildNaverBlogAd(property) {
     '',
     ...section(isSale ? '💹 매매·수익 조건' : '💳 관리비·주차·입주 조건', conditionLines.filter(Boolean)),
     '',
-    ...(isSale
-      ? section('📷 사진 삽입 안내', photoGuide)
-      : [
-          '━━━━━━━━━━━━━━━━━━',
-          `📷 ${locationTitle} ${propertyType} ${tradeType} 내부사진`,
-          '━━━━━━━━━━━━━━━━━━'
-        ]),
+    ...section(
+      isSale ? '📷 사진 삽입 안내' : `📷 ${locationTitle} ${propertyType} ${tradeType} 내부사진`,
+      photoGuide
+    ),
     '',
     ...section(isSale ? '📈 투자 포인트' : '🙋 이런 분께 추천드립니다', recommendationLines),
     '',
