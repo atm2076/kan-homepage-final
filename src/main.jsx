@@ -5858,28 +5858,37 @@ if (isStaffMode && currentStaff?.code) {
               <button
                 type="button"
                 onClick={async () => {
-                  setAdvertisingPropertyId(property.id);
-                  const blogAd = buildNaverBlogAd(property);
-                  const warningMessage = blogAd.warnings.length
-                    ? `블로그 검증 경고: ${blogAd.warnings.join(' / ')}`
-                    : '';
                   try {
-                    window.open(
-                      'https://blog.naver.com/GoBlogWrite.naver',
-                      '_blank',
-                      'noopener,noreferrer'
+                    setAdvertisingPropertyId(property?.id || '');
+                    const blogAd = buildNaverBlogAd(property);
+                    const warningMessage = blogAd.warnings.length
+                      ? `블로그 검증 경고: ${blogAd.warnings.join(' / ')}`
+                      : '';
+                    let popupWarning = '';
+                    try {
+                      window.open(
+                        'https://blog.naver.com/GoBlogWrite.naver',
+                        '_blank',
+                        'noopener,noreferrer'
+                      );
+                    } catch {
+                      popupWarning = '네이버 블로그 창을 열지 못했습니다. 팝업 허용 여부를 확인해 주세요.';
+                    }
+                    const copied = await copyAdvertisementText(
+                      `${blogAd.title}\n\n${blogAd.body}\n\n${blogAd.tags}`
                     );
-                  } catch {
-                    // 팝업이 차단되어도 아래 복사 동작은 계속한다.
-                  }
-                  const copied = await copyAdvertisementText(
-                    `${blogAd.title}\n\n${blogAd.body}\n\n${blogAd.tags}`
-                  );
-                  const message =
-                    '네이버 블로그 문구가 복사되었습니다. 네이버 블로그 글쓰기 화면에 붙여넣으세요.';
-                  setStatus(copied ? [message, warningMessage].filter(Boolean).join(' ') : '복사 실패');
-                  if (copied) {
-                    window.alert(message);
+                    const message = copied
+                      ? '네이버 블로그 문구가 복사되었습니다. 네이버 블로그 글쓰기 화면에 붙여넣으세요.'
+                      : '네이버 블로그 문구를 복사하지 못했습니다. 다시 시도해 주세요.';
+                    const statusMessage = [message, popupWarning, warningMessage].filter(Boolean).join(' ');
+                    setStatus(statusMessage);
+                    window.alert(statusMessage);
+                  } catch (error) {
+                    console.error('네이버 블로그 문구 생성 오류:', error);
+                    const errorMessage =
+                      '네이버 블로그 문구 생성 중 오류가 발생했습니다. 매물 정보를 확인한 뒤 다시 시도해 주세요.';
+                    setStatus(errorMessage);
+                    window.alert(errorMessage);
                   }
                 }}
               >
