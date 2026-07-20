@@ -5860,10 +5860,9 @@ if (isStaffMode && currentStaff?.code) {
                 onClick={async () => {
                   setAdvertisingPropertyId(property.id);
                   const blogAd = buildNaverBlogAd(property);
-                  if (blogAd.warnings.length) {
-                    setStatus(`블로그 검증 경고: ${blogAd.warnings.join(' / ')}`);
-                    return;
-                  }
+                  const warningMessage = blogAd.warnings.length
+                    ? `블로그 검증 경고: ${blogAd.warnings.join(' / ')}`
+                    : '';
                   try {
                     window.open(
                       'https://blog.naver.com/GoBlogWrite.naver',
@@ -5878,7 +5877,7 @@ if (isStaffMode && currentStaff?.code) {
                   );
                   const message =
                     '네이버 블로그 문구가 복사되었습니다. 네이버 블로그 글쓰기 화면에 붙여넣으세요.';
-                  setStatus(copied ? message : '복사 실패');
+                  setStatus(copied ? [message, warningMessage].filter(Boolean).join(' ') : '복사 실패');
                   if (copied) {
                     window.alert(message);
                   }
@@ -6551,7 +6550,7 @@ function buildNaverBlogAdLegacy(property) {
 }
 
 function normalizeBlogText(value) {
-  return String(value || '')
+  return String(value ?? '')
     .replace(/빔프로잭트|빔프로젝트/gu, '빔프로젝터')
     .replace(/가스렌지/gu, '가스레인지')
     .replace(/천장형실링펜/gu, '천장형 실링팬')
@@ -6565,11 +6564,20 @@ function normalizeBlogList(...sources) {
   const result = [];
   const seen = new Set();
   const append = (source) => {
+    if (source == null || source === '') return;
     if (Array.isArray(source)) {
       source.forEach(append);
       return;
     }
-    String(source || '')
+    if (typeof source === 'object') {
+      const preferredValue = [
+        source.url, source.src, source.value, source.label,
+        source.name, source.caption, source.description, source.text
+      ].find((value) => value != null && value !== '');
+      if (preferredValue != null) append(preferredValue);
+      return;
+    }
+    String(source)
       .split(/[\n,]+/u)
       .map(normalizeBlogText)
       .filter(Boolean)
@@ -6591,6 +6599,7 @@ function normalizePhotoCaption(value) {
 }
 
 function normalizeBlogProperty(property = {}) {
+  property = property && typeof property === 'object' ? property : {};
   const clean = normalizeBlogText;
   const category = clean(property.category) || '부동산 매물';
   const tradeType = clean(property.trade_type || property.tradeType) || '거래형태 확인';
