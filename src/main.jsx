@@ -1598,22 +1598,23 @@ function NaverMapBox({ setKeyword, setDealMode, setCategory, setFilters, setSele
   useEffect(() => {
     let isMounted = true;
 
-    const clearMarkers = () => {
-     const markers = Array.isArray(markersRef.current)
-  ? markersRef.current
-  : [];
+const clearMarkers = () => {
+  const markers = Array.isArray(markersRef.current)
+    ? markersRef.current
+    : [];
 
-markers.forEach((marker) => {
-  if (!marker || typeof marker.setMap !== 'function') return;
+  markers.forEach((marker) => {
+    if (!marker || typeof marker.setMap !== 'function') return;
 
-  try {
-    marker.setMap(null);
-  } catch {
-    // 네이버 지도 인증 실패 시 마커 정리 오류 무시
-  }
-});
-      markersRef.current = [];
-    };
+    try {
+      marker.setMap(null);
+    } catch {
+      // 네이버 지도 인증 실패 시 마커 정리 오류 무시
+    }
+  });
+
+  markersRef.current = [];
+};
 
     const getZoomStage = (zoom) => {
       if (zoom >= 15) return 'property';
@@ -1868,22 +1869,23 @@ function CustomerMapView({ properties, selected, onSelect, keyword, setKeyword, 
     const resizeTimers = [];
     let resizeCustomerMap = () => {};
 
-    const clearMarkers = () => {
-     const markers = Array.isArray(markersRef.current)
-  ? markersRef.current
-  : [];
+const clearMarkers = () => {
+  const markers = Array.isArray(markersRef.current)
+    ? markersRef.current
+    : [];
 
-markers.forEach((marker) => {
-  if (!marker || typeof marker.setMap !== 'function') return;
+  markers.forEach((marker) => {
+    if (!marker || typeof marker.setMap !== 'function') return;
 
-  try {
-    marker.setMap(null);
-  } catch {
-    // 네이버 지도 인증 실패 시 마커 정리 오류 무시
-  }
-});
-      markersRef.current = [];
-    };
+    try {
+      marker.setMap(null);
+    } catch {
+      // 네이버 지도 인증 실패 시 마커 정리 오류 무시
+    }
+  });
+
+  markersRef.current = [];
+};
 
     loadNaverMapScript()
       .then(() => {
@@ -5935,8 +5937,28 @@ if (isStaffMode && currentStaff?.code) {
               <button
                 type="button"
                 onClick={async () => {
-                  const copied = await copyAdvertisementText(instagramText);
-                  setStatus(copied ? '인스타 문구 복사 완료' : '복사 실패');
+                  try {
+                    const textarea = document.createElement('textarea');
+textarea.value = instagramText;
+textarea.style.position = 'fixed';
+textarea.style.left = '-9999px';
+document.body.appendChild(textarea);
+textarea.focus();
+textarea.select();
+
+const copied = document.execCommand('copy');
+document.body.removeChild(textarea);
+                    const message = copied
+                      ? '인스타 문구가 복사되었습니다. 인스타그램 작성 화면에 붙여넣으세요.'
+                      : '인스타 문구를 복사하지 못했습니다. 다시 시도해 주세요.';
+                    setStatus(message);
+                    window.alert(message);
+                  } catch (error) {
+                    console.error('인스타 문구 복사 오류:', error);
+                    const message = '인스타 문구 복사 중 오류가 발생했습니다. 다시 시도해 주세요.';
+                    setStatus(message);
+                    window.alert(message);
+                  }
                 }}
               >
                 인스타 문구
@@ -5945,8 +5967,28 @@ if (isStaffMode && currentStaff?.code) {
               <button
                 type="button"
                 onClick={async () => {
-                  const copied = await copyAdvertisementText(facebookText);
-                  setStatus(copied ? '페이스북 문구 복사 완료' : '복사 실패');
+                  try {
+                    const textarea = document.createElement('textarea');
+textarea.value = facebookText;
+textarea.style.position = 'fixed';
+textarea.style.left = '-9999px';
+document.body.appendChild(textarea);
+textarea.focus();
+textarea.select();
+
+const copied = document.execCommand('copy');
+document.body.removeChild(textarea);
+                    const message = copied
+                      ? '페이스북 문구가 복사되었습니다. 페이스북 작성 화면에 붙여넣으세요.'
+                      : '페이스북 문구를 복사하지 못했습니다. 다시 시도해 주세요.';
+                    setStatus(message);
+                    window.alert(message);
+                  } catch (error) {
+                    console.error('페이스북 문구 복사 오류:', error);
+                    const message = '페이스북 문구 복사 중 오류가 발생했습니다. 다시 시도해 주세요.';
+                    setStatus(message);
+                    window.alert(message);
+                  }
                 }}
               >
                 페이스북 문구
