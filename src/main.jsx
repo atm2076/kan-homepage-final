@@ -3941,36 +3941,55 @@ function buildInstagramPublishData() {
   };
 }
 
-function handleCopy(label, text) {
-  const copyText = String(text || '').trim();
+async function handleCopy(label, text) {
+  const copyText = String(text ?? '').trim();
 
   if (!copyText) {
-    setStatus(`${label} 내용이 없습니다.`);
+    const message = `${label} 내용이 없습니다.`;
+    setStatus(message);
+    window.alert(message);
     return;
   }
 
-  if (navigator.clipboard && window.isSecureContext) {
-    navigator.clipboard.writeText(copyText)
-      .then(() => setStatus(`${label} 복사 완료했습니다.`))
-      .catch(() => setStatus(`${label} 복사에 실패했습니다. 내용을 직접 선택해서 복사해주세요.`));
-    return;
-  }
-
-  const textarea = document.createElement('textarea');
-  textarea.value = copyText;
-  textarea.style.position = 'fixed';
-  textarea.style.left = '-9999px';
-  document.body.appendChild(textarea);
-  textarea.focus();
-  textarea.select();
+  let textarea = null;
 
   try {
-    document.execCommand('copy');
-    setStatus(`${label} 복사 완료했습니다.`);
+    if (navigator.clipboard && window.isSecureContext) {
+      await navigator.clipboard.writeText(copyText);
+    } else {
+      textarea = document.createElement('textarea');
+      textarea.value = copyText;
+      textarea.setAttribute('readonly', '');
+      textarea.style.position = 'fixed';
+      textarea.style.left = '-9999px';
+      textarea.style.opacity = '0';
+
+      document.body.appendChild(textarea);
+      textarea.focus();
+      textarea.select();
+
+      const copied = document.execCommand('copy');
+
+      if (!copied) {
+        throw new Error('복사 명령이 실행되지 않았습니다.');
+      }
+    }
+
+    const message = `${label} 복사가 완료되었습니다.`;
+    setStatus(message);
+    window.alert(message);
   } catch (error) {
-    setStatus(`${label} 복사에 실패했습니다. 내용을 직접 선택해서 복사해주세요.`);
+    console.error(`${label} 복사 실패`, error);
+
+    const message =
+      `${label} 복사에 실패했습니다. 내용을 직접 선택해서 복사해주세요.`;
+
+    setStatus(message);
+    window.alert(message);
   } finally {
-    document.body.removeChild(textarea);
+    if (textarea?.parentNode) {
+      textarea.parentNode.removeChild(textarea);
+    }
   }
 }
 
@@ -5934,65 +5953,12 @@ if (isStaffMode && currentStaff?.code) {
                 당근
               </button>
 
-              <button
-                type="button"
-                onClick={async () => {
-                  try {
-                    const textarea = document.createElement('textarea');
-textarea.value = instagramText;
-textarea.style.position = 'fixed';
-textarea.style.left = '-9999px';
-document.body.appendChild(textarea);
-textarea.focus();
-textarea.select();
-
-const copied = document.execCommand('copy');
-document.body.removeChild(textarea);
-                    const message = copied
-                      ? '인스타 문구가 복사되었습니다. 인스타그램 작성 화면에 붙여넣으세요.'
-                      : '인스타 문구를 복사하지 못했습니다. 다시 시도해 주세요.';
-                    setStatus(message);
-                    window.alert(message);
-                  } catch (error) {
-                    console.error('인스타 문구 복사 오류:', error);
-                    const message = '인스타 문구 복사 중 오류가 발생했습니다. 다시 시도해 주세요.';
-                    setStatus(message);
-                    window.alert(message);
-                  }
-                }}
-              >
-                인스타 문구
-              </button>
-
-              <button
-                type="button"
-                onClick={async () => {
-                  try {
-                    const textarea = document.createElement('textarea');
-textarea.value = facebookText;
-textarea.style.position = 'fixed';
-textarea.style.left = '-9999px';
-document.body.appendChild(textarea);
-textarea.focus();
-textarea.select();
-
-const copied = document.execCommand('copy');
-document.body.removeChild(textarea);
-                    const message = copied
-                      ? '페이스북 문구가 복사되었습니다. 페이스북 작성 화면에 붙여넣으세요.'
-                      : '페이스북 문구를 복사하지 못했습니다. 다시 시도해 주세요.';
-                    setStatus(message);
-                    window.alert(message);
-                  } catch (error) {
-                    console.error('페이스북 문구 복사 오류:', error);
-                    const message = '페이스북 문구 복사 중 오류가 발생했습니다. 다시 시도해 주세요.';
-                    setStatus(message);
-                    window.alert(message);
-                  }
-                }}
-              >
-                페이스북 문구
-              </button>
+              <SocialPhotoShareButtons
+                property={property}
+                instagramText={instagramText}
+                facebookText={facebookText}
+                setStatus={setStatus}
+              />
             </div>
           )}
         </div>
@@ -6989,6 +6955,272 @@ async function copyAdvertisementText(text) {
     document.body.removeChild(textarea);
     return copied;
   }
+}
+
+const MAX_SOCIAL_SHARE_PHOTOS = 20;
+
+function getShareImageExtension(mimeType, url = '') {
+  const normalizedType = String(mimeType || '').toLowerCase();
+  if (normalizedType.includes('png')) return 'png';
+  if (normalizedType.includes('webp')) return 'webp';
+  if (normalizedType.includes('gif')) return 'gif';
+  if (normalizedType.includes('heic')) return 'heic';
+
+  const urlExtension = String(url).match(/\.(jpe?g|png|webp|gif|heic)(?:[?#]|$)/i)?.[1];
+  if (urlExtension) return urlExtension.toLowerCase().replace('jpeg', 'jpg');
+
+  return 'jpg';
+}
+
+function getShareFileBaseName(property = {}) {
+  const raw = String(property.title || property.address || '칸공인중개사-매물사진')
+    .replace(/[^0-9A-Za-z가-힣_-]+/g, '-')
+    .replace(/^-+|-+$/g, '')
+    .slice(0, 48);
+
+  return raw || '칸공인중개사-매물사진';
+}
+
+async function photoUrlToShareFile(url, index, property) {
+  const response = await fetch(url, {
+    mode: 'cors',
+    credentials: 'omit',
+    cache: 'no-store'
+  });
+
+  if (!response.ok) {
+    throw new Error(`사진 불러오기 실패 (${response.status})`);
+  }
+
+  const blob = await response.blob();
+  const imageType = blob.type || 'image/jpeg';
+
+  if (!imageType.startsWith('image/')) {
+    throw new Error('공유할 수 있는 이미지 파일이 아닙니다.');
+  }
+
+  const extension = getShareImageExtension(imageType, url);
+  const fileName = `${getShareFileBaseName(property)}-${String(index + 1).padStart(2, '0')}.${extension}`;
+
+  return new File([blob], fileName, {
+    type: imageType,
+    lastModified: Date.now()
+  });
+}
+
+function canSharePhotoFiles(files) {
+  if (!files.length || typeof navigator.share !== 'function') return false;
+  if (typeof navigator.canShare !== 'function') return true;
+
+  try {
+    return navigator.canShare({ files });
+  } catch {
+    return false;
+  }
+}
+
+function downloadShareFile(file) {
+  const objectUrl = URL.createObjectURL(file);
+  const anchor = document.createElement('a');
+  anchor.href = objectUrl;
+  anchor.download = file.name;
+  anchor.style.display = 'none';
+  document.body.appendChild(anchor);
+  anchor.click();
+  document.body.removeChild(anchor);
+  window.setTimeout(() => URL.revokeObjectURL(objectUrl), 1500);
+}
+
+function downloadShareFiles(files) {
+  files.forEach((file, index) => {
+    window.setTimeout(() => downloadShareFile(file), index * 220);
+  });
+}
+
+function SocialPhotoShareButtons({ property, instagramText, facebookText, setStatus }) {
+  const photoUrls = useMemo(
+    () =>
+      toTextList(property?.photos)
+        .map((url) => String(url || '').trim())
+        .filter((url) => /^https?:\/\//i.test(url))
+        .slice(0, MAX_SOCIAL_SHARE_PHOTOS),
+    [property?.photos]
+  );
+  const [photoState, setPhotoState] = useState({
+    loading: photoUrls.length > 0,
+    files: [],
+    failedCount: 0
+  });
+
+  useEffect(() => {
+    let active = true;
+
+    if (!photoUrls.length) {
+      setPhotoState({ loading: false, files: [], failedCount: 0 });
+      return () => {
+        active = false;
+      };
+    }
+
+    setPhotoState({ loading: true, files: [], failedCount: 0 });
+
+    Promise.allSettled(
+      photoUrls.map((url, index) => photoUrlToShareFile(url, index, property))
+    ).then((results) => {
+      if (!active) return;
+
+      const files = results
+        .filter((result) => result.status === 'fulfilled')
+        .map((result) => result.value);
+
+      setPhotoState({
+        loading: false,
+        files,
+        failedCount: results.length - files.length
+      });
+    });
+
+    return () => {
+      active = false;
+    };
+  }, [property?.id, photoUrls]);
+
+ function copyAdvertisementTextSync(text) {
+  const copyText = String(text ?? '').trim();
+
+  if (!copyText) return false;
+
+  const textarea = document.createElement('textarea');
+
+  try {
+    textarea.value = copyText;
+    textarea.setAttribute('readonly', '');
+    textarea.style.position = 'fixed';
+    textarea.style.left = '-9999px';
+    textarea.style.top = '0';
+    textarea.style.opacity = '0';
+
+    document.body.appendChild(textarea);
+    textarea.focus();
+    textarea.select();
+    textarea.setSelectionRange(0, textarea.value.length);
+
+    return document.execCommand('copy');
+  } catch (error) {
+    console.error('공유 문구 복사 실패:', error);
+    return false;
+  } finally {
+    if (textarea.parentNode) {
+      textarea.parentNode.removeChild(textarea);
+    }
+  }
+}
+async function handleShare(text, platformName) {
+  const files = photoState.files;
+
+  // 휴대폰이나 공유 기능을 지원하는 기기
+  if (canSharePhotoFiles(files)) {
+    try {
+      setStatus(
+        `${platformName} 공유창을 여는 중입니다. 공유할 앱을 선택해 주세요.`
+      );
+
+      await navigator.share({
+        title: property?.title || `${platformName} 매물 안내`,
+        text,
+        files
+      });
+
+      const failedMessage = photoState.failedCount
+        ? ` 불러오지 못한 사진 ${photoState.failedCount}장은 제외되었습니다.`
+        : '';
+
+      const message =
+        `${platformName}용 사진 ${files.length}장을 공유했습니다.` +
+        `${failedMessage}`;
+
+      setStatus(message);
+      window.alert(message);
+      return;
+    } catch (error) {
+      if (error?.name === 'AbortError') {
+        const message = '공유가 취소되었습니다.';
+        setStatus(message);
+        window.alert(message);
+        return;
+      }
+
+      console.warn(
+        `${platformName} 사진 공유 실패, 다운로드 방식으로 전환:`,
+        error
+      );
+    }
+  }
+
+  // 컴퓨터 또는 직접 공유가 지원되지 않는 브라우저
+  let copied = copyAdvertisementTextSync(text);
+
+  if (!copied) {
+    copied = await copyAdvertisementText(text);
+  }
+
+  if (files.length) {
+    downloadShareFiles(files);
+
+    const failedMessage = photoState.failedCount
+      ? ` 불러오지 못한 사진 ${photoState.failedCount}장은 제외되었습니다.`
+      : '';
+
+    const copyMessage = copied
+      ? '문구도 복사했습니다. 인스타그램 설명란에서 Ctrl + V를 누르세요.'
+      : '문구 복사는 실패했습니다. 문구를 직접 복사해 주세요.';
+
+    const message =
+      `사진 ${files.length}장 다운로드를 시작했습니다. ` +
+      `${copyMessage}${failedMessage}`;
+
+    setStatus(message);
+    window.alert(message);
+    return;
+  }
+
+  if (!photoUrls.length) {
+    const message = copied
+      ? `등록된 사진이 없어 ${platformName} 문구만 복사했습니다.`
+      : `등록된 사진이 없고 ${platformName} 문구도 복사하지 못했습니다.`;
+
+    setStatus(message);
+    window.alert(message);
+    return;
+  }
+
+  const message = copied
+    ? `사진을 불러오지 못해 ${platformName} 문구만 복사했습니다.`
+    : `사진과 ${platformName} 문구를 모두 준비하지 못했습니다. 다시 시도해 주세요.`;
+
+  setStatus(message);
+  window.alert(message);
+}
+  const preparingLabel = photoState.loading ? '사진 준비 중…' : '';
+
+  return (
+    <>
+      <button
+        type="button"
+        disabled={photoState.loading}
+        onClick={() => handleShare(instagramText, '인스타그램')}
+      >
+        {preparingLabel || '인스타 사진·문구'}
+      </button>
+      <button
+        type="button"
+        disabled={photoState.loading}
+        onClick={() => handleShare(facebookText, '페이스북')}
+      >
+        {preparingLabel || '페이스북 사진·문구'}
+      </button>
+    </>
+  );
 }
 function AdminPropertyTabs({ property, activeTab, setActiveTab }) {
   const [daangnOpen, setDaangnOpen] = useState(false);
