@@ -7119,7 +7119,7 @@ async function handleShare(text, platformName) {
   const files = photoState.files;
 
   // 휴대폰이나 공유 기능을 지원하는 기기
-  if (canSharePhotoFiles(files)) {
+if (files.length > 0 && typeof navigator.share === 'function') {
     try {
       setStatus(
         `${platformName} 공유창을 여는 중입니다. 공유할 앱을 선택해 주세요.`
