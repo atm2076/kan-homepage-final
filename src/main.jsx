@@ -7125,11 +7125,11 @@ if (files.length > 0 && typeof navigator.share === 'function') {
         `${platformName} 공유창을 여는 중입니다. 공유할 앱을 선택해 주세요.`
       );
 
-      await navigator.share({
-        title: property?.title || `${platformName} 매물 안내`,
-        text,
-        files
-      });
+     copyAdvertisementTextSync(text);
+
+await navigator.share({
+  files
+});
 
       const failedMessage = photoState.failedCount
         ? ` 불러오지 못한 사진 ${photoState.failedCount}장은 제외되었습니다.`
