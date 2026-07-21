@@ -7116,7 +7116,7 @@ function SocialPhotoShareButtons({ property, instagramText, facebookText, setSta
   }
 }
 async function handleShare(text, platformName) {
-  const files = photoState.files;
+ const files = photoState.files.slice(0, 3);
 
   // 휴대폰이나 공유 기능을 지원하는 기기
 if (files.length > 0 && typeof navigator.share === 'function') {
@@ -7125,11 +7125,9 @@ if (files.length > 0 && typeof navigator.share === 'function') {
         `${platformName} 공유창을 여는 중입니다. 공유할 앱을 선택해 주세요.`
       );
 
-     copyAdvertisementTextSync(text);
-
-await navigator.share({
-  files
-});
+const sharePromise = navigator.share({ files });
+//copyAdvertisementTextSync(text);
+await sharePromise;
 
       const failedMessage = photoState.failedCount
         ? ` 불러오지 못한 사진 ${photoState.failedCount}장은 제외되었습니다.`
