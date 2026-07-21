@@ -7126,8 +7126,8 @@ if (files.length > 0 && typeof navigator.share === 'function') {
       );
 
 const sharePromise = navigator.share({ files });
-//copyAdvertisementTextSync(text);
 await sharePromise;
+const copied = copyAdvertisementTextSync(text);
 
       const failedMessage = photoState.failedCount
         ? ` 불러오지 못한 사진 ${photoState.failedCount}장은 제외되었습니다.`
