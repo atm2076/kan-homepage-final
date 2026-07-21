@@ -1599,7 +1599,19 @@ function NaverMapBox({ setKeyword, setDealMode, setCategory, setFilters, setSele
     let isMounted = true;
 
     const clearMarkers = () => {
-      markersRef.current.forEach((marker) => marker.setMap(null));
+     const markers = Array.isArray(markersRef.current)
+  ? markersRef.current
+  : [];
+
+markers.forEach((marker) => {
+  if (!marker || typeof marker.setMap !== 'function') return;
+
+  try {
+    marker.setMap(null);
+  } catch {
+    // 네이버 지도 인증 실패 시 마커 정리 오류 무시
+  }
+});
       markersRef.current = [];
     };
 
@@ -1857,7 +1869,19 @@ function CustomerMapView({ properties, selected, onSelect, keyword, setKeyword, 
     let resizeCustomerMap = () => {};
 
     const clearMarkers = () => {
-      markersRef.current.forEach((marker) => marker.setMap(null));
+     const markers = Array.isArray(markersRef.current)
+  ? markersRef.current
+  : [];
+
+markers.forEach((marker) => {
+  if (!marker || typeof marker.setMap !== 'function') return;
+
+  try {
+    marker.setMap(null);
+  } catch {
+    // 네이버 지도 인증 실패 시 마커 정리 오류 무시
+  }
+});
       markersRef.current = [];
     };
 
