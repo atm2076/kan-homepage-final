@@ -7269,247 +7269,537 @@ function getSaleSharePrice(property) {
 }
 
 async function buildRentalShareFiles(property, photoUrls) {
-  const selectedUrls = photoUrls.slice(0, 4);
+  const selectedUrls = photoUrls.slice(0, 8);
   if (!selectedUrls.length) return [];
 
-  const images = await Promise.all(selectedUrls.map((url) => loadShareImage(url)));
-
-  const canvas = document.createElement('canvas');
-  canvas.width = 1080;
-  canvas.height = 1350;
-  const ctx = canvas.getContext('2d');
-
-  ctx.fillStyle = '#f4f4f4';
-  ctx.fillRect(0, 0, canvas.width, canvas.height);
-
-  const gap = 16;
-  const photoTop = 170;
-  const photoHeight = 840;
-  const colWidth = (canvas.width - gap * 3) / 2;
-  const rowHeight = (photoHeight - gap) / 2;
-
-  const slots = [
-    { x: gap, y: photoTop, w: colWidth, h: rowHeight },
-    { x: gap * 2 + colWidth, y: photoTop, w: colWidth, h: rowHeight },
-    { x: gap, y: photoTop + rowHeight + gap, w: colWidth, h: rowHeight },
-    { x: gap * 2 + colWidth, y: photoTop + rowHeight + gap, w: colWidth, h: rowHeight },
+  const pageContents = [
+    {
+      title: safeShareText(
+        property.title ||
+          `${safeShareText(property.address, '구미')} 임대매물`
+      ),
+      lines: [
+        getRentalSharePrice(property),
+        `${getShareAreaText(property)} · ${getShareFloorText(property)}`,
+        `${safeShareText(property.direction, '방향 확인 필요')} · ${getShareParkingText(property)}`,
+      ],
+    },
+    {
+      title: '매물 기본정보',
+      lines: [
+        `소재지: ${safeShareText(property.address, '구미시')}`,
+        `매물종류: ${safeShareText(property.category, '임대매물')}`,
+        `거래조건: ${getRentalSharePrice(property)}`,
+        `관리비: ${formatAmount(property.maintenance_fee)}`,
+      ],
+    },
+    {
+      title: '면적 · 층수',
+      lines: [
+        `면적: ${getShareAreaText(property)}`,
+        `층수: ${getShareFloorText(property)}`,
+        `방향: ${safeShareText(property.direction, '확인 필요')}`,
+        `방/욕실: ${safeShareText(property.room_bath || property.structure, '확인 필요')}`,
+      ],
+    },
+    {
+      title: '입주 · 주차',
+      lines: [
+        `입주가능일: ${safeShareText(
+          property.move_in_date || property.move_in,
+          '확인 필요'
+        )}`,
+        `주차: ${getShareParkingText(property)}`,
+        `엘리베이터: ${safeShareText(property.elevator, '확인 필요')}`,
+        `사용승인일: ${safeShareText(
+          property.approval_date || property.use_approval_date,
+          '확인 필요'
+        )}`,
+      ],
+    },
+    {
+      title: '구조 · 옵션',
+      lines: [
+        `구조: ${safeShareText(
+          property.structure || property.room_bath,
+          '확인 필요'
+        )}`,
+        `옵션: ${safeShareText(
+          property.options || property.option_text,
+          '상세내용 확인'
+        )}`,
+        safeShareText(
+          property.description,
+          '깨끗하게 관리된 임대매물입니다.'
+        ),
+      ],
+    },
+    {
+      title: '위치 · 생활권',
+      lines: [
+        safeShareText(
+          property.location_description,
+          '주변 생활권과 교통환경을 확인해 보세요.'
+        ),
+        safeShareText(
+          property.summary,
+          '현장 방문 시 자세히 안내합니다.'
+        ),
+      ],
+    },
+    {
+      title: '추천 포인트',
+      lines: [
+        safeShareText(
+          property.recommendation ||
+            property.investment_point ||
+            property.summary,
+          '실거주에 적합한 임대매물입니다.'
+        ),
+        `거래조건: ${getRentalSharePrice(property)}`,
+      ],
+    },
+    {
+      title: '문의 · 현장안내',
+      lines: [
+        getRentalSharePrice(property),
+        safeShareText(
+          property.summary || property.description,
+          '세부사항은 상담으로 안내합니다.'
+        ),
+        `문의전화: ${OFFICE.phone}`,
+      ],
+    },
   ];
 
-  images.forEach((img, index) => {
-    const slot = slots[index];
-    if (!slot) return;
-    drawCoverImage(ctx, img, slot.x, slot.y, slot.w, slot.h);
-  });
+  const files = [];
 
-  drawRoundedRect(ctx, 24, 22, 1032, 122, 24, 'rgba(255,255,255,0.92)');
-  drawShareText(
-    ctx,
-    safeShareText(property.title || `${safeShareText(property.address, '구미')} 임대매물`),
-    54,
-    42,
-    {
-      font: 'bold 56px sans-serif',
-      color: '#e85b2b',
-      maxWidth: 930,
-      lineHeight: 60,
+  for (let index = 0; index < selectedUrls.length; index += 1) {
+    try {
+      const img = await loadShareImage(selectedUrls[index]);
+
+      const canvas = document.createElement('canvas');
+      canvas.width = 1080;
+      canvas.height = 1350;
+
+      const ctx = canvas.getContext('2d');
+      if (!ctx) continue;
+
+      drawCoverImage(ctx, img, 0, 0, canvas.width, canvas.height);
+
+      ctx.fillStyle = 'rgba(0,0,0,0.12)';
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+      const content =
+        pageContents[index] ||
+        pageContents[pageContents.length - 1];
+
+      drawRoundedRect(
+        ctx,
+        28,
+        28,
+        1024,
+        170,
+        26,
+        'rgba(20,64,104,0.94)'
+      );
+
+      drawShareText(ctx, `${index + 1}`, 58, 52, {
+        font: 'bold 38px sans-serif',
+        color: '#ffffff',
+        strokeWidth: 0,
+      });
+
+      drawShareText(ctx, content.title, 130, 48, {
+        font: 'bold 48px sans-serif',
+        color: '#ffffff',
+        maxWidth: 860,
+        lineHeight: 56,
+        strokeWidth: 0,
+      });
+
+      if (index === 0) {
+        drawRoundedRect(
+          ctx,
+          60,
+          230,
+          960,
+          135,
+          22,
+          'rgba(255,230,70,0.95)'
+        );
+
+        drawShareText(ctx, getRentalSharePrice(property), 540, 267, {
+          font: 'bold 44px sans-serif',
+          color: '#17243a',
+          align: 'center',
+          maxWidth: 880,
+          lineHeight: 50,
+          strokeWidth: 0,
+        });
+      }
+
+      const panelY = index === 0 ? 840 : 810;
+
+      drawRoundedRect(
+        ctx,
+        42,
+        panelY,
+        996,
+        390,
+        28,
+        'rgba(255,255,255,0.92)'
+      );
+
+      content.lines
+        .filter(Boolean)
+        .slice(0, 5)
+        .forEach((line, lineIndex) => {
+          drawShareText(
+            ctx,
+            `✓ ${safeShareText(line)}`,
+            82,
+            panelY + 45 + lineIndex * 68,
+            {
+              font: 'bold 31px sans-serif',
+              color: '#17243a',
+              maxWidth: 900,
+              lineHeight: 38,
+              strokeWidth: 0,
+            }
+          );
+        });
+
+      drawRoundedRect(
+        ctx,
+        28,
+        1230,
+        1024,
+        94,
+        22,
+        'rgba(20,64,104,0.95)'
+      );
+
+      drawShareText(
+        ctx,
+        `${OFFICE.name}  ☎ ${OFFICE.phone}`,
+        540,
+        1252,
+        {
+          font: 'bold 34px sans-serif',
+          color: '#ffffff',
+          align: 'center',
+          maxWidth: 960,
+          lineHeight: 40,
+          strokeWidth: 0,
+        }
+      );
+
+      const file = await canvasToJpegFile(
+        canvas,
+        `rental-share-${property.id || Date.now()}-${index + 1}.jpg`
+      );
+
+      if (file) files.push(file);
+    } catch (error) {
+      console.warn(`임대 광고사진 ${index + 1} 생성 실패:`, error);
     }
-  );
+  }
 
-  drawShareText(
-    ctx,
-    getRentalSharePrice(property),
-    54,
-    100,
-    {
-      font: 'bold 42px sans-serif',
-      color: '#284ea3',
-      maxWidth: 900,
-      lineHeight: 46,
-    }
-  );
-
-  drawRoundedRect(ctx, 26, 1032, 1028, 220, 24, 'rgba(0,0,0,0.58)');
-
-  const summary1 = `${getShareAreaText(property)} · ${safeShareText(property.direction, '방향 확인 필요')} · ${getShareFloorText(property)}`;
-  const summary2 = `${safeShareText(property.move_in_date || property.move_in, '입주일 확인 필요')} · ${getShareParkingText(property)}`;
-  const summary3 = safeShareText(property.summary || property.description || '상세 설명 확인');
-
-  drawShareText(ctx, summary1, 50, 1068, {
-    font: 'bold 34px sans-serif',
-    color: '#ffffff',
-    maxWidth: 970,
-    lineHeight: 40,
-    strokeWidth: 0,
-  });
-
-  drawShareText(ctx, summary2, 50, 1114, {
-    font: 'bold 34px sans-serif',
-    color: '#ffffff',
-    maxWidth: 970,
-    lineHeight: 40,
-    strokeWidth: 0,
-  });
-
-  drawShareText(ctx, summary3, 50, 1162, {
-    font: 'bold 30px sans-serif',
-    color: '#fff2a8',
-    maxWidth: 970,
-    lineHeight: 36,
-    strokeWidth: 0,
-  });
-
-  drawShareText(ctx, OFFICE.name, 50, 1266, {
-    font: 'bold 28px sans-serif',
-    color: '#ffe17b',
-    strokeWidth: 0,
-  });
-
-  drawShareText(ctx, `${OFFICE.phone} / ${OFFICE.tel}`, 50, 1300, {
-    font: 'bold 26px sans-serif',
-    color: '#ffe17b',
-    strokeWidth: 0,
-  });
-
-  const file = await canvasToJpegFile(
-    canvas,
-    `rental-share-${property.id || Date.now()}-1.jpg`
-  );
-
-  return file ? [file] : [];
+  return files;
 }
-
 async function buildSaleShareFiles(property, photoUrls) {
-  const leadUrl = photoUrls[0];
-  if (!leadUrl) return [];
+  const selectedUrls = photoUrls.slice(0, 8);
+  if (!selectedUrls.length) return [];
 
-  const img = await loadShareImage(leadUrl);
+  const unitComposition = [
+    property.room_count ? `원룸 ${property.room_count}` : '',
+    property.mini_two_count ? `미니투룸 ${property.mini_two_count}` : '',
+    property.two_room_count ? `투룸 ${property.two_room_count}` : '',
+    property.owner_unit ? `주인세대 ${property.owner_unit}` : '',
+  ]
+    .filter(Boolean)
+    .join(' · ');
 
-  const canvas = document.createElement('canvas');
-  canvas.width = 1080;
-  canvas.height = 1350;
-  const ctx = canvas.getContext('2d');
-
-  drawCoverImage(ctx, img, 0, 0, canvas.width, canvas.height);
-
-  ctx.fillStyle = 'rgba(255,255,255,0.14)';
-  ctx.fillRect(0, 0, canvas.width, canvas.height);
-
-  drawRoundedRect(ctx, 24, 20, 320, 140, 24, 'rgba(255,255,255,0.88)');
-  drawShareText(ctx, safeShareText(property.category, '매물'), 48, 42, {
-    font: 'bold 32px sans-serif',
-    color: '#444444',
-    strokeWidth: 0,
-  });
-  drawShareText(ctx, safeShareText(property.address, '구미시'), 48, 84, {
-    font: 'bold 28px sans-serif',
-    color: '#444444',
-    maxWidth: 260,
-    lineHeight: 34,
-    strokeWidth: 0,
-  });
-
-  drawRoundedRect(ctx, 676, 20, 380, 180, 24, 'rgba(255,245,210,0.94)');
-  drawShareText(
-    ctx,
-    safeShareText(property.title || '수익형 매매 매물'),
-    700,
-    40,
+  const pageContents = [
     {
-      font: 'bold 50px sans-serif',
-      color: '#d95720',
-      maxWidth: 320,
-      lineHeight: 56,
-      strokeWidth: 0,
-    }
-  );
-
-  drawShareText(
-    ctx,
-    safeShareText(property.summary || '안정적인 수익형 매물'),
-    700,
-    128,
+      title: safeShareText(
+        property.title ||
+          `${safeShareText(property.address, '구미')} 수익형 매매`
+      ),
+      lines: [
+        `매매가: ${formatAmount(property.sale_price)}`,
+        `인수가: ${formatAmount(property.acquisition_price)}`,
+        safeShareText(
+          property.investment_point || property.summary,
+          '수익형 부동산 투자 매물'
+        ),
+      ],
+    },
     {
-      font: 'bold 30px sans-serif',
-      color: '#7a5b12',
-      maxWidth: 320,
-      lineHeight: 34,
-      strokeWidth: 0,
-    }
-  );
-
-  drawRoundedRect(ctx, 32, 414, 440, 640, 24, 'rgba(255,255,255,0.78)');
-  drawRoundedRect(ctx, 610, 414, 438, 640, 24, 'rgba(255,255,255,0.80)');
-
-  drawShareText(ctx, '내부현황', 60, 444, {
-    font: 'bold 38px sans-serif',
-    color: '#333333',
-    strokeWidth: 0,
-  });
-
-  const leftLines = [
-    `가구수: ${safeShareText(property.household_count || property.unit_count, '확인 필요')}`,
-    `대지: ${safeShareText(property.land_area || property.land_area_pyeong, '확인 필요')}`,
-    `연면적: ${safeShareText(property.total_area || property.building_area, '확인 필요')}`,
-    `사용승인: ${safeShareText(property.approval_date || property.use_approval_date, '확인 필요')}`,
-    `해당층/총층: ${getShareFloorText(property)} / ${getShareTotalFloorText(property)}`,
-    `주차: ${getShareParkingText(property)}`,
-    `방정보: ${safeShareText(property.room_bath || property.structure || '확인 필요')}`,
+      title: '건물 기본정보',
+      lines: [
+        `소재지: ${safeShareText(property.address, '구미시')}`,
+        `매물종류: ${safeShareText(property.category, '수익형 매매')}`,
+        `대지면적: ${safeShareText(
+          property.land_area || property.land_area_pyeong,
+          '확인 필요'
+        )}`,
+        `연면적: ${safeShareText(
+          property.total_area || property.building_area,
+          '확인 필요'
+        )}`,
+        `사용승인일: ${safeShareText(
+          property.approval_date || property.use_approval_date,
+          '확인 필요'
+        )}`,
+      ],
+    },
+    {
+      title: '층수 · 건물구성',
+      lines: [
+        `총층수: ${getShareTotalFloorText(property)}`,
+        `총세대수: ${safeShareText(
+          property.total_units ||
+            property.household_count ||
+            property.unit_count,
+          '확인 필요'
+        )}`,
+        `세대구성: ${safeShareText(
+          unitComposition,
+          property.room_bath || property.structure || '확인 필요'
+        )}`,
+        `주용도: ${safeShareText(property.main_use, '확인 필요')}`,
+      ],
+    },
+    {
+      title: '임대 현황',
+      lines: [
+        `임대중: ${safeShareText(property.rented_units, '확인 필요')}`,
+        `공실: ${safeShareText(property.vacant_units, '확인 필요')}`,
+        `총보증금: ${formatAmount(property.total_deposit)}`,
+        `총월세: ${formatAmount(property.total_monthly_rent)}`,
+      ],
+    },
+    {
+      title: '수익 정보',
+      lines: [
+        `월순수익: ${formatAmount(
+          property.net_profit ||
+            property.net_monthly_income ||
+            property.monthly_profit
+        )}`,
+        `연순수익: ${formatAmount(property.annual_net_income)}`,
+        `수익률: ${safeShareText(
+          property.return_rate || property.yield_rate,
+          '확인 필요'
+        )}`,
+        `월이자: ${formatAmount(
+          property.monthly_interest || property.loan_interest
+        )}`,
+      ],
+    },
+    {
+      title: '주차 · 관리상태',
+      lines: [
+        `주차: ${getShareParkingText(property)}`,
+        `엘리베이터: ${safeShareText(property.elevator, '확인 필요')}`,
+        `리모델링: ${safeShareText(property.remodeling, '확인 필요')}`,
+        `건물상태: ${safeShareText(
+          property.building_condition,
+          '확인 필요'
+        )}`,
+      ],
+    },
+    {
+      title: '투자 포인트',
+      lines: [
+        safeShareText(
+          property.investment_point,
+          '투자 포인트 상담 가능'
+        ),
+        safeShareText(
+          property.location_description,
+          '입지 및 임대수요 상담 가능'
+        ),
+        safeShareText(
+          property.risk_note,
+          '세부사항은 현장 확인 후 안내'
+        ),
+      ],
+    },
+    {
+      title: '문의 · 현장안내',
+      lines: [
+        `매매가 ${formatAmount(property.sale_price)}`,
+        `인수가 ${formatAmount(property.acquisition_price)}`,
+        safeShareText(
+          property.summary || property.description,
+          '세부 수익자료는 상담으로 안내합니다.'
+        ),
+        `문의전화 ${OFFICE.phone}`,
+      ],
+    },
   ];
 
-  leftLines.forEach((line, index) => {
-    drawShareText(ctx, line, 60, 506 + index * 70, {
-      font: 'bold 28px sans-serif',
-      color: '#222222',
-      maxWidth: 360,
-      lineHeight: 34,
-      strokeWidth: 0,
-    });
-  });
+  const files = [];
 
-  drawShareText(ctx, '매매/수익', 636, 444, {
-    font: 'bold 38px sans-serif',
-    color: '#333333',
-    strokeWidth: 0,
-  });
+  for (let index = 0; index < selectedUrls.length; index += 1) {
+    try {
+      const img = await loadShareImage(selectedUrls[index]);
 
-  const rightLines = [
-    `매매가: ${formatAmount(property.sale_price)}`,
-    `인수가: ${formatAmount(property.acquisition_price)}`,
-    `총보증금: ${formatAmount(property.total_deposit)}`,
-    `총월세: ${formatAmount(property.total_monthly_rent)}`,
-    `대출이자: ${formatAmount(property.loan_interest)}`,
-    `월수익: ${formatAmount(property.net_monthly_income || property.monthly_profit)}`,
-    `수익률: ${safeShareText(property.yield_rate || property.return_rate, '확인 필요')}`,
-  ];
+      const canvas = document.createElement('canvas');
+      canvas.width = 1080;
+      canvas.height = 1350;
 
-  rightLines.forEach((line, index) => {
-    drawShareText(ctx, line, 636, 506 + index * 70, {
-      font: 'bold 28px sans-serif',
-      color: '#222222',
-      maxWidth: 360,
-      lineHeight: 34,
-      strokeWidth: 0,
-    });
-  });
+      const ctx = canvas.getContext('2d');
+      if (!ctx) continue;
 
-  drawRoundedRect(ctx, 130, 1170, 820, 118, 24, 'rgba(0,0,0,0.44)');
-  drawShareText(ctx, `${OFFICE.name}`, 170, 1202, {
-    font: 'bold 28px sans-serif',
-    color: '#ffe17b',
-    strokeWidth: 0,
-  });
-  drawShareText(ctx, `${OFFICE.phone} / ${OFFICE.tel}`, 170, 1240, {
-    font: 'bold 28px sans-serif',
-    color: '#ffe17b',
-    strokeWidth: 0,
-  });
+      drawCoverImage(ctx, img, 0, 0, canvas.width, canvas.height);
 
-  const file = await canvasToJpegFile(
-    canvas,
-    `sale-share-${property.id || Date.now()}-1.jpg`
-  );
+      ctx.fillStyle = 'rgba(0,0,0,0.14)';
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-  return file ? [file] : [];
+      const content =
+        pageContents[index] ||
+        pageContents[pageContents.length - 1];
+
+      drawRoundedRect(
+        ctx,
+        28,
+        28,
+        1024,
+        180,
+        26,
+        'rgba(8,43,78,0.94)'
+      );
+
+      drawShareText(ctx, `${index + 1}`, 58, 54, {
+        font: 'bold 40px sans-serif',
+        color: '#ffffff',
+        strokeWidth: 0,
+      });
+
+      drawShareText(ctx, content.title, 130, 50, {
+        font: index === 0
+          ? 'bold 48px sans-serif'
+          : 'bold 52px sans-serif',
+        color: '#ffffff',
+        maxWidth: 860,
+        lineHeight: 56,
+        strokeWidth: 0,
+      });
+
+      if (index === 0) {
+        drawRoundedRect(
+          ctx,
+          60,
+          230,
+          960,
+          150,
+          22,
+          'rgba(255,225,60,0.95)'
+        );
+
+        drawShareText(
+          ctx,
+          `매매가 ${formatAmount(property.sale_price)}`,
+          540,
+          250,
+          {
+            font: 'bold 45px sans-serif',
+            color: '#17243a',
+            align: 'center',
+            maxWidth: 880,
+            lineHeight: 50,
+            strokeWidth: 0,
+          }
+        );
+
+        drawShareText(
+          ctx,
+          `인수가 ${formatAmount(property.acquisition_price)}`,
+          540,
+          310,
+          {
+            font: 'bold 42px sans-serif',
+            color: '#c52323',
+            align: 'center',
+            maxWidth: 880,
+            lineHeight: 48,
+            strokeWidth: 0,
+          }
+        );
+      }
+
+      const panelY = index === 0 ? 820 : 790;
+
+      drawRoundedRect(
+        ctx,
+        42,
+        panelY,
+        996,
+        400,
+        28,
+        'rgba(255,255,255,0.91)'
+      );
+
+      content.lines
+        .filter(Boolean)
+        .slice(0, 5)
+        .forEach((line, lineIndex) => {
+          drawShareText(
+            ctx,
+            `✓ ${safeShareText(line)}`,
+            82,
+            panelY + 44 + lineIndex * 66,
+            {
+              font: 'bold 31px sans-serif',
+              color: '#17243a',
+              maxWidth: 900,
+              lineHeight: 38,
+              strokeWidth: 0,
+            }
+          );
+        });
+
+      drawRoundedRect(
+        ctx,
+        28,
+        1230,
+        1024,
+        94,
+        22,
+        'rgba(8,43,78,0.94)'
+      );
+
+      drawShareText(
+        ctx,
+        `${OFFICE.name}  ☎ ${OFFICE.phone}`,
+        540,
+        1252,
+        {
+          font: 'bold 34px sans-serif',
+          color: '#ffffff',
+          align: 'center',
+          maxWidth: 960,
+          lineHeight: 40,
+          strokeWidth: 0,
+        }
+      );
+
+      const file = await canvasToJpegFile(
+        canvas,
+        `sale-share-${property.id || Date.now()}-${index + 1}.jpg`
+      );
+
+      if (file) files.push(file);
+    } catch (error) {
+      console.warn(`매매 광고사진 ${index + 1} 생성 실패:`, error);
+    }
+  }
+
+  return files;
 }
 
 async function buildSocialShareFiles(property, photoUrls) {
