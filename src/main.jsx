@@ -7806,7 +7806,7 @@ drawRoundedRect(
             ctx,
             `✓ ${safeShareText(line)}`,
             82,
-            panelY + 44 + lineIndex * 66,
+            panelY - 140 + lineIndex * 66,
             {
   font: 'bold 31px sans-serif',
   color: '#ffffff',
