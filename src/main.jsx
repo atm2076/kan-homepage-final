@@ -7116,7 +7116,7 @@ function SocialPhotoShareButtons({ property, instagramText, facebookText, setSta
   }
 }
 async function handleShare(text, platformName) {
- const files = photoState.files.slice(0, 3);
+ const files = photoState.files.slice(0, 8);
 
   // 휴대폰이나 공유 기능을 지원하는 기기
 if (files.length > 0 && typeof navigator.share === 'function') {
