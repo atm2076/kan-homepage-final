@@ -7106,7 +7106,424 @@ function downloadShareFiles(files) {
     window.setTimeout(() => downloadShareFile(file), index * 220);
   });
 }
+function safeShareText(value, fallback = '확인 필요') {
+  const text = String(value ?? '').trim();
+  return text || fallback;
+}
 
+function loadShareImage(src) {
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    img.crossOrigin = 'anonymous';
+    img.onload = () => resolve(img);
+    img.onerror = reject;
+    img.src = src;
+  });
+}
+
+function canvasToJpegFile(canvas, fileName) {
+  return new Promise((resolve) => {
+    canvas.toBlob(
+      (blob) => {
+        if (!blob) {
+          resolve(null);
+          return;
+        }
+        resolve(
+          new File([blob], fileName, {
+            type: 'image/jpeg',
+            lastModified: Date.now(),
+          })
+        );
+      },
+      'image/jpeg',
+      0.92
+    );
+  });
+}
+
+function drawRoundedRect(ctx, x, y, width, height, radius, fillStyle) {
+  ctx.save();
+  ctx.beginPath();
+  ctx.moveTo(x + radius, y);
+  ctx.arcTo(x + width, y, x + width, y + height, radius);
+  ctx.arcTo(x + width, y + height, x, y + height, radius);
+  ctx.arcTo(x, y + height, x, y, radius);
+  ctx.arcTo(x, y, x + width, y, radius);
+  ctx.closePath();
+  ctx.fillStyle = fillStyle;
+  ctx.fill();
+  ctx.restore();
+}
+
+function drawCoverImage(ctx, img, x, y, width, height) {
+  const imgRatio = img.width / img.height;
+  const boxRatio = width / height;
+
+  let sx = 0;
+  let sy = 0;
+  let sw = img.width;
+  let sh = img.height;
+
+  if (imgRatio > boxRatio) {
+    sw = img.height * boxRatio;
+    sx = (img.width - sw) / 2;
+  } else {
+    sh = img.width / boxRatio;
+    sy = (img.height - sh) / 2;
+  }
+
+  ctx.drawImage(img, sx, sy, sw, sh, x, y, width, height);
+}
+
+function drawShareText(ctx, text, x, y, options = {}) {
+  const {
+    font = 'bold 48px sans-serif',
+    color = '#ffffff',
+    align = 'left',
+    baseline = 'top',
+    strokeColor = 'rgba(0,0,0,0.55)',
+    strokeWidth = 8,
+    maxWidth,
+    lineHeight = 56,
+  } = options;
+
+  ctx.save();
+  ctx.font = font;
+  ctx.fillStyle = color;
+  ctx.textAlign = align;
+  ctx.textBaseline = baseline;
+
+  const words = String(text ?? '').split(' ');
+  const lines = [];
+  let current = '';
+
+  words.forEach((word) => {
+    const next = current ? `${current} ${word}` : word;
+    if (maxWidth && ctx.measureText(next).width > maxWidth && current) {
+      lines.push(current);
+      current = word;
+    } else {
+      current = next;
+    }
+  });
+
+  if (current) lines.push(current);
+
+  lines.forEach((line, index) => {
+    const yy = y + index * lineHeight;
+    if (strokeWidth > 0) {
+      ctx.lineWidth = strokeWidth;
+      ctx.strokeStyle = strokeColor;
+      ctx.strokeText(line, x, yy);
+    }
+    ctx.fillText(line, x, yy);
+  });
+
+  ctx.restore();
+  return lines.length;
+}
+
+function getShareAreaText(property) {
+  return (
+    property.exclusive_area ||
+    property.area ||
+    property.supply_area ||
+    '면적 확인 필요'
+  );
+}
+
+function getShareFloorText(property) {
+  return (
+    property.floor_info ||
+    property.current_floor ||
+    property.floor ||
+    '층 확인 필요'
+  );
+}
+
+function getShareTotalFloorText(property) {
+  return (
+    property.total_floors ||
+    property.total_floor ||
+    property.total_floor_info ||
+    '총층수 확인 필요'
+  );
+}
+
+function getShareParkingText(property) {
+  return (
+    property.parking_total ||
+    property.total_parking ||
+    property.parking ||
+    '주차 확인 필요'
+  );
+}
+
+function getRentalSharePrice(property) {
+  return `보증금 ${formatAmount(property.deposit)} / 월세 ${formatAmount(property.rent)}`;
+}
+
+function getSaleSharePrice(property) {
+  return `매매가 ${formatAmount(property.sale_price)} / 인수가 ${formatAmount(property.acquisition_price)}`;
+}
+
+async function buildRentalShareFiles(property, photoUrls) {
+  const selectedUrls = photoUrls.slice(0, 4);
+  if (!selectedUrls.length) return [];
+
+  const images = await Promise.all(selectedUrls.map((url) => loadShareImage(url)));
+
+  const canvas = document.createElement('canvas');
+  canvas.width = 1080;
+  canvas.height = 1350;
+  const ctx = canvas.getContext('2d');
+
+  ctx.fillStyle = '#f4f4f4';
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+  const gap = 16;
+  const photoTop = 170;
+  const photoHeight = 840;
+  const colWidth = (canvas.width - gap * 3) / 2;
+  const rowHeight = (photoHeight - gap) / 2;
+
+  const slots = [
+    { x: gap, y: photoTop, w: colWidth, h: rowHeight },
+    { x: gap * 2 + colWidth, y: photoTop, w: colWidth, h: rowHeight },
+    { x: gap, y: photoTop + rowHeight + gap, w: colWidth, h: rowHeight },
+    { x: gap * 2 + colWidth, y: photoTop + rowHeight + gap, w: colWidth, h: rowHeight },
+  ];
+
+  images.forEach((img, index) => {
+    const slot = slots[index];
+    if (!slot) return;
+    drawCoverImage(ctx, img, slot.x, slot.y, slot.w, slot.h);
+  });
+
+  drawRoundedRect(ctx, 24, 22, 1032, 122, 24, 'rgba(255,255,255,0.92)');
+  drawShareText(
+    ctx,
+    safeShareText(property.title || `${safeShareText(property.address, '구미')} 임대매물`),
+    54,
+    42,
+    {
+      font: 'bold 56px sans-serif',
+      color: '#e85b2b',
+      maxWidth: 930,
+      lineHeight: 60,
+    }
+  );
+
+  drawShareText(
+    ctx,
+    getRentalSharePrice(property),
+    54,
+    100,
+    {
+      font: 'bold 42px sans-serif',
+      color: '#284ea3',
+      maxWidth: 900,
+      lineHeight: 46,
+    }
+  );
+
+  drawRoundedRect(ctx, 26, 1032, 1028, 220, 24, 'rgba(0,0,0,0.58)');
+
+  const summary1 = `${getShareAreaText(property)} · ${safeShareText(property.direction, '방향 확인 필요')} · ${getShareFloorText(property)}`;
+  const summary2 = `${safeShareText(property.move_in_date || property.move_in, '입주일 확인 필요')} · ${getShareParkingText(property)}`;
+  const summary3 = safeShareText(property.summary || property.description || '상세 설명 확인');
+
+  drawShareText(ctx, summary1, 50, 1068, {
+    font: 'bold 34px sans-serif',
+    color: '#ffffff',
+    maxWidth: 970,
+    lineHeight: 40,
+    strokeWidth: 0,
+  });
+
+  drawShareText(ctx, summary2, 50, 1114, {
+    font: 'bold 34px sans-serif',
+    color: '#ffffff',
+    maxWidth: 970,
+    lineHeight: 40,
+    strokeWidth: 0,
+  });
+
+  drawShareText(ctx, summary3, 50, 1162, {
+    font: 'bold 30px sans-serif',
+    color: '#fff2a8',
+    maxWidth: 970,
+    lineHeight: 36,
+    strokeWidth: 0,
+  });
+
+  drawShareText(ctx, OFFICE.name, 50, 1266, {
+    font: 'bold 28px sans-serif',
+    color: '#ffe17b',
+    strokeWidth: 0,
+  });
+
+  drawShareText(ctx, `${OFFICE.phone} / ${OFFICE.tel}`, 50, 1300, {
+    font: 'bold 26px sans-serif',
+    color: '#ffe17b',
+    strokeWidth: 0,
+  });
+
+  const file = await canvasToJpegFile(
+    canvas,
+    `rental-share-${property.id || Date.now()}-1.jpg`
+  );
+
+  return file ? [file] : [];
+}
+
+async function buildSaleShareFiles(property, photoUrls) {
+  const leadUrl = photoUrls[0];
+  if (!leadUrl) return [];
+
+  const img = await loadShareImage(leadUrl);
+
+  const canvas = document.createElement('canvas');
+  canvas.width = 1080;
+  canvas.height = 1350;
+  const ctx = canvas.getContext('2d');
+
+  drawCoverImage(ctx, img, 0, 0, canvas.width, canvas.height);
+
+  ctx.fillStyle = 'rgba(255,255,255,0.14)';
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+  drawRoundedRect(ctx, 24, 20, 320, 140, 24, 'rgba(255,255,255,0.88)');
+  drawShareText(ctx, safeShareText(property.category, '매물'), 48, 42, {
+    font: 'bold 32px sans-serif',
+    color: '#444444',
+    strokeWidth: 0,
+  });
+  drawShareText(ctx, safeShareText(property.address, '구미시'), 48, 84, {
+    font: 'bold 28px sans-serif',
+    color: '#444444',
+    maxWidth: 260,
+    lineHeight: 34,
+    strokeWidth: 0,
+  });
+
+  drawRoundedRect(ctx, 676, 20, 380, 180, 24, 'rgba(255,245,210,0.94)');
+  drawShareText(
+    ctx,
+    safeShareText(property.title || '수익형 매매 매물'),
+    700,
+    40,
+    {
+      font: 'bold 50px sans-serif',
+      color: '#d95720',
+      maxWidth: 320,
+      lineHeight: 56,
+      strokeWidth: 0,
+    }
+  );
+
+  drawShareText(
+    ctx,
+    safeShareText(property.summary || '안정적인 수익형 매물'),
+    700,
+    128,
+    {
+      font: 'bold 30px sans-serif',
+      color: '#7a5b12',
+      maxWidth: 320,
+      lineHeight: 34,
+      strokeWidth: 0,
+    }
+  );
+
+  drawRoundedRect(ctx, 32, 414, 440, 640, 24, 'rgba(255,255,255,0.78)');
+  drawRoundedRect(ctx, 610, 414, 438, 640, 24, 'rgba(255,255,255,0.80)');
+
+  drawShareText(ctx, '내부현황', 60, 444, {
+    font: 'bold 38px sans-serif',
+    color: '#333333',
+    strokeWidth: 0,
+  });
+
+  const leftLines = [
+    `가구수: ${safeShareText(property.household_count || property.unit_count, '확인 필요')}`,
+    `대지: ${safeShareText(property.land_area || property.land_area_pyeong, '확인 필요')}`,
+    `연면적: ${safeShareText(property.total_area || property.building_area, '확인 필요')}`,
+    `사용승인: ${safeShareText(property.approval_date || property.use_approval_date, '확인 필요')}`,
+    `해당층/총층: ${getShareFloorText(property)} / ${getShareTotalFloorText(property)}`,
+    `주차: ${getShareParkingText(property)}`,
+    `방정보: ${safeShareText(property.room_bath || property.structure || '확인 필요')}`,
+  ];
+
+  leftLines.forEach((line, index) => {
+    drawShareText(ctx, line, 60, 506 + index * 70, {
+      font: 'bold 28px sans-serif',
+      color: '#222222',
+      maxWidth: 360,
+      lineHeight: 34,
+      strokeWidth: 0,
+    });
+  });
+
+  drawShareText(ctx, '매매/수익', 636, 444, {
+    font: 'bold 38px sans-serif',
+    color: '#333333',
+    strokeWidth: 0,
+  });
+
+  const rightLines = [
+    `매매가: ${formatAmount(property.sale_price)}`,
+    `인수가: ${formatAmount(property.acquisition_price)}`,
+    `총보증금: ${formatAmount(property.total_deposit)}`,
+    `총월세: ${formatAmount(property.total_monthly_rent)}`,
+    `대출이자: ${formatAmount(property.loan_interest)}`,
+    `월수익: ${formatAmount(property.net_monthly_income || property.monthly_profit)}`,
+    `수익률: ${safeShareText(property.yield_rate || property.return_rate, '확인 필요')}`,
+  ];
+
+  rightLines.forEach((line, index) => {
+    drawShareText(ctx, line, 636, 506 + index * 70, {
+      font: 'bold 28px sans-serif',
+      color: '#222222',
+      maxWidth: 360,
+      lineHeight: 34,
+      strokeWidth: 0,
+    });
+  });
+
+  drawRoundedRect(ctx, 130, 1170, 820, 118, 24, 'rgba(0,0,0,0.44)');
+  drawShareText(ctx, `${OFFICE.name}`, 170, 1202, {
+    font: 'bold 28px sans-serif',
+    color: '#ffe17b',
+    strokeWidth: 0,
+  });
+  drawShareText(ctx, `${OFFICE.phone} / ${OFFICE.tel}`, 170, 1240, {
+    font: 'bold 28px sans-serif',
+    color: '#ffe17b',
+    strokeWidth: 0,
+  });
+
+  const file = await canvasToJpegFile(
+    canvas,
+    `sale-share-${property.id || Date.now()}-1.jpg`
+  );
+
+  return file ? [file] : [];
+}
+
+async function buildSocialShareFiles(property, photoUrls) {
+  const isSale =
+    property?.trade_type === '매매' ||
+    !!property?.sale_price ||
+    !!property?.acquisition_price;
+
+  if (isSale) {
+    return await buildSaleShareFiles(property, photoUrls);
+  }
+
+  return await buildRentalShareFiles(property, photoUrls);
+}
 function SocialPhotoShareButtons({ property, instagramText, facebookText, setStatus }) {
   const photoUrls = useMemo(
     () =>
@@ -7186,7 +7603,17 @@ function SocialPhotoShareButtons({ property, instagramText, facebookText, setSta
   }
 }
 async function handleShare(text, platformName) {
- const files = photoState.files.slice(0, 8);
+  let files = [];
+
+  try {
+    files = await buildSocialShareFiles(property, photoUrls);
+  } catch (error) {
+    console.warn('공유용 광고사진 생성 실패, 원본 사진으로 진행합니다.', error);
+  }
+
+  if (!files.length) {
+    files = photoState.files.slice(0, 8);
+  }
 
   // 휴대폰이나 공유 기능을 지원하는 기기
 if (files.length > 0 && typeof navigator.share === 'function') {
