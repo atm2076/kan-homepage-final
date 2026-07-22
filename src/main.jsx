@@ -7371,7 +7371,56 @@ async function buildRentalShareFiles(property, photoUrls) {
       ],
     },
   ];
-
+const pageStyles = [
+  {
+    headerColor: 'rgba(20,64,104,0.94)',
+    panelColor: 'rgba(255,255,255,0.92)',
+    textColor: '#17243a',
+    accentColor: 'rgba(255,230,70,0.95)',
+  },
+  {
+    headerColor: 'rgba(139,30,45,0.94)',
+    panelColor: 'rgba(255,250,245,0.93)',
+    textColor: '#42151d',
+    accentColor: 'rgba(255,205,70,0.96)',
+  },
+  {
+    headerColor: 'rgba(18,102,76,0.94)',
+    panelColor: 'rgba(244,255,250,0.93)',
+    textColor: '#123d32',
+    accentColor: 'rgba(130,235,184,0.96)',
+  },
+  {
+    headerColor: 'rgba(56,45,110,0.94)',
+    panelColor: 'rgba(248,246,255,0.93)',
+    textColor: '#29214f',
+    accentColor: 'rgba(190,166,255,0.96)',
+  },
+  {
+    headerColor: 'rgba(157,78,12,0.94)',
+    panelColor: 'rgba(255,250,238,0.93)',
+    textColor: '#542d0c',
+    accentColor: 'rgba(255,194,75,0.96)',
+  },
+  {
+    headerColor: 'rgba(23,85,126,0.94)',
+    panelColor: 'rgba(241,250,255,0.93)',
+    textColor: '#15364d',
+    accentColor: 'rgba(85,200,255,0.96)',
+  },
+  {
+    headerColor: 'rgba(61,61,61,0.94)',
+    panelColor: 'rgba(250,250,250,0.93)',
+    textColor: '#202020',
+    accentColor: 'rgba(255,213,59,0.96)',
+  },
+  {
+    headerColor: 'rgba(112,25,74,0.94)',
+    panelColor: 'rgba(255,246,252,0.94)',
+    textColor: '#45102e',
+    accentColor: 'rgba(255,158,210,0.96)',
+  },
+];
   const files = [];
 
   for (let index = 0; index < selectedUrls.length; index += 1) {
@@ -7393,7 +7442,7 @@ async function buildRentalShareFiles(property, photoUrls) {
       const content =
         pageContents[index] ||
         pageContents[pageContents.length - 1];
-
+const style = pageStyles[index] || pageStyles[pageStyles.length - 1];
       drawRoundedRect(
         ctx,
         28,
@@ -7401,7 +7450,7 @@ async function buildRentalShareFiles(property, photoUrls) {
         1024,
         170,
         26,
-        'rgba(20,64,104,0.94)'
+        style.headerColor
       );
 
       drawShareText(ctx, `${index + 1}`, 58, 52, {
@@ -7426,12 +7475,12 @@ async function buildRentalShareFiles(property, photoUrls) {
           960,
           135,
           22,
-          'rgba(255,230,70,0.95)'
+          style.accentColor
         );
 
         drawShareText(ctx, getRentalSharePrice(property), 540, 267, {
           font: 'bold 44px sans-serif',
-          color: '#17243a',
+          color: style.textColor,
           align: 'center',
           maxWidth: 880,
           lineHeight: 50,
@@ -7448,7 +7497,7 @@ async function buildRentalShareFiles(property, photoUrls) {
         996,
         390,
         28,
-        'rgba(255,255,255,0.92)'
+        style.panelColor
       );
 
       content.lines
@@ -7462,7 +7511,7 @@ async function buildRentalShareFiles(property, photoUrls) {
             panelY + 45 + lineIndex * 68,
             {
               font: 'bold 31px sans-serif',
-              color: '#17243a',
+             color: style.textColor,
               maxWidth: 900,
               lineHeight: 38,
               strokeWidth: 0,
@@ -7477,7 +7526,7 @@ async function buildRentalShareFiles(property, photoUrls) {
         1024,
         94,
         22,
-        'rgba(20,64,104,0.95)'
+        style.headerColor
       );
 
       drawShareText(
@@ -7663,7 +7712,7 @@ async function buildSaleShareFiles(property, photoUrls) {
       const content =
         pageContents[index] ||
         pageContents[pageContents.length - 1];
-
+const style = pageStyles[index] || pageStyles[pageStyles.length - 1];
       drawRoundedRect(
         ctx,
         28,
@@ -7671,7 +7720,7 @@ async function buildSaleShareFiles(property, photoUrls) {
         1024,
         180,
         26,
-        'rgba(8,43,78,0.94)'
+        style.headerColor
       );
 
       drawShareText(ctx, `${index + 1}`, 58, 54, {
@@ -7698,7 +7747,7 @@ async function buildSaleShareFiles(property, photoUrls) {
           960,
           150,
           22,
-          'rgba(255,225,60,0.95)'
+          style.accentColor
         );
 
         drawShareText(
@@ -7708,7 +7757,7 @@ async function buildSaleShareFiles(property, photoUrls) {
           250,
           {
             font: 'bold 45px sans-serif',
-            color: '#17243a',
+            color: style.textColor,
             align: 'center',
             maxWidth: 880,
             lineHeight: 50,
@@ -7741,7 +7790,7 @@ async function buildSaleShareFiles(property, photoUrls) {
         996,
         400,
         28,
-        'rgba(255,255,255,0.91)'
+        style.panelColor
       );
 
       content.lines
@@ -7755,7 +7804,7 @@ async function buildSaleShareFiles(property, photoUrls) {
             panelY + 44 + lineIndex * 66,
             {
               font: 'bold 31px sans-serif',
-              color: '#17243a',
+              color: style.textColor,
               maxWidth: 900,
               lineHeight: 38,
               strokeWidth: 0,
@@ -7770,7 +7819,7 @@ async function buildSaleShareFiles(property, photoUrls) {
         1024,
         94,
         22,
-        'rgba(8,43,78,0.94)'
+        style.headerColor
       );
 
       drawShareText(
