@@ -7201,13 +7201,29 @@ await navigator.share({ files });
 
   return (
     <>
-      <button
-        type="button"
-        disabled={photoState.loading}
-        onClick={() => handleShare(instagramText, '인스타그램')}
-      >
-        {preparingLabel || '인스타 사진·문구'}
-      </button>
+    <button
+  type="button"
+  disabled={photoState.loading}
+  onClick={() => handleShare(instagramText, '인스타그램')}
+>
+  {preparingLabel || '인스타 사진'}
+</button>
+
+<button
+  type="button"
+  onClick={() => {
+    const copied = copyAdvertisementTextSync(instagramText);
+
+    const message = copied
+      ? '인스타 내용이 복사되었습니다. 인스타그램 설명란에서 Ctrl + V를 누르세요.'
+      : '인스타 내용 복사에 실패했습니다.';
+
+    setStatus(message);
+    window.alert(message);
+  }}
+>
+  인스타 내용
+</button>
       <button
         type="button"
         disabled={photoState.loading}
