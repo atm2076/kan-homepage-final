@@ -6043,24 +6043,31 @@ function buildDaangnAd(property) {
     '',
     `문의: ${OFFICE.phone}`,
     '',
-    '【중개대상물 표시·광고 사항】',
-    `중개대상물 종류: ${property.category || '확인 필요'}`,
-    `거래형태: ${property.trade_type || '확인 필요'}`,
-    `소재지: ${property.address || '확인 필요'}`,
-    `거래가격: ${price}`,
-    `관리비: ${property.maintenance_fee || '확인 필요'}`,
-    `면적: ${property.area || '확인 필요'}`,
-    `총층수/해당층: ${property.total_floor_info || property.floor_info || '확인 필요'}`,
-    `방향: ${property.direction || '확인 필요'}`,
-    `입주가능일: ${property.move_in || '협의 가능'}`,
-    `주차: ${property.parking || '확인 필요'}`,
-    `사용승인일: ${property.approval_date || '확인 필요'}`,
-    '',
-    `상호명: ${OFFICE.name}`,
-    `소재지: ${OFFICE.address}`,
-    `대표공인중개사: ${OFFICE.broker}`,
-    `등록번호: ${OFFICE.regNo}`,
-    `연락처: ${OFFICE.phone} / ${OFFICE.tel}`
+      '【중개대상물 표시·광고 사항】',
+      `중개대상물 종류: ${property.legal_property_type || property.category || '확인 필요'}`,
+      `거래형태: ${property.trade_type || '확인 필요'}`,
+      `소재지: ${property.address || '확인 필요'}`,
+      `거래가격: ${price || '확인 필요'}`,
+      `관리비: ${property.maintenance_fee || '확인 필요'}`,
+      `면적: ${property.exclusive_area || property.area || '확인 필요'}`,
+      `해당 층: ${property.floor || property.floor_info || '확인 필요'}`,
+      `총층수: ${property.total_floors || property.total_floor_info || '확인 필요'}`,
+      `방/욕실: ${
+        property.room_bath ||
+        (property.rooms || property.bathrooms
+          ? `${property.rooms || '-'} / ${property.bathrooms || '-'}`
+          : '확인 필요')
+      }`,
+      `방향: ${property.direction || '확인 필요'}`,
+      `입주가능일: ${property.move_in_date || property.move_in || '확인 필요'}`,
+      `총주차대수: ${property.parking_total || property.parking || '확인 필요'}`,
+      `사용승인일: ${property.approval_date || '확인 필요'}`,
+      '',
+      `상호명: ${OFFICE.name}`,
+      `소재지: ${OFFICE.address}`,
+      `대표공인중개사: ${OFFICE.broker}`,
+      `등록번호: ${OFFICE.regNo}`,
+      `연락처: ${OFFICE.phone} / ${OFFICE.tel}`,
   ]
     .filter((line) => line !== '')
     .join('\n');
