@@ -5805,7 +5805,7 @@ if (isStaffMode && currentStaff?.code) {
       `거래가격: ${instagramLegalPrice}`,
       `관리비: ${property.maintenance_fee || '확인 필요'}`,
       `면적: ${property.exclusive_area || property.area || '확인 필요'}`,
-      `해당 층: ${property.floor || property.floor_info || '확인 필요'}`,
+      `해당 층: ${property.floor_info || property.current_floor || property.floor || '확인 필요'}`,
       `총층수: ${
         property.total_floors ||
         property.total_floor ||
