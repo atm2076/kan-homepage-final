@@ -7490,15 +7490,17 @@ const style = pageStyles[index] || pageStyles[pageStyles.length - 1];
 
       const panelY = index === 0 ? 840 : 810;
 
-      drawRoundedRect(
-        ctx,
-        42,
-        panelY,
-        996,
-        390,
-        28,
-        style.panelColor
-      );
+/*
+drawRoundedRect(
+  ctx,
+  42,
+  panelY,
+  996,
+  390,
+  28,
+  style.panelColor
+);
+*/
 
       content.lines
         .filter(Boolean)
@@ -7510,12 +7512,13 @@ const style = pageStyles[index] || pageStyles[pageStyles.length - 1];
             82,
             panelY + 45 + lineIndex * 68,
             {
-              font: 'bold 31px sans-serif',
-             color: style.textColor,
-              maxWidth: 900,
-              lineHeight: 38,
-              strokeWidth: 0,
-            }
+  font: 'bold 31px sans-serif',
+  color: '#ffffff',
+  maxWidth: 900,
+  lineHeight: 38,
+  strokeColor: 'rgba(0,0,0,0.95)',
+  strokeWidth: 7,
+}
           );
         });
 
