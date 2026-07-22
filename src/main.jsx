@@ -5780,16 +5780,79 @@ if (isStaffMode && currentStaff?.code) {
     property.status ||
     '임시저장';
 
-  const instagramText = [
-    `🏠 ${property.title || '구미 부동산 매물'}`,
-    `📍 ${property.address || '구미시'}`,
-    isSale
+      const instagramPriceText = isSale
       ? `💰 매매가 ${formatAmount(property.sale_price)} / 인수가 ${formatAmount(property.acquisition_price)}`
-      : `💰 보증금 ${formatAmount(property.deposit)} / 월세 ${formatAmount(property.rent)}`,
-    property.summary || '',
-    '',
-    '#구미부동산 #구미원룸 #구미투룸 #구미다가구매매 #칸공인중개사'
-  ].filter(Boolean).join('\n');
+      : `💰 보증금 ${formatAmount(property.deposit)} / 월세 ${formatAmount(property.rent)}`;
+
+    const instagramLegalPrice = isSale
+      ? `매매가 ${formatAmount(property.sale_price)}`
+      : `보증금 ${formatAmount(property.deposit)} / 월세 ${formatAmount(property.rent)}`;
+
+    const instagramText = [
+      `🏠 ${property.title || '구미 부동산 매물'}`,
+      `📍 ${property.address || '구미시'}`,
+      instagramPriceText,
+      property.summary || '',
+      '',
+      '【중개대상물 표시·광고 사항】',
+      `중개대상물 종류: ${
+        property.legal_property_type ||
+        property.category ||
+        '확인 필요'
+      }`,
+      `거래형태: ${property.trade_type || (isSale ? '매매' : '월세')}`,
+      `소재지: ${property.address || '확인 필요'}`,
+      `거래가격: ${instagramLegalPrice}`,
+      `관리비: ${property.maintenance_fee || '확인 필요'}`,
+      `면적: ${property.exclusive_area || property.area || '확인 필요'}`,
+      `해당 층: ${property.floor || property.floor_info || '확인 필요'}`,
+      `총층수: ${
+        property.total_floors ||
+        property.total_floor ||
+        property.total_floor_info ||
+        '확인 필요'
+      }`,
+      `방/욕실: ${
+        property.room_bath ||
+        (
+          property.rooms ||
+          property.room_count ||
+          property.bathrooms ||
+          property.bathroom_count
+            ? `${property.rooms || property.room_count || '-'} / ${
+                property.bathrooms || property.bathroom_count || '-'
+              }`
+            : '확인 필요'
+        )
+      }`,
+      `방향: ${property.direction || '확인 필요'}`,
+      `입주가능일: ${
+        property.move_in_date ||
+        property.move_in ||
+        '확인 필요'
+      }`,
+      `총주차대수: ${
+        property.parking_total ||
+        property.total_parking ||
+        property.parking ||
+        '확인 필요'
+      }`,
+      `사용승인일: ${
+        property.approval_date ||
+        property.use_approval_date ||
+        '확인 필요'
+      }`,
+      '',
+      `상호명: ${OFFICE.name}`,
+      `소재지: ${OFFICE.address}`,
+      `대표공인중개사: ${OFFICE.broker}`,
+      `등록번호: ${OFFICE.regNo}`,
+      `연락처: ${OFFICE.phone} / ${OFFICE.tel}`,
+      '',
+      '#구미부동산 #구미원룸 #구미투룸 #구미다가구매매 #칸공인중개사'
+    ]
+      .filter((line) => line !== null && line !== undefined)
+      .join('\n');
 
   const facebookText = [
     property.title || '구미 부동산 매물 안내',
