@@ -7125,9 +7125,10 @@ if (files.length > 0 && typeof navigator.share === 'function') {
         `${platformName} 공유창을 여는 중입니다. 공유할 앱을 선택해 주세요.`
       );
 
-const sharePromise = navigator.share({ files });
-const copied = copyAdvertisementTextSync(text);
-await sharePromise;
+await navigator.share({
+  files,
+  text: String(text ?? '').trim(),
+});
 
       const failedMessage = photoState.failedCount
         ? ` 불러오지 못한 사진 ${photoState.failedCount}장은 제외되었습니다.`
