@@ -6005,8 +6005,27 @@ if (isStaffMode && currentStaff?.code) {
                 </section>
               )}
               {!isStaffMode && (
-                <button className="primary-btn submit-btn" type="submit">{editingId ? '수정 저장' : '매물 등록하기'}</button>
-              )}
+  <div className="submit-action-row">
+    <button className="primary-btn submit-btn" type="submit">
+      {editingId ? '수정 저장' : '매물 등록하기'}
+    </button>
+
+    {editingId && canEditExisting && (
+      <button
+        type="button"
+        className="small-btn"
+        onClick={() => deleteProperty(editingId)}
+        style={{
+          color: '#ffffff',
+          background: '#b71c1c',
+          borderColor: '#b71c1c',
+        }}
+      >
+        삭제
+      </button>
+    )}
+  </div>
+)}
               <p className="status-text">{status}</p>
             </form>
 
