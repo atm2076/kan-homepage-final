@@ -1730,7 +1730,6 @@ const clearMarkers = () => {
             content: `
               <div class="naver-count-marker naver-cluster-marker ${stage}">
                 <span>${item.count}</span>
-                <strong>${item.label}</strong>
               </div>
             `,
             size: new naver.maps.Size(92, 78),
@@ -1866,17 +1865,7 @@ function getPropertyMapPoint(property = {}, index = 0) {
       y: 50
     };
   }
-
-  const text = `${property.address || ''} ${property.title || ''}`;
-  const base = CUSTOMER_MAP_AREAS.find((area) => text.includes(area.key)) || CUSTOMER_MAP_AREAS[CUSTOMER_MAP_AREAS.length - 1];
-  const offset = ((index % 5) - 2) * 0.004;
-
-  return {
-    lat: base.lat + offset,
-    lng: base.lng + ((index % 3) - 1) * 0.004,
-    x: Math.min(86, Math.max(14, base.x + ((index % 5) - 2) * 3)),
-    y: Math.min(84, Math.max(16, base.y + ((index % 4) - 1) * 4))
-  };
+return null;
 }
 
 function getCustomerMarkerClass(property = {}) {
@@ -1924,18 +1913,146 @@ function CustomerMapView({ properties, selected, onSelect, keyword, setKeyword, 
   const mapRef = useRef(null);
   const [activeTab, setActiveTab] = useState('');
   const selectedProperty = properties.find((item) => item.id === selected?.id) || properties[0];
-  const markerItems = useMemo(() => properties.slice(0, 60).map((property, index) => ({
-    property,
-    point: getPropertyMapPoint(property, index),
-    markerClass: getCustomerMarkerClass(property)
-  })), [properties]);
+  const markerItems = useMemo(
+  () =>
+    properties
+      .slice(0, 60)
+      .map((property, index) => {
+        const point = getPropertyMapPoint(property, index);
 
+        if (!point) return null;
+
+        return {
+          property,
+          point,
+          markerClass: getCustomerMarkerClass(property),
+        };
+      })
+      .filter(Boolean),
+  [properties]
+);
+const groupMarkerItems = (items, zoom) => {
+  if (zoom <= 13 && items.length > 1) {
+    return [
+      {
+        type: 'cluster',
+        lat:
+          items.reduce((sum, item) => sum + item.point.lat, 0) /
+          items.length,
+        lng:
+          items.reduce((sum, item) => sum + item.point.lng, 0) /
+          items.length,
+        items,
+      },
+    ];
+  }
+
+  if (zoom >= 20) {
+    return items.map((item) => ({
+      type: 'property',
+      lat: item.point.lat,
+      lng: item.point.lng,
+      items: [item],
+    }));
+  }
+
+  let gridSize;
+
+  if (zoom <= 11) {
+    gridSize = 0.03;
+  } else if (zoom === 12) {
+    gridSize = 0.018;
+  } else if (zoom === 13) {
+    gridSize = 0.01;
+  } else if (zoom === 14) {
+    gridSize = 0.006;
+  } else {
+    gridSize = 0.003;
+  }
+const groups = [];
+const buckets = new Map();
+
+items.forEach((item) => {
+  const latCell = Math.floor(item.point.lat / gridSize);
+  const lngCell = Math.floor(item.point.lng / gridSize);
+
+  let targetGroupIndex = -1;
+
+  for (let latOffset = -1; latOffset <= 1; latOffset += 1) {
+    for (let lngOffset = -1; lngOffset <= 1; lngOffset += 1) {
+      const neighborKey =
+        `${latCell + latOffset}-${lngCell + lngOffset}`;
+
+      const candidateIndexes = buckets.get(neighborKey) || [];
+
+      for (const groupIndex of candidateIndexes) {
+        const candidateGroup = groups[groupIndex];
+
+        const centerLat =
+          candidateGroup.latSum / candidateGroup.items.length;
+
+        const centerLng =
+          candidateGroup.lngSum / candidateGroup.items.length;
+
+        const isNearby =
+          Math.abs(item.point.lat - centerLat) <= gridSize &&
+          Math.abs(item.point.lng - centerLng) <= gridSize;
+
+        if (isNearby) {
+          targetGroupIndex = groupIndex;
+          break;
+        }
+      }
+
+      if (targetGroupIndex !== -1) break;
+    }
+
+    if (targetGroupIndex !== -1) break;
+  }
+
+  if (targetGroupIndex === -1) {
+    targetGroupIndex = groups.length;
+
+    groups.push({
+      items: [],
+      latSum: 0,
+      lngSum: 0,
+    });
+  }
+
+  const targetGroup = groups[targetGroupIndex];
+
+  targetGroup.items.push(item);
+  targetGroup.latSum += item.point.lat;
+  targetGroup.lngSum += item.point.lng;
+
+  const currentKey = `${latCell}-${lngCell}`;
+
+  if (!buckets.has(currentKey)) {
+    buckets.set(currentKey, []);
+  }
+
+  const bucketIndexes = buckets.get(currentKey);
+
+  if (!bucketIndexes.includes(targetGroupIndex)) {
+    bucketIndexes.push(targetGroupIndex);
+  }
+});
+
+return groups.map((group) => ({
+  type: group.items.length > 1 ? 'cluster' : 'property',
+  lat: group.latSum / group.items.length,
+  lng: group.lngSum / group.items.length,
+  items: group.items,
+}));
+};
   useLayoutEffect(() => {
     let mounted = true;
     let resizeObserver = null;
-    let resizeFrame = null;
-    const resizeTimers = [];
-    let resizeCustomerMap = () => {};
+let resizeFrame = null;
+let zoomListener = null;
+const resizeTimers = [];
+let resizeCustomerMap = () => {};
 
 const clearMarkers = () => {
     if (
@@ -2011,33 +2128,83 @@ const clearMarkers = () => {
 
         window.addEventListener('resize', resizeCustomerMap);
 
-        clearMarkers();
-        markerItems.forEach(({ property, point, markerClass }) => {
-          const marker = new naver.maps.Marker({
-            position: new naver.maps.LatLng(point.lat, point.lng),
-            map,
-            icon: {
-              content: `<div class="customer-map-naver-marker ${markerClass}"><span>${escapeHtml(getMapMarkerLabel(property))}</span></div>`,
-              size: new naver.maps.Size(86, 40),
-              anchor: new naver.maps.Point(43, 20)
-            }
-          });
-          naver.maps.Event.addListener(marker, 'click', () => onSelect(property));
-          markersRef.current.push(marker);
-        });
+        const renderCustomerMarkers = () => {
+  clearMarkers();
+
+  const zoom = map.getZoom();
+  const groupedItems = groupMarkerItems(markerItems, zoom);
+
+  groupedItems.forEach((group) => {
+    const isCluster = group.type === 'cluster';
+    const firstItem = group.items[0];
+
+    const marker = new naver.maps.Marker({
+      position: new naver.maps.LatLng(group.lat, group.lng),
+      map,
+      icon: isCluster
+        ? {
+            content: `
+              <div class="customer-map-cluster-marker">
+                <span>${group.items.length}</span>
+              </div>
+            `,
+            size: new naver.maps.Size(44, 44),
+            anchor: new naver.maps.Point(22, 22),
+          }
+        : {
+            content: `
+              <div class="customer-map-naver-marker ${firstItem.markerClass}">
+                <span>${escapeHtml(
+                  getMapMarkerLabel(firstItem.property)
+                )}</span>
+              </div>
+            `,
+            size: new naver.maps.Size(86, 40),
+            anchor: new naver.maps.Point(43, 20),
+          },
+    });
+
+    if (isCluster) {
+      naver.maps.Event.addListener(marker, 'click', () => {
+        map.setCenter(new naver.maps.LatLng(group.lat, group.lng));
+        map.setZoom(Math.min(map.getZoom() + 2, 17));
+      });
+    } else {
+      naver.maps.Event.addListener(marker, 'click', () => {
+        onSelect(firstItem.property);
+      });
+    }
+
+    markersRef.current.push(marker);
+  });
+};
+
+renderCustomerMarkers();
+
+zoomListener = naver.maps.Event.addListener(
+  map,
+  'zoom_changed',
+  () => {
+    renderCustomerMarkers();
+  }
+);
+        
       })
       .catch(() => {});
 
-    return () => {
-      mounted = false;
-      if (resizeFrame) cancelAnimationFrame(resizeFrame);
-      resizeTimers.forEach((timer) => clearTimeout(timer));
-      if (resizeObserver) resizeObserver.disconnect();
-      window.removeEventListener('resize', resizeCustomerMap);
-      clearMarkers();
-    };
-  }, [markerItems]);
+ return () => {
+  mounted = false;
+  if (zoomListener && window.naver?.maps) {
+    window.naver.maps.Event.removeListener(zoomListener);
+  }
 
+  if (resizeFrame) cancelAnimationFrame(resizeFrame);
+  resizeTimers.forEach((timer) => clearTimeout(timer));
+  if (resizeObserver) resizeObserver.disconnect();
+  window.removeEventListener('resize', resizeCustomerMap);
+  clearMarkers();
+};
+}, [markerItems]);
   const applyMapFilter = (key, value) => {
     if (key === 'category') setCategory(value);
     else if (key === 'dealMode') setDealMode(value);
