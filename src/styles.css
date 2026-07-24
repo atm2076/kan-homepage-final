@@ -11200,3 +11200,43 @@ button.property-list-item,
   width: 100% !important;
   height: 100% !important;
 }
+/* 지도 숫자 클러스터 최종 강제 보정 */
+.naver-count-marker,
+.naver-cluster-marker {
+  width: 92px !important;
+  height: 78px !important;
+  min-height: 78px !important;
+  padding: 0 !important;
+  background: transparent !important;
+  box-shadow: none !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+}
+
+.naver-count-marker span,
+.naver-cluster-marker span,
+.naver-cluster-marker.area span,
+.naver-cluster-marker.dong span,
+.naver-cluster-marker.property span {
+  width: 60px !important;
+  height: 60px !important;
+  min-width: 60px !important;
+  min-height: 60px !important;
+  margin: 0 !important;
+  border-radius: 50% !important;
+  background: #183a67 !important;
+  color: #ffffff !important;
+  box-shadow: 0 8px 18px rgba(24, 58, 103, 0.34) !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  font-size: 24px !important;
+  font-weight: 900 !important;
+  line-height: 1 !important;
+}
+
+.naver-count-marker strong,
+.naver-cluster-marker strong {
+  display: none !important;
+}
