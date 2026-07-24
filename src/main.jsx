@@ -1732,8 +1732,8 @@ const clearMarkers = () => {
                 <span>${item.count}</span>
               </div>
             `,
-            size: new naver.maps.Size(92, 78),
-            anchor: new naver.maps.Point(46, 39),
+            size: new naver.maps.Size(70, 70),
+anchor: new naver.maps.Point(35, 35),
           },
         });
 
