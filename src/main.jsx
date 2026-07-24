@@ -1021,22 +1021,66 @@ function getPopularKeywordPreset(keyword) {
   const compact = String(keyword || '').replace(/\s+/g, '');
 
   if (compact.includes('원룸건물매매')) {
-    return { dealMode: DEAL_MODES.SALE, category: '원룸건물매매', filters: { trade: '매매' }, keyword: '원룸건물' };
+    return {
+      dealMode: DEAL_MODES.SALE,
+      category: '원룸건물매매',
+      filters: { trade: '매매' },
+      keyword: '원룸건물'
+    };
   }
+
   if (compact.includes('다가구매매')) {
-    return { dealMode: DEAL_MODES.SALE, category: '다가구매매', filters: { trade: '매매' }, keyword: '다가구' };
+    return {
+      dealMode: DEAL_MODES.SALE,
+      category: '다가구매매',
+      filters: { trade: '매매' },
+      keyword: '다가구'
+    };
   }
+
+  if (compact.includes('미니투룸')) {
+    return {
+      dealMode: DEAL_MODES.RENT,
+      category: '미니투룸',
+      filters: { trade: '전체' },
+      keyword
+    };
+  }
+
   if (compact.includes('원룸월세')) {
-    return { dealMode: DEAL_MODES.RENT, category: '원룸', filters: { trade: '월세' }, keyword: '구미 원룸' };
+    return {
+      dealMode: DEAL_MODES.RENT,
+      category: '원룸',
+      filters: { trade: '월세' },
+      keyword: '구미 원룸'
+    };
   }
+
   if (compact.includes('원룸임대') || compact.includes('구미원룸')) {
-    return { dealMode: DEAL_MODES.RENT, category: '원룸', filters: { trade: '전체' }, keyword: compact.includes('구미') ? '구미 원룸' : keyword };
+    return {
+      dealMode: DEAL_MODES.RENT,
+      category: '원룸',
+      filters: { trade: '전체' },
+      keyword: compact.includes('구미') ? '구미 원룸' : keyword
+    };
   }
+
   if (compact.includes('투룸')) {
-    return { dealMode: DEAL_MODES.RENT, category: '투룸', filters: { trade: '전체' }, keyword };
+    return {
+      dealMode: DEAL_MODES.RENT,
+      category: '투룸',
+      filters: { trade: '전체' },
+      keyword
+    };
   }
+
   if (compact.includes('원룸')) {
-    return { dealMode: DEAL_MODES.RENT, category: '원룸', filters: { trade: '전체' }, keyword };
+    return {
+      dealMode: DEAL_MODES.RENT,
+      category: '원룸',
+      filters: { trade: '전체' },
+      keyword
+    };
   }
 
   return { keyword };
@@ -1602,17 +1646,28 @@ function NaverMapBox({ setKeyword, setDealMode, setCategory, setFilters, setSele
     let isMounted = true;
 
 const clearMarkers = () => {
+  if (
+  window.location.hostname === 'localhost' ||
+  window.location.hostname === '127.0.0.1'
+) {
+  markersRef.current = [];
+  return;
+}
   const markers = Array.isArray(markersRef.current)
     ? markersRef.current
     : [];
 
   markers.forEach((marker) => {
-    if (!marker || typeof marker.setMap !== 'function') return;
-
     try {
-      marker.setMap(null);
-    } catch {
-      // 네이버 지도 인증 실패 시 마커 정리 오류 무시
+      if (!marker) return;
+
+      const setMap = marker.setMap;
+
+      if (typeof setMap === 'function') {
+        setMap.call(marker, null);
+      }
+    } catch (error) {
+      console.warn('지도 마커 정리 오류 무시:', error);
     }
   });
 
@@ -1790,10 +1845,20 @@ const CUSTOMER_MAP_AREAS = [
 ];
 
 function getPropertyMapPoint(property = {}, index = 0) {
-  const lat = Number(property.latitude);
-  const lng = Number(property.longitude);
+  const latText = String(property.latitude ?? '').trim();
+  const lngText = String(property.longitude ?? '').trim();
 
-  if (Number.isFinite(lat) && Number.isFinite(lng)) {
+  const lat = Number(latText);
+  const lng = Number(lngText);
+
+  if (
+    latText &&
+    lngText &&
+    Number.isFinite(lat) &&
+    Number.isFinite(lng) &&
+    lat !== 0 &&
+    lng !== 0
+  ) {
     return {
       lat,
       lng,
@@ -1873,17 +1938,33 @@ function CustomerMapView({ properties, selected, onSelect, keyword, setKeyword, 
     let resizeCustomerMap = () => {};
 
 const clearMarkers = () => {
+    if (
+    window.location.hostname === 'localhost' ||
+    window.location.hostname === '127.0.0.1'
+  ) {
+    markersRef.current = [];
+    return;
+  }
   const markers = Array.isArray(markersRef.current)
     ? markersRef.current
     : [];
 
   markers.forEach((marker) => {
-    if (!marker || typeof marker.setMap !== 'function') return;
-
     try {
-      marker.setMap(null);
-    } catch {
-      // 네이버 지도 인증 실패 시 마커 정리 오류 무시
+      if (!marker) return;
+
+      const getMap = marker.getMap;
+      const setMap = marker.setMap;
+
+      if (
+        typeof getMap === 'function' &&
+        typeof setMap === 'function' &&
+        getMap.call(marker)
+      ) {
+        setMap.call(marker, null);
+      }
+    } catch (error) {
+      console.warn('지도 마커 정리 오류 무시:', error);
     }
   });
 
@@ -1955,7 +2036,7 @@ const clearMarkers = () => {
       window.removeEventListener('resize', resizeCustomerMap);
       clearMarkers();
     };
-  }, [markerItems, onSelect]);
+  }, [markerItems]);
 
   const applyMapFilter = (key, value) => {
     if (key === 'category') setCategory(value);
@@ -3278,7 +3359,7 @@ const ledgerPreviewItems = [
         category: isStaffMode ? quickRoomType : prev.category,
         trade_type: isStaffMode ? quickTradeType : prev.trade_type,
         room_bath: isStaffMode ? (prev.room_bath || ROOM_BATH_DEFAULTS[quickRoomType] || '') : prev.room_bath,
-        status: isAdminMode ? 'published' : 'pending'
+        status: 'published',
       }));
     }
   }, [editingId, isAdminMode, isStaffMode, quickRoomType, quickTradeType]);
@@ -3292,18 +3373,33 @@ const ledgerPreviewItems = [
     updateField('room_bath', `방 ${defaults[1]} / 욕실 ${defaults[2]}`);
   }, [quickRoomType, isStaffMode, editingId]);
 
-  function chooseMode(nextMode) {
-    setMode(nextMode);
-    setIsAdmin(false);
-    setPassword('');
-    setStatus('');
-    setStaffStep(0);
-    const url = new URL(window.location.href);
-    url.searchParams.delete('staff');
-    url.searchParams.delete('admin');
-    url.searchParams.set(nextMode, '1');
-    window.history.replaceState(null, '', `${url.pathname}${url.search}${url.hash}`);
+function chooseMode(nextMode) {
+  setMode(nextMode);
+  setIsAdmin(false);
+  setPassword('');
+  setStatus('');
+  setStaffStep(0);
+  setStaffView('register');
+
+  const url = new URL(window.location.href);
+
+  url.searchParams.delete('staff');
+  url.searchParams.delete('admin');
+
+  if (nextMode === 'staff') {
+    url.searchParams.set('staff', '1');
+    url.hash = '/staff/listings';
+  } else {
+    url.searchParams.set('admin', '1');
+    url.hash = '/admin/listings';
   }
+
+  window.history.replaceState(
+    null,
+    '',
+    `${url.pathname}${url.search}${url.hash}`
+  );
+}
 async function loadStaffProperties(staffCode) {
 if (!isSupabaseReady || !staffCode) {
 setStaffProperties([]);
@@ -4061,7 +4157,7 @@ setStaffStep(0);
   }
 
   function resetForm() {
-    const nextForm = { ...emptyForm, status: isAdminMode ? 'published' : 'pending' };
+    const nextForm = { ...emptyForm, status: 'published' };
     setEditingId(null);
     latestFormRef.current = nextForm;
     setLatestForm(nextForm);
@@ -4533,13 +4629,43 @@ if (isStaffMode && currentStaff?.code) {
             현재 접속: <strong>{accessLabel}</strong>
           </div>
         )}
-        <nav className="admin-menu-strip" aria-label="관리자 메뉴">
-          {['매물등록', '매물관리', '대표검수', '직원관리'].map((label) => (
-            <a key={label} href={`#admin-${label}`}>
-              {label}
-            </a>
-          ))}
-        </nav>
+<nav className="admin-menu-strip" aria-label="관리자 메뉴">
+  <button
+    type="button"
+    onClick={() => {
+      setMode('admin');
+      setStaffView('register');
+    }}
+  >
+    매물등록
+  </button>
+
+  <button
+    type="button"
+    onClick={() => {
+      setMode('admin');
+      setStaffView('mine');
+    }}
+  >
+    매물관리
+  </button>
+
+  <button
+    type="button"
+    onClick={() => {
+      setMode('admin');
+    }}
+  >
+    대표검수
+  </button>
+
+<button
+  type="button"
+  onClick={() => chooseMode('staff')}
+>
+  직원관리
+</button>
+</nav>
 
         {!mode ? (
           <div className="mode-choice">
@@ -7427,7 +7553,7 @@ const pageStyles = [
   const files = [];
 
   for (let index = 0; index < selectedUrls.length; index += 1) {
-    try {
+  try {
       const img = await loadShareImage(selectedUrls[index]);
 
       const canvas = document.createElement('canvas');
@@ -7515,7 +7641,7 @@ drawRoundedRect(
   index === 0 ? 82 : 540,
 index === 0
   ? panelY + 45 + lineIndex * 68
-  : panelY - 40 + lineIndex * 68,
+  : panelY - 140 + lineIndex * 68,
             {
   font: 'bold 31px sans-serif',
   color: '#ffffff',
@@ -7779,6 +7905,7 @@ const style = pageStyles[index] || pageStyles[pageStyles.length - 1];
     strokeWidth: 6,
   }
 );
+      }
       const panelY = index === 0 ? 820 : 790;
 
      /*
