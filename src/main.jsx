@@ -3235,6 +3235,7 @@ function AdminModal({ mode, setMode, isAdmin, setIsAdmin, onClose, properties, r
   const [staffSavedItems, setStaffSavedItems] = useState([]);
   const [staffProperties, setStaffProperties] = useState([]);
   const [duplicateWarning, setDuplicateWarning] = useState(null);
+  const [duplicateManagerOpen, setDuplicateManagerOpen] = useState(false);
   const [adminDetailProperty, setAdminDetailProperty] = useState(null);
   const [adminDetailTab, setAdminDetailTab] = useState('public');
   const [photoEnhanceLevel, setPhotoEnhanceLevel] = useState('bright');
@@ -3282,6 +3283,66 @@ const [buildingLedgerSearching, setBuildingLedgerSearching] = useState(false);
   const canEditExisting = isAdminMode && isAdmin;
   const accessLabel = isStaffMode ? '직원용 관리자' : isAdminMode ? '대표 관리자' : '권한 선택';
   const photoUrls = linesToArray(form.photosText);
+const duplicatePropertyGroups = (() => {
+  const grouped = new Map();
+  const allItems = [...(properties || [])];
+
+  let reviewItems = [];
+
+  try {
+    reviewItems = JSON.parse(
+      localStorage.getItem('kanDuplicateReviewItems') || '[]'
+    );
+  } catch (error) {
+    console.error('중복매물 확인목록 불러오기 실패:', error);
+    reviewItems = [];
+  }
+
+  for (const item of reviewItems) {
+    if (
+      item?.id &&
+      !allItems.some(
+        (property) => String(property?.id) === String(item.id)
+      )
+    ) {
+      allItems.push(item);
+    }
+  }
+
+  for (const property of allItems) {
+    const parts = getPropertyDuplicateParts(property);
+    const address = String(parts?.address || '').trim();
+    const unit = String(parts?.unit || '').trim();
+
+    if (!address || !unit) continue;
+
+    const key = `${address}__${unit}`;
+
+    if (!grouped.has(key)) {
+      grouped.set(key, []);
+    }
+
+    const group = grouped.get(key);
+
+    if (
+      !group.some(
+        (item) => String(item?.id) === String(property?.id)
+      )
+    ) {
+      group.push(property);
+    }
+  }
+
+  const reviewIds = reviewItems.map((item) => String(item?.id));
+
+  return Array.from(grouped.values()).filter(
+    (group) =>
+      group.length >= 2 ||
+      group.some((item) =>
+        reviewIds.includes(String(item?.id))
+      )
+  );
+})();
 const quickMissingItems = [
   !isStaffMode && !form.title && '제목',
   !form.address && '주소',
@@ -4428,6 +4489,36 @@ function reorderPhoto(fromIndex, toIndex) {
     return { ...prev, photosText: next.join('\n') };
   });
 }
+async function deleteDuplicateProperty(property) {
+  if (!property?.id) {
+    window.alert('삭제할 매물 정보가 없습니다.');
+    return;
+  }
+  const confirmed = window.confirm(
+    `이 매물을 삭제하시겠습니까?\n\n` +
+    `매물명: ${property.title || '제목 없음'}\n` +
+    `주소: ${property.address || '-'}\n` +
+    `호수: ${property.real_unit || property.floor_info || '-'}\n\n` +
+    `삭제 후에는 되돌릴 수 없습니다.`
+  );
+  if (!confirmed) return;
+  try {
+    setStatus('중복 매물을 삭제하고 있습니다.');
+    const { error } = await supabase
+      .from('properties')
+      .delete()
+      .eq('id', property.id);
+
+    if (error) throw error;
+    setStatus('중복 매물을 삭제했습니다.');
+    if (typeof reload === 'function') {
+      await reload();
+    }
+  } catch (error) {
+    console.error('중복 매물 삭제 실패:', error);
+    setStatus(`삭제하지 못했습니다: ${error?.message || '알 수 없는 오류'}`);
+  }
+}
   async function saveProperty(e, forceDuplicateSave = false) {
     e?.preventDefault?.();
     setStatus('저장 중입니다.');
@@ -4525,10 +4616,39 @@ updated_by: isStaffMode ? (currentStaff?.name || saveForm.staff_name || '직원'
         const duplicateParts = getPropertyDuplicateParts(duplicate);
         const hasUnit = Boolean(targetParts.unit && duplicateParts.unit);
         if (isStaffMode && hasUnit) {
-          setDuplicateWarning(null);
-          setStatus('이미 같은 주소와 같은 호수의 매물이 등록되어 있습니다.\n기존 매물을 확인한 뒤 수정하거나 대표 관리자에게 문의해주세요.');
-          return;
-        }
+  const message =
+    '이미 같은 주소와 같은 호수의 매물이 등록되어 있습니다.\n' +
+    '대표 관리자가 중복매물 메뉴에서 확인할 수 있습니다.';
+
+  try {
+    const savedItems = JSON.parse(
+      localStorage.getItem('kanDuplicateReviewItems') || '[]'
+    );
+
+    const nextItems = [
+      duplicate,
+      ...savedItems.filter(
+        (item) => String(item?.id) !== String(duplicate?.id)
+      ),
+    ];
+
+    localStorage.setItem(
+      'kanDuplicateReviewItems',
+      JSON.stringify(nextItems.slice(0, 100))
+    );
+  } catch (error) {
+    console.error('중복매물 확인목록 저장 실패:', error);
+  }
+
+  setDuplicateWarning({
+    duplicate,
+    message,
+    hasUnit,
+  });
+
+  setStatus(message);
+  return;
+}
         const message = hasUnit
           ? '동일 주소/동일 호수의 매물이 이미 있습니다.\n기존 매물을 수정하시겠습니까, 그래도 새로 등록하시겠습니까?'
           : '같은 주소의 매물이 이미 있습니다. 같은 매물인지 확인해주세요.';
@@ -4658,7 +4778,15 @@ if (isStaffMode && currentStaff?.code) {
   >
     대표검수
   </button>
-
+<button
+  type="button"
+  onClick={() => setDuplicateManagerOpen(true)}
+>
+  중복매물
+  {duplicatePropertyGroups.length > 0
+    ? ` ${duplicatePropertyGroups.length}`
+    : ''}
+</button>
 <button
   type="button"
   onClick={() => chooseMode('staff')}
@@ -6158,10 +6286,243 @@ if (isStaffMode && currentStaff?.code) {
     </div>
   );
 })}
+        {isAdminMode && duplicateManagerOpen && (
+          <div
+            style={{
+              position: 'fixed',
+              inset: 0,
+              zIndex: 10000,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              padding: '20px',
+              background: 'rgba(0, 0, 0, 0.5)',
+            }}
+            onClick={() => setDuplicateManagerOpen(false)}
+          >
+            <div
+              style={{
+                width: 'min(1100px, 96vw)',
+                maxHeight: '90vh',
+                overflowY: 'auto',
+                padding: '24px',
+                borderRadius: '22px',
+                background: '#ffffff',
+              }}
+              onClick={(event) => event.stopPropagation()}
+            >
+              <div
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                  gap: '16px',
+                  marginBottom: '20px',
+                }}
+              >
+                <div>
+                  <h2 style={{ margin: 0 }}>중복매물 관리</h2>
+                  <p style={{ margin: '6px 0 0' }}>
+                    같은 주소와 같은 호수로 등록된 매물입니다.
+                  </p>
+                </div>
 
+                <button
+                  type="button"
+                  className="small-btn"
+                  onClick={() => setDuplicateManagerOpen(false)}
+                >
+                  닫기
+                </button>
+              </div>
+
+              {duplicatePropertyGroups.length === 0 ? (
+                <div
+                  style={{
+                    padding: '50px 20px',
+                    textAlign: 'center',
+                    border: '1px solid #dddddd',
+                    borderRadius: '16px',
+                  }}
+                >
+                  현재 중복매물이 없습니다.
+                </div>
+              ) : (
+                <div style={{ display: 'grid', gap: '20px' }}>
+                  {duplicatePropertyGroups.map((group, groupIndex) => {
+                    const firstProperty = group[0];
+                    const duplicateParts =
+                      getPropertyDuplicateParts(firstProperty);
+
+                    return (
+                      <section
+                        key={
+                          group.map((item) => item.id).join('-') ||
+                          `duplicate-${groupIndex}`
+                        }
+                        style={{
+                          padding: '18px',
+                          border: '2px solid #efcaca',
+                          borderRadius: '18px',
+                          background: '#fffafa',
+                        }}
+                      >
+                        <div
+                          style={{
+                            marginBottom: '14px',
+                            fontWeight: 800,
+                          }}
+                        >
+                          <div style={{ color: '#c62828' }}>
+                            중복 {group.length}건
+                          </div>
+
+                          <div>
+                            {duplicateParts?.address ||
+                              firstProperty?.address ||
+                              '-'}
+                          </div>
+
+                          <div>
+                            호수: {duplicateParts?.unit || '-'}
+                          </div>
+                        </div>
+
+                        <div style={{ display: 'grid', gap: '12px' }}>
+                          {group.map((property) => {
+                            const photoUrl =
+                              toTextList(property.photos)[0] ||
+                              toTextList(property.photosText)[0] ||
+                              '';
+
+                            return (
+                              <div
+                                key={property.id}
+                                style={{
+                                  display: 'grid',
+                                  gridTemplateColumns:
+                                    '110px minmax(0, 1fr) auto',
+                                  alignItems: 'center',
+                                  gap: '14px',
+                                  padding: '14px',
+                                  border: '1px solid #dddddd',
+                                  borderRadius: '14px',
+                                  background: '#ffffff',
+                                }}
+                              >
+                                <div
+                                  style={{
+                                    width: '110px',
+                                    height: '85px',
+                                    overflow: 'hidden',
+                                    borderRadius: '10px',
+                                    background: '#eeeeee',
+                                  }}
+                                >
+                                  {photoUrl ? (
+                                    <img
+                                      src={photoUrl}
+                                      alt={property.title || '매물 사진'}
+                                      style={{
+                                        width: '100%',
+                                        height: '100%',
+                                        objectFit: 'cover',
+                                      }}
+                                    />
+                                  ) : (
+                                    <div
+                                      style={{
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        justifyContent: 'center',
+                                        width: '100%',
+                                        height: '100%',
+                                      }}
+                                    >
+                                      사진 없음
+                                    </div>
+                                  )}
+                                </div>
+
+                                <div>
+                                  <strong>
+                                    {property.title || '제목 없는 매물'}
+                                  </strong>
+
+                                  <div style={{ marginTop: '5px' }}>
+                                    {property.address || '-'}
+                                  </div>
+
+                                  <div>
+                                    호수:{' '}
+                                    {property.real_unit ||
+                                      property.floor_info ||
+                                      '-'}
+                                  </div>
+
+                                  <div>
+                                    등록자:{' '}
+                                    {property.staff_name ||
+                                      property.created_by ||
+                                      '대표 관리자'}
+                                  </div>
+
+                                  <div>
+                                    상태:{' '}
+                                    {STATUS_LABELS[
+                                      property.status || 'pending'
+                                    ] ||
+                                      property.status ||
+                                      '-'}
+                                  </div>
+                                </div>
+
+                                <div
+                                  style={{
+                                    display: 'flex',
+                                    gap: '8px',
+                                  }}
+                                >
+                                  <button
+                                    type="button"
+                                    className="small-btn"
+                                    onClick={() => {
+                                      startEdit(property);
+                                      setDuplicateManagerOpen(false);
+                                    }}
+                                  >
+                                    수정
+                                  </button>
+
+                                  <button
+                                    type="button"
+                                    className="small-btn"
+                                    onClick={() =>
+                                      deleteDuplicateProperty(property)
+                                    }
+                                    style={{
+                                      color: '#ffffff',
+                                      background: '#b71c1c',
+                                      borderColor: '#b71c1c',
+                                    }}
+                                  >
+                                    삭제
+                                  </button>
+                                </div>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </section>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+          </div>
+        )}
   </div>
 )}
-
           </div>
         )}
       </div>
