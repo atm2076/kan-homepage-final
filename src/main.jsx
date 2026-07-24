@@ -1729,7 +1729,23 @@ const clearMarkers = () => {
           icon: {
             content: `
               <div class="naver-count-marker naver-cluster-marker ${stage}">
-                <span>${item.count}</span>
+                <span style="
+  display:flex !important;
+  width:60px !important;
+  height:60px !important;
+  min-width:60px !important;
+  min-height:60px !important;
+  margin:0 auto !important;
+  border-radius:50% !important;
+  background:#183a67 !important;
+  color:#ffffff !important;
+  box-shadow:0 8px 18px rgba(24,58,103,0.34) !important;
+  align-items:center !important;
+  justify-content:center !important;
+  font-size:24px !important;
+  font-weight:900 !important;
+  line-height:1 !important;
+">${item.count}</span>
               </div>
             `,
 size: new naver.maps.Size(92, 78),
