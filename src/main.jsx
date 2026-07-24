@@ -4510,6 +4510,22 @@ async function deleteDuplicateProperty(property) {
       .eq('id', property.id);
 
     if (error) throw error;
+    try {
+  const savedItems = JSON.parse(
+    localStorage.getItem('kanDuplicateReviewItems') || '[]'
+  );
+
+  const nextItems = savedItems.filter(
+    (item) => String(item?.id) !== String(property?.id)
+  );
+
+  localStorage.setItem(
+    'kanDuplicateReviewItems',
+    JSON.stringify(nextItems)
+  );
+} catch (storageError) {
+  console.error('중복매물 기록 삭제 실패:', storageError);
+}
     setStatus('중복 매물을 삭제했습니다.');
     if (typeof reload === 'function') {
       await reload();
