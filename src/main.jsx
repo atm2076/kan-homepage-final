@@ -1184,7 +1184,10 @@ function App() {
     const adminParam = params.get('admin');
     const adminPaths = ['/admin', '/admin/login', '/dashboard'];
     const currentPath = window.location.pathname.replace(/\/+$/, '') || '/';
+    const currentHash = window.location.hash.replace(/^#/, '').replace(/\/+$/, '');
     if (adminPaths.includes(currentPath)) return 'admin';
+    if (currentHash.startsWith('/admin')) return 'admin';
+if (currentHash.startsWith('/staff')) return 'staff';
     if (adminParam === 'staff') return 'staff';
     if (adminParam === 'owner') return 'admin';
     if (adminParam === '1') return 'admin';
@@ -7284,15 +7287,15 @@ async function buildRentalShareFiles(property, photoUrls) {
         `${safeShareText(property.direction, '방향 확인 필요')} · ${getShareParkingText(property)}`,
       ],
     },
-    {
-      title: '매물 기본정보',
-      lines: [
-        `소재지: ${safeShareText(property.address, '구미시')}`,
-        `매물종류: ${safeShareText(property.category, '임대매물')}`,
-        `거래조건: ${getRentalSharePrice(property)}`,
-        `관리비: ${formatAmount(property.maintenance_fee)}`,
-      ],
-    },
+  {
+  title: '기본 정보',
+  lines: [
+    `소재지: ${safeShareText(property.address, '구미시')}`,
+    `매물종류: ${safeShareText(property.category, '임대매물')}`,
+    `거래조건: ${getRentalSharePrice(property)}`,
+    `관리비: ${formatAmount(property.maintenance_fee)}`,
+  ],
+},
     {
       title: '면적 · 층수',
       lines: [
@@ -7436,57 +7439,57 @@ const pageStyles = [
 
       drawCoverImage(ctx, img, 0, 0, canvas.width, canvas.height);
 
-      ctx.fillStyle = 'rgba(0,0,0,0.12)';
-      ctx.fillRect(0, 0, canvas.width, canvas.height);
-
+/*
+if (index === 0) {
+  ctx.fillStyle = 'rgba(0,0,0,0.12)';
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
+}
+*/
       const content =
         pageContents[index] ||
         pageContents[pageContents.length - 1];
 const style = pageStyles[index] || pageStyles[pageStyles.length - 1];
-      drawRoundedRect(
-        ctx,
-        28,
-        28,
-        1024,
-        170,
-        26,
-        style.headerColor
-      );
+     /*if (index === 0) {
+  drawRoundedRect(
+    ctx,
+    28,
+    28,
+    1024,
+    170,
+    26,
+    style.headerColor
+  );
+}
+*/
+if (index === 0) {
+  drawShareText(ctx, `${index + 1}`, 58, 52, {
+    font: 'bold 38px sans-serif',
+    color: '#ffffff',
+    strokeWidth: 0,
+  });
+}
+drawShareText(ctx, content.title, 540, index === 0 ? 48 : 42, {
+  font: '900 50px "Noto Sans KR", "Malgun Gothic", sans-serif',
+  color: '#ffffff',
+  align: 'center',
+  maxWidth: 940,
+  lineHeight: 56,
+  strokeColor: 'rgba(0,0,0,0.98)',
+  strokeWidth: 7,
+});
 
-      drawShareText(ctx, `${index + 1}`, 58, 52, {
-        font: 'bold 38px sans-serif',
-        color: '#ffffff',
-        strokeWidth: 0,
-      });
-
-      drawShareText(ctx, content.title, 130, 48, {
-        font: 'bold 48px sans-serif',
-        color: '#ffffff',
-        maxWidth: 860,
-        lineHeight: 56,
-        strokeWidth: 0,
-      });
-
-      if (index === 0) {
-        drawRoundedRect(
-          ctx,
-          60,
-          230,
-          960,
-          135,
-          22,
-          style.accentColor
-        );
-
-        drawShareText(ctx, getRentalSharePrice(property), 540, 267, {
-          font: 'bold 44px sans-serif',
-          color: style.textColor,
-          align: 'center',
-          maxWidth: 880,
-          lineHeight: 50,
-          strokeWidth: 0,
-        });
-      }
+  
+if (index === 0) {
+  drawShareText(ctx, getRentalSharePrice(property), 540, 267, {
+    font: '900 44px "Noto Sans KR", "Malgun Gothic", sans-serif',
+    color: '#ffd600',
+    align: 'center',
+    maxWidth: 880,
+    lineHeight: 50,
+    strokeColor: 'rgba(0,0,0,0.98)',
+    strokeWidth: 6,
+  });
+}
 
       const panelY = index === 0 ? 840 : 810;
 
@@ -7509,43 +7512,51 @@ drawRoundedRect(
           drawShareText(
             ctx,
             `✓ ${safeShareText(line)}`,
-            82,
-            panelY + 45 + lineIndex * 68,
+  index === 0 ? 82 : 540,
+index === 0
+  ? panelY + 45 + lineIndex * 68
+  : panelY - 40 + lineIndex * 68,
             {
   font: 'bold 31px sans-serif',
   color: '#ffffff',
-  maxWidth: 900,
-  lineHeight: 38,
+ maxWidth: index === 0 ? 900 : 960,
+align: index === 0 ? 'left' : 'center',
+lineHeight: index === 0 ? 38 : 48,
   strokeColor: 'rgba(0,0,0,0.95)',
   strokeWidth: 7,
 }
           );
         });
 
-      drawRoundedRect(
-        ctx,
-        28,
-        1230,
-        1024,
-        94,
-        22,
-        style.headerColor
-      );
+/*
+if (index === 0) {
+  drawRoundedRect(
+    ctx,
+    28,
+    28,
+    1024,
+    180,
+    26,
+    style.headerColor
+  );
+}
+*/
 
-      drawShareText(
-        ctx,
-        `${OFFICE.name}  ☎ ${OFFICE.phone}`,
-        540,
-        1252,
-        {
-          font: 'bold 34px sans-serif',
-          color: '#ffffff',
-          align: 'center',
-          maxWidth: 960,
-          lineHeight: 40,
-          strokeWidth: 0,
-        }
-      );
+   drawShareText(
+  ctx,
+  `${OFFICE.name}  ☎ ${OFFICE.phone}`,
+540,
+index === 0 ? 1252 : 1270,
+  {
+    font: 'bold 34px sans-serif',
+    color: '#ffffff',
+    align: 'center',
+    maxWidth: 960,
+    lineHeight: 40,
+    strokeColor: 'rgba(0,0,0,0.95)',
+    strokeWidth: index === 0 ? 0 : 7,
+  }
+);
 
       const file = await canvasToJpegFile(
         canvas,
@@ -7716,7 +7727,7 @@ async function buildSaleShareFiles(property, photoUrls) {
         pageContents[index] ||
         pageContents[pageContents.length - 1];
 const style = pageStyles[index] || pageStyles[pageStyles.length - 1];
-      drawRoundedRect(
+      /*drawRoundedRect(
         ctx,
         28,
         28,
@@ -7725,7 +7736,7 @@ const style = pageStyles[index] || pageStyles[pageStyles.length - 1];
         26,
         style.headerColor
       );
-
+*/
       drawShareText(ctx, `${index + 1}`, 58, 54, {
         font: 'bold 40px sans-serif',
         color: '#ffffff',
@@ -7753,37 +7764,21 @@ const style = pageStyles[index] || pageStyles[pageStyles.length - 1];
           style.accentColor
         );
 
-        drawShareText(
-          ctx,
-          `매매가 ${formatAmount(property.sale_price)}`,
-          540,
-          250,
-          {
-            font: 'bold 45px sans-serif',
-            color: style.textColor,
-            align: 'center',
-            maxWidth: 880,
-            lineHeight: 50,
-            strokeWidth: 0,
-          }
-        );
-
-        drawShareText(
-          ctx,
-          `인수가 ${formatAmount(property.acquisition_price)}`,
-          540,
-          310,
-          {
-            font: 'bold 42px sans-serif',
-            color: '#c52323',
-            align: 'center',
-            maxWidth: 880,
-            lineHeight: 48,
-            strokeWidth: 0,
-          }
-        );
-      }
-
+      drawShareText(
+  ctx,
+  `매매가 ${formatAmount(property.sale_price)}`,
+  540,
+  250,
+  {
+    font: '900 45px "Noto Sans KR", "Malgun Gothic", sans-serif',
+    color: '#ffd600',
+    align: 'center',
+    maxWidth: 880,
+    lineHeight: 50,
+    strokeColor: 'rgba(0,0,0,0.98)',
+    strokeWidth: 6,
+  }
+);
       const panelY = index === 0 ? 820 : 790;
 
      /*
@@ -7805,7 +7800,7 @@ drawRoundedRect(
           drawShareText(
             ctx,
             `✓ ${safeShareText(line)}`,
-            82,
+            640,
             panelY - 140 + lineIndex * 66,
             {
   font: 'bold 31px sans-serif',
@@ -7813,11 +7808,12 @@ drawRoundedRect(
   maxWidth: 900,
   lineHeight: 38,
   strokeColor: 'rgba(0,0,0,0.95)',
+  align: 'center',
   strokeWidth: 7,
 }
           );
         });
-
+/*
       drawRoundedRect(
         ctx,
         28,
@@ -7827,21 +7823,22 @@ drawRoundedRect(
         22,
         style.headerColor
       );
-
-      drawShareText(
-        ctx,
-        `${OFFICE.name}  ☎ ${OFFICE.phone}`,
-        540,
-        1252,
-        {
-          font: 'bold 34px sans-serif',
-          color: '#ffffff',
-          align: 'center',
-          maxWidth: 960,
-          lineHeight: 40,
-          strokeWidth: 0,
-        }
-      );
+*/
+     drawShareText(
+  ctx,
+  `${OFFICE.name}  ☎ ${OFFICE.phone}`,
+  540,
+  1252,
+  {
+    font: 'bold 34px sans-serif',
+    color: '#ffffff',
+    align: 'center',
+    maxWidth: 960,
+    lineHeight: 40,
+    strokeColor: 'rgba(0,0,0,0.95)',
+    strokeWidth: 7,
+  }
+);
 
       const file = await canvasToJpegFile(
         canvas,
