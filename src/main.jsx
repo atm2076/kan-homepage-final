@@ -2486,6 +2486,30 @@ function CustomerListingSection({
   onHoldProperty,
   onDeleteProperty
 }) {
+  const [currentPage, setCurrentPage] = useState(1);
+
+  const hasActiveSearch =
+    Boolean(String(keyword || '').trim()) ||
+    category !== '전체' ||
+    Object.values(filters || {}).some((value) => {
+      if (Array.isArray(value)) return value.length > 0;
+      if (typeof value === 'boolean') return value;
+      return Boolean(value && value !== '전체');
+    });
+
+  const pageSize = hasActiveSearch ? 6 : 4;
+  const totalPages = Math.max(1, Math.ceil(properties.length / pageSize));
+  const safePage = Math.min(currentPage, totalPages);
+
+  const visibleProperties = properties.slice(
+    (safePage - 1) * pageSize,
+    safePage * pageSize
+  );
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [dealMode, keyword, category, filters]);
+
   const resetAll = () => {
     setDealMode(DEAL_MODES.RENT);
     setCategory('전체');
@@ -2555,10 +2579,12 @@ function CustomerListingSection({
         <div className="customer-results-panel">
           <div className="customer-results-top">
             <strong>{getResultLabel(dealMode, keyword, category, properties.length)}</strong>
-            <span>{properties.length}개 매물</span>
+            <span>
+  {properties.length}개 매물 · {safePage}/{totalPages}페이지
+</span>
           </div>
           <div className="customer-property-grid">
-           {properties.map((property, index) => (
+           {visibleProperties.map((property, index) => (
              <PropertyListItem
   key={property.id}
   property={property}
@@ -2572,6 +2598,35 @@ onClick={() => onSelect(property)}
   onDelete={onDeleteProperty}
 />
             ))}
+            {properties.length > pageSize && (
+  <div className="customer-pagination">
+    <button
+      type="button"
+      disabled={safePage <= 1}
+      onClick={() =>
+        setCurrentPage((page) => Math.max(1, page - 1))
+      }
+    >
+      ← 이전
+    </button>
+
+    <strong>
+      {safePage} / {totalPages}
+    </strong>
+
+    <button
+      type="button"
+      disabled={safePage >= totalPages}
+      onClick={() =>
+        setCurrentPage((page) =>
+          Math.min(totalPages, page + 1)
+        )
+      }
+    >
+      다음 →
+    </button>
+  </div>
+)}
             {!properties.length && (
               <div className="empty-box">
                 {dealMode === DEAL_MODES.SALE
@@ -2847,10 +2902,10 @@ const cleanCategoryText = categoryText.endsWith(tradeText)
       )}
     </>
   ) : (
-    <>
-      <a href={`tel:${OFFICE.phone}`}>전화</a>
-      <a href={`sms:${OFFICE.phone}?body=${inquiryBody}`}>문자</a>
-    </>
+<>
+  <a href={`tel:${OFFICE.phone}`}>전화</a>
+  <a href={`sms:${OFFICE.phone}?body=${inquiryBody}`}>문자</a>
+</>
   )}
 </div>
     </article>
