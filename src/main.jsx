@@ -2538,13 +2538,7 @@ function CustomerListingSection({
           />
           <button type="button" className="mobile-filter-open" onClick={() => setFilterSheetOpen(true)}>필터</button>
         </div>
-        <div className="popular-keyword-row">
-          {CUSTOMER_POPULAR_KEYWORDS.map((item) => (
-            <button key={item} type="button" onClick={() => applyPopularKeyword(item)}>
-              {item}
-            </button>
-          ))}
-        </div>
+        
       </div>
 
       <div className="customer-market-layout">
