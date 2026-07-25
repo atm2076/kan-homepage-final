@@ -1574,6 +1574,7 @@ function Hero({ keyword, setKeyword, setDealMode, setCategory, setFilters, setSe
 }  
 const NAVER_MAP_CLIENT_ID = 'lbmpj85ec5';
 
+/*
 const KAN_MAP_AREAS = [
   {
     label: '구미 전지역',
@@ -1611,6 +1612,7 @@ const KAN_MAP_AREAS = [
     lng: 128.3643,
   },
 ];
+*/
 
 function loadNaverMapScript() {
   return new Promise((resolve, reject) => {
