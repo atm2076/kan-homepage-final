@@ -1237,7 +1237,7 @@ if (currentHash.startsWith('/staff')) return 'staff';
     if (adminParam === '1') return 'admin';
     if (params.get('staff') === '1') return 'staff';
     return '';
-  }, []);
+  }, [properties]);
   const [properties, setProperties] = useState(sampleProperties);
   const [selected, setSelected] = useState(sampleProperties[0]);
   const [loading, setLoading] = useState(true);
@@ -1561,9 +1561,9 @@ function Hero({ keyword, setKeyword, setDealMode, setCategory, setFilters, setSe
           </button>
         </div>
 
-      <NaverMapBox
+   <NaverMapBox
+  properties={properties}
   setKeyword={setKeyword}
-  setDealMode={setDealMode}
   setCategory={setCategory}
   setFilters={setFilters}
         setSelected={setSelected}
@@ -1637,7 +1637,14 @@ function loadNaverMapScript() {
   });
 }
 
-function NaverMapBox({ setKeyword, setDealMode, setCategory, setFilters, setSelected }) {
+function NaverMapBox({
+  properties = [],
+  setKeyword,
+  setDealMode,
+  setCategory,
+  setFilters,
+  setSelected,
+}) {
   const mapElementRef = useRef(null);
   const mapRef = useRef(null);
   const markersRef = useRef([]);
@@ -1646,25 +1653,14 @@ function NaverMapBox({ setKeyword, setDealMode, setCategory, setFilters, setSele
     let isMounted = true;
 
 const clearMarkers = () => {
-  if (
-  window.location.hostname === 'localhost' ||
-  window.location.hostname === '127.0.0.1'
-) {
-  markersRef.current = [];
-  return;
-}
   const markers = Array.isArray(markersRef.current)
     ? markersRef.current
     : [];
 
   markers.forEach((marker) => {
     try {
-      if (!marker) return;
-
-      const setMap = marker.setMap;
-
-      if (typeof setMap === 'function') {
-        setMap.call(marker, null);
+      if (marker && typeof marker.setMap === 'function') {
+        marker.setMap(null);
       }
     } catch (error) {
       console.warn('지도 마커 정리 오류 무시:', error);
@@ -1673,7 +1669,6 @@ const clearMarkers = () => {
 
   markersRef.current = [];
 };
-
     const getZoomStage = (zoom) => {
       if (zoom >= 15) return 'property';
       if (zoom >= 12) return 'dong';
@@ -1714,43 +1709,98 @@ const clearMarkers = () => {
       if (stage === 'dong') return DONG_MARKERS;
       return AREA_MARKERS;
     };
+const getPropertyMarkersByStage = (list, stage) => {
+  const gridSize = stage === 'dong' ? 0.008 : 0.03;
+  const grouped = new Map();
 
+  (Array.isArray(list) ? list : []).forEach((property) => {
+    const statusText = String(property.status || '');
+
+    if (
+      property.is_active === false ||
+      property.hidden === true ||
+      /삭제|숨김|계약완료|거래완료/.test(statusText)
+    ) {
+      return;
+    }
+
+    const lat = Number(
+      property.lat ??
+      property.latitude ??
+      property.map_lat ??
+      property.y
+    );
+
+    const lng = Number(
+      property.lng ??
+      property.longitude ??
+      property.map_lng ??
+      property.x
+    );
+
+    if (
+      !Number.isFinite(lat) ||
+      !Number.isFinite(lng) ||
+      lat < 30 ||
+      lat > 40 ||
+      lng < 120 ||
+      lng > 135
+    ) {
+      return;
+    }
+
+    const gridLat = Math.round(lat / gridSize);
+    const gridLng = Math.round(lng / gridSize);
+    const key = `${gridLat}:${gridLng}`;
+
+    const address = String(property.address || '');
+    const dongName =
+      address.match(/([가-힣0-9]+(?:동|읍|면|리))/)?.[1] ||
+      '구미';
+
+    if (!grouped.has(key)) {
+      grouped.set(key, {
+        latSum: 0,
+        lngSum: 0,
+        count: 0,
+        keyword: dongName,
+      });
+    }
+
+    const group = grouped.get(key);
+    group.latSum += lat;
+    group.lngSum += lng;
+    group.count += 1;
+  });
+
+  return Array.from(grouped.values()).map((group) => ({
+    lat: group.latSum / group.count,
+    lng: group.lngSum / group.count,
+    count: group.count,
+    keyword: group.keyword,
+  }));
+};
     const renderMarkers = (map, naver) => {
       clearMarkers();
 
       const zoom = map.getZoom();
       const stage = getZoomStage(zoom);
-      const markers = getMarkersByStage(stage);
+     const markers = getPropertyMarkersByStage(properties, stage);
 
       markers.forEach((item) => {
         const marker = new naver.maps.Marker({
           position: new naver.maps.LatLng(item.lat, item.lng),
           map,
-          icon: {
-            content: `
-              <div class="naver-count-marker naver-cluster-marker ${stage}">
-                <span style="
-  display:flex !important;
-  width:60px !important;
-  height:60px !important;
-  min-width:60px !important;
-  min-height:60px !important;
-  margin:0 auto !important;
-  border-radius:50% !important;
-  background:#183a67 !important;
-  color:#ffffff !important;
-  box-shadow:0 8px 18px rgba(24,58,103,0.34) !important;
-  align-items:center !important;
-  justify-content:center !important;
-  font-size:24px !important;
-  font-weight:900 !important;
-  line-height:1 !important;
-">${item.count}</span>
-              </div>
-            `,
-size: new naver.maps.Size(92, 78),
-anchor: new naver.maps.Point(46, 39),
-          },
+icon: {
+  content: `
+    <div class="naver-count-marker naver-cluster-marker ${stage}">
+      <span>${item.count}</span>
+    </div>
+  `,
+  size: new naver.maps.Size(92, 78),
+  anchor: new naver.maps.Point(46, 39),
+},
+          
         });
 
         naver.maps.Event.addListener(marker, 'click', () => {
@@ -1783,11 +1833,6 @@ if (stage === 'area' || stage === 'dong') {
   map.setZoom(item.zoom || zoom + 2);
   return;
 }
-          if (stage === 'area' || stage === 'dong') {
-            map.panTo(new naver.maps.LatLng(item.lat, item.lng));
-            map.setZoom(item.zoom || zoom + 2);
-            return;
-          }
 
           const listSection =
             document.querySelector('.property-layout') ||
@@ -1835,7 +1880,7 @@ if (stage === 'area' || stage === 'dong') {
       isMounted = false;
       clearMarkers();
     };
-  }, [setKeyword]);
+  }, [properties, setKeyword]);
 
   return (
     <div className="naver-map-wrap">
@@ -2159,11 +2204,11 @@ const clearMarkers = () => {
       map,
       icon: isCluster
         ? {
-            content: `
-              <div class="customer-map-cluster-marker">
-                <span>${group.items.length}</span>
-              </div>
-            `,
+          content: `
+  <div class="customer-map-cluster-marker">
+    <span>${group.items.length}</span>
+  </div>
+`,
             size: new naver.maps.Size(44, 44),
             anchor: new naver.maps.Point(22, 22),
           }

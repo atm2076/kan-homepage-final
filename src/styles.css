@@ -11891,3 +11891,35 @@ button.property-list-item,
     padding-bottom: 4px !important;
   }
 }
+/* 손님용 지도 클러스터 숫자 원 */
+.customer-map-cluster-marker {
+  width: 44px !important;
+  height: 44px !important;
+  border-radius: 50% !important;
+
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+
+  background: #183a67 !important;
+  border: 3px solid #ffffff !important;
+  box-shadow:
+    0 0 0 2px #183a67,
+    0 4px 10px rgba(24, 58, 103, 0.35) !important;
+
+  box-sizing: border-box !important;
+}
+
+.customer-map-cluster-marker span {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+
+  width: 100% !important;
+  height: 100% !important;
+
+  color: #ffffff !important;
+  font-size: 18px !important;
+  font-weight: 900 !important;
+  line-height: 1 !important;
+}
