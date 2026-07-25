@@ -2168,13 +2168,15 @@ const clearMarkers = () => {
         resizeCustomerMap = () => {
           if (!mapElementRef.current) return;
 
+           const maps = window.naver?.maps;
+  if (!map || !maps?.Size || !maps?.Event || !maps?.LatLng) return;
           const width = mapElementRef.current.clientWidth;
           const height = mapElementRef.current.clientHeight;
 
           if (width > 0 && height > 0) {
-            map.setSize(new naver.maps.Size(width, height));
-            naver.maps.Event.trigger(map, 'resize');
-            map.setCenter(new naver.maps.LatLng(36.1195, 128.3906));
+           map.setSize(new maps.Size(width, height));
+maps.Event.trigger(map, 'resize');
+map.setCenter(new maps.LatLng(36.1195, 128.3906));
           }
         };
 
