@@ -2538,7 +2538,7 @@ function CustomerListingSection({
           />
           <button type="button" className="mobile-filter-open" onClick={() => setFilterSheetOpen(true)}>필터</button>
         </div>
-        
+
       </div>
 
       <div className="customer-market-layout">
@@ -2858,6 +2858,7 @@ const cleanCategoryText = categoryText.endsWith(tradeText)
 }
 
 function PropertyDetail({ property: inputProperty, allProperties = [], onSelect }) {
+  const [photoCaptionOpen, setPhotoCaptionOpen] = useState(false);
   const [activePhoto, setActivePhoto] = useState(0);
 
   useEffect(() => {
@@ -3139,13 +3140,31 @@ const infoRows = isSaleProperty
     </div>
   </div>
 </details>
+<section className="content-card photo-caption-section">
+  <button
+    type="button"
+    className="photo-caption-toggle"
+    onClick={() => setPhotoCaptionOpen((open) => !open)}
+  >
+    <span>사진별 설명</span>
+    <span>{photoCaptionOpen ? '접기 ▲' : '펼치기 ▼'}</span>
+  </button>
 
-          <section className="content-card">
-            <h2>사진별 설명</h2>
-            <PhotoCaptionList photos={photos} captions={property.photo_captions} />
-            {!linesToArray(property.photo_captions).length && <p className="muted">사진별 설명은 상담 시 추가로 안내드립니다.</p>}
-          </section>
+  {photoCaptionOpen && (
+    <div className="photo-caption-content">
+      <PhotoCaptionList
+        photos={photos}
+        captions={property.photo_captions}
+      />
 
+      {!linesToArray(property.photo_captions).length && (
+        <p className="muted">
+          사진별 설명은 상담 시 추가로 안내드립니다.
+        </p>
+      )}
+    </div>
+  )}
+</section>
           {hasMap && (
             <section id="detail-location" className="content-card">
               <h2>위치 및 주변시설</h2>

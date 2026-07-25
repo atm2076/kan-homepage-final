@@ -11923,3 +11923,140 @@ button.property-list-item,
   font-weight: 900 !important;
   line-height: 1 !important;
 }
+.photo-caption-details {
+  margin-top: 10px;
+  padding: 0;
+  border: 1px solid #d9e1ec;
+  border-radius: 12px;
+  background: #fff;
+  overflow: hidden;
+}
+
+.photo-caption-summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 14px;
+  cursor: pointer;
+  font-size: 17px;
+  font-weight: 700;
+  color: #17243a;
+  list-style: none;
+}
+
+.photo-caption-summary::-webkit-details-marker {
+  display: none;
+}
+
+.photo-caption-summary::after {
+  content: '▼';
+  font-size: 13px;
+  transition: transform 0.2s ease;
+}
+
+.photo-caption-details[open] .photo-caption-summary::after {
+  transform: rotate(180deg);
+}
+
+.photo-caption-details > :not(summary) {
+  padding-left: 14px;
+  padding-right: 14px;
+}
+
+.photo-caption-details > :last-child {
+  padding-bottom: 14px;
+}
+.photo-caption-summary::after {
+  content: '펼치기 ▼';
+  margin-left: auto;
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.photo-caption-details[open] .photo-caption-summary::after {
+  content: '접기 ▲';
+}
+/* 사진별 설명: 닫힌 상태에서는 내용 강제 숨김 */
+.photo-caption-details:not([open]) > *:not(summary) {
+  display: none !important;
+}
+
+/* 제목 한 줄 */
+.photo-caption-summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  cursor: pointer;
+  list-style: none;
+  padding: 14px 18px;
+  font-size: 20px;
+  font-weight: 800;
+}
+
+.photo-caption-summary::-webkit-details-marker {
+  display: none;
+}
+
+.photo-caption-summary::after {
+  content: "펼치기 ▼";
+  margin-left: auto;
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.photo-caption-details[open] .photo-caption-summary::after {
+  content: "접기 ▲";
+}
+/* 사진별 설명 접기 */
+details.photo-caption-details:not([open]) > *:not(summary) {
+  display: none !important;
+}
+
+details.photo-caption-details > summary {
+  display: flex !important;
+  align-items: center;
+  justify-content: space-between;
+  cursor: pointer;
+  list-style: none;
+  padding: 14px 18px;
+  font-size: 20px;
+  font-weight: 800;
+}
+
+details.photo-caption-details > summary::-webkit-details-marker {
+  display: none;
+}
+
+details.photo-caption-details > summary::after {
+  content: "펼치기 ▼";
+  margin-left: auto;
+  font-size: 14px;
+  font-weight: 600;
+}
+
+details.photo-caption-details[open] > summary::after {
+  content: "접기 ▲";
+}
+.photo-caption-section {
+  padding: 0;
+  overflow: hidden;
+}
+
+.photo-caption-toggle {
+  width: 100%;
+  border: 0;
+  background: transparent;
+  padding: 18px 20px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  cursor: pointer;
+  color: #17243a;
+  font-size: 20px;
+  font-weight: 800;
+  text-align: left;
+}
+
+.photo-caption-content {
+  padding: 0 20px 20px;
+}
