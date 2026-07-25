@@ -2729,7 +2729,11 @@ function PropertyListItem({ property, index = 0, active, onClick, isManagementMo
   const maintenanceText = formatMaintenanceFee(property.maintenance_fee);
   const regionText = shortAddress(property.address);
   const primarySalePrice = isSale ? getSaleCardPrimaryPrice(property) : null;
-
+const tradeText = String(property.trade_type || '거래형태 확인');
+const categoryText = String(property.category || '매물');
+const cleanCategoryText = categoryText.endsWith(tradeText)
+  ? categoryText.slice(0, -tradeText.length).trim()
+  : categoryText;
   return (
     <article className={`property-list-item customer-property-card ${active ? 'active' : ''}`}>
       <button type="button" className="property-card-main" onClick={onClick}>
@@ -2742,14 +2746,15 @@ function PropertyListItem({ property, index = 0, active, onClick, isManagementMo
 />
           <BadgeList property={property} />
         </div>
+   <div className="list-info mobile-card-text">
+ <div className="customer-card-first-line">
+  <p className="customer-card-region">{regionText}</p>
 
-        <div className="list-info mobile-card-text">
-          <p className="customer-card-region">{regionText}</p>
-          <div className="customer-card-type-row">
-            <span>{property.category || '매물'}</span>
-            <span>{property.trade_type || '거래형태 확인'}</span>
-          </div>
-
+ <div className="customer-card-inline-badges">
+    <span>{cleanCategoryText}</span>
+    <span>{tradeText}</span>
+  </div>
+</div>
         {isSale ? (
           <div className="list-price">
             <b>
@@ -2765,12 +2770,15 @@ function PropertyListItem({ property, index = 0, active, onClick, isManagementMo
             {primarySalePrice.saleDisplay.salePrice && <em>매매가 {formatMoney(primarySalePrice.saleDisplay.salePrice)}</em>}
           </div>
         ) : (
-          <div className="list-price">
-            <b>
-              보증금 {formatMoney(property.deposit)} / 월세 {formatMoney(property.rent || property.monthly_rent)}
-            </b>
-           <em>{maintenanceText}</em>
-          </div>
+          <div className="list-price rental-price-line">
+  <b>
+    보증금 {formatMoney(property.deposit)} / 월세 {formatMoney(property.rent)}
+  </b>
+
+  <span className="maintenance-inline">
+    · {maintenanceText}
+  </span>
+</div>
         )}
 
           <p className="customer-card-summary">{property.summary || '조건 확인 후 빠르게 안내드립니다.'}</p>
@@ -2975,12 +2983,14 @@ const infoRows = isSaleProperty
             )}
           </section>
 
-          <section id="detail-info" className="content-card">
-            <div className="content-title-row">
-              <h2>기본 조건표</h2>
-              <span>실사진 · 직접 확인 매물</span>
-            </div>
-            <div className="info-table">
+          <details className="content-card mobile-info-accordion">
+  <summary className="mobile-info-summary">
+    <span>기본 조건표</span>
+    <span className="mobile-info-badge">실사진 · 직접 확인 매물</span>
+    <span className="mobile-info-arrow">⌄</span>
+  </summary>
+
+  <div className="mobile-info-content">
               {infoRows.map(([label, value]) => (
                 <div key={label} className="info-row">
                   <span>{label}</span>
@@ -2988,10 +2998,18 @@ const infoRows = isSaleProperty
                 </div>
               ))}
             </div>
-          </section>
+</details>
 
-          <section id="detail-desc" className="content-card description-card">
-            <h2>상세 설명</h2>
+ <details
+  id="detail-desc"
+  className="content-card mobile-section-accordion"
+>
+  <summary className="mobile-section-summary">
+    <span>상세 설명</span>
+    <span className="mobile-section-arrow">⌄</span>
+  </summary>
+
+  <div className="mobile-section-content">
             <p>{property.description || '사진과 조건을 확인하시고 전화 또는 문자로 문의주시면 현장 상황과 입주 가능 여부를 바로 안내드리겠습니다.'}</p>
             {property.recommended_for && (
               <div className="check-points">
@@ -3023,32 +3041,62 @@ const infoRows = isSaleProperty
                 <li>출퇴근 동선과 생활권을 함께 비교해드립니다.</li>
               </ul>
             </div>
-          </section>
+  </div>
+</details>
 
-          <section id="detail-options" className="content-card">
-            <h2>옵션</h2>
-            <IconGrid items={property.convenience} fallback={['에어컨', '세탁기', '냉장고', '인터넷']} />
-          </section>
+          <details
+  id="detail-options"
+  className="content-card mobile-section-accordion"
+>
+  <summary className="mobile-section-summary">
+    <span>옵션</span>
+    <span className="mobile-section-arrow">⌄</span>
+  </summary>
 
-          <section className="content-card">
-            <h2>관리비 포함 항목</h2>
-            <TagList items={publicMaintenanceItems} />
-          </section>
+  <div className="mobile-section-content">
+    <IconGrid
+      items={property.convenience}
+      fallback={['에어컨', '세탁기', '냉장고', '인터넷']}
+    />
+  </div>
+</details>
 
-          <section className="content-card">
-            <h2>위치/생활권</h2>
-            <TextLines value={property.location_description} fallback="정확한 위치와 생활권은 상담 시 안내드립니다." />
-            <div className="sub-grid-block">
-              <div>
-                <h3>안전시설</h3>
-                <TagList items={property.safety} />
-              </div>
-              <div>
-                <h3>생활권</h3>
-                <TagList items={locationLines} />
-              </div>
-            </div>
-          </section>
+         <details className="content-card mobile-section-accordion">
+  <summary className="mobile-section-summary">
+    <span>관리비 포함 항목</span>
+    <span className="mobile-section-arrow">⌄</span>
+  </summary>
+
+  <div className="mobile-section-content">
+    <TagList items={publicMaintenanceItems} />
+  </div>
+</details>
+
+  <details className="content-card mobile-section-accordion">
+  <summary className="mobile-section-summary">
+    <span>위치·생활권</span>
+    <span className="mobile-section-arrow">⌄</span>
+  </summary>
+
+  <div className="mobile-section-content">
+    <TextLines
+      value={property.location_description}
+      fallback="정확한 위치와 생활권은 상담 시 안내드립니다."
+    />
+
+    <div className="sub-grid-block">
+      <div>
+        <h3>안전시설</h3>
+        <TagList items={property.safety} />
+      </div>
+
+      <div>
+        <h3>생활권</h3>
+        <TagList items={locationLines} />
+      </div>
+    </div>
+  </div>
+</details>
 
           <section className="content-card">
             <h2>사진별 설명</h2>
@@ -3061,8 +3109,8 @@ const infoRows = isSaleProperty
               <h2>위치 및 주변시설</h2>
               {property.map_image && <img className="map-image" src={property.map_image} alt="매물 위치 지도" />}
               {property.map_link && <a className="map-link" href={property.map_link} target="_blank" rel="noreferrer">지도 바로가기</a>}
-            </section>
-          )}
+</section>
+)}
 
           <section className="content-card detail-contact-section">
             <h2>문의</h2>
@@ -3155,8 +3203,13 @@ const infoRows = isSaleProperty
             </div>
           </section>
 
-          <section className="legal-box content-card">
-            <h2>중개대상물 표시·광고 안내</h2>
+ <details className="legal-box content-card mobile-legal-accordion">
+  <summary className="mobile-legal-summary">
+    <span>중개대상물 표시·광고 안내</span>
+    <span className="mobile-legal-arrow">⌄</span>
+  </summary>
+
+  <div className="mobile-legal-content">
             <p>중개대상물 종류: {property.category || '계약 전 확인'}</p>
             <p>거래형태: {property.trade_type || '계약 전 확인'}</p>
             <p>소재지: {property.address || '계약 전 확인'}</p>
@@ -3178,7 +3231,8 @@ const infoRows = isSaleProperty
             <p>연락처: {OFFICE.phone} / {OFFICE.tel}</p>
             {property.legal_notice && <TextLines value={property.legal_notice} />}
             <p>※ 세부 조건은 계약 전 현장 및 공부서류 확인 후 최종 안내드립니다.</p>
-          </section>
+            </div>
+          </details>
         </article>
 
         <aside className="sticky-contact-card">
@@ -9684,7 +9738,16 @@ function CustomRequestSection() {
   const sellMessage = encodeURIComponent('안녕하세요. 홈페이지 보고 문의드립니다. 매물 팔아주세요. 매물주소/희망가격: ');
 
   return (
-    <section className="custom-request-section" id="custom-request">
+    <details
+  className="custom-request-section mobile-section-accordion"
+  id="custom-request"
+>
+  <summary className="mobile-section-summary">
+    <span>매물 요청·매도 상담</span>
+    <span className="mobile-section-arrow">⌄</span>
+  </summary>
+
+  <div className="mobile-section-content custom-request-content">
       <div className="custom-request-head">
         <p className="section-eyebrow">REQUEST</p>
         <h2>원하는 매물을 못 찾으셨나요?</h2>
@@ -9702,7 +9765,8 @@ function CustomRequestSection() {
           <a className="custom-request-button" href={`sms:${OFFICE.phone}?body=${sellMessage}`}>매도 상담하기</a>
         </article>
       </div>
-    </section>
+      </div>
+</details>
   );
 }
 

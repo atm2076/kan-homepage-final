@@ -11240,3 +11240,654 @@ button.property-list-item,
 .naver-cluster-marker strong {
   display: none !important;
 }
+.mobile-accordion {
+  padding: 0;
+  overflow: hidden;
+}
+
+.mobile-accordion-summary {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 24px 22px;
+  font-size: 24px;
+  font-weight: 800;
+  color: #172f52;
+  cursor: pointer;
+  list-style: none;
+}
+
+.mobile-accordion-summary::-webkit-details-marker {
+  display: none;
+}
+
+.accordion-arrow {
+  font-size: 28px;
+  line-height: 1;
+  transition: transform 0.2s ease;
+}
+
+.mobile-accordion[open] .accordion-arrow {
+  transform: rotate(180deg);
+}
+
+.mobile-accordion-content {
+  padding: 0 22px 24px;
+}
+
+.mobile-accordion-content p {
+  margin: 0 0 12px;
+  font-size: 17px;
+  line-height: 1.65;
+}
+
+@media (max-width: 768px) {
+  .mobile-accordion-summary {
+    padding: 20px 18px;
+    font-size: 21px;
+  }
+
+  .mobile-accordion-content {
+    padding: 0 18px 22px;
+  }
+
+  .mobile-accordion-content p {
+    font-size: 16px;
+    line-height: 1.6;
+  }
+}
+.mobile-legal-accordion {
+  padding: 0;
+  overflow: hidden;
+}
+
+.mobile-legal-summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 22px 20px;
+  font-size: 22px;
+  font-weight: 800;
+  color: #172f52;
+  cursor: pointer;
+  list-style: none;
+}
+
+.mobile-legal-summary::-webkit-details-marker {
+  display: none;
+}
+
+.mobile-legal-arrow {
+  font-size: 28px;
+  line-height: 1;
+  transition: transform 0.2s ease;
+}
+
+.mobile-legal-accordion[open] .mobile-legal-arrow {
+  transform: rotate(180deg);
+}
+
+.mobile-legal-content {
+  padding: 0 20px 22px;
+  border-top: 1px solid #e8e2d8;
+}
+
+.mobile-legal-content p {
+  margin: 0;
+  padding: 10px 0;
+  font-size: 16px;
+  line-height: 1.55;
+  border-bottom: 1px solid #f0ece5;
+}
+
+.mobile-broker-info {
+  margin-top: 18px;
+  padding: 16px;
+  background: #f8f4ec;
+  border-radius: 14px;
+}
+
+.mobile-broker-info h3 {
+  margin: 0 0 10px;
+  font-size: 18px;
+  color: #172f52;
+}
+
+.mobile-broker-info p:last-child,
+.mobile-legal-content p:last-child {
+  border-bottom: 0;
+}
+
+.mobile-legal-notice {
+  margin-top: 14px !important;
+  font-weight: 700;
+  color: #5f5a52;
+}
+
+@media (max-width: 768px) {
+  .mobile-legal-summary {
+    padding: 18px 16px;
+    font-size: 19px;
+  }
+
+  .mobile-legal-content {
+    padding: 0 16px 18px;
+  }
+
+  .mobile-legal-content p {
+    font-size: 15px;
+  }
+}
+.mobile-info-accordion {
+  padding: 0;
+  overflow: hidden;
+}
+
+.mobile-info-summary {
+  display: grid;
+  grid-template-columns: 1fr auto auto;
+  align-items: center;
+  gap: 10px;
+  padding: 20px 18px;
+  cursor: pointer;
+  list-style: none;
+}
+
+.mobile-info-summary::-webkit-details-marker {
+  display: none;
+}
+
+.mobile-info-summary > span:first-child {
+  font-size: 22px;
+  font-weight: 800;
+  color: #172f52;
+}
+
+.mobile-info-badge {
+  padding: 8px 12px;
+  border-radius: 999px;
+  background: #f7f0e5;
+  color: #17365f;
+  font-size: 13px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.mobile-info-arrow {
+  font-size: 26px;
+  transition: transform 0.2s ease;
+}
+
+.mobile-info-accordion[open] .mobile-info-arrow {
+  transform: rotate(180deg);
+}
+
+.mobile-info-content {
+  padding: 0;
+  border-top: 0;
+}
+.mobile-info-accordion:not([open]) .mobile-info-content {
+  display: none;
+}
+
+.mobile-info-accordion[open] .mobile-info-content {
+  display: block;
+  padding: 0 18px 20px;
+  border-top: 1px solid #e4e8ec;
+}
+/* 다른 매물 전화·문자 버튼 크기 축소 */
+#detail-related .side-actions {
+  gap: 8px;
+  margin-top: 8px;
+}
+
+#detail-related .side-actions a {
+  min-height: 0 !important;
+  height: 38px !important;
+  padding: 0 12px !important;
+  border-radius: 10px !important;
+
+  /* 글씨 크기는 기존 그대로 */
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+#detail-related .side-actions a {
+  height: 23px !important;
+  min-height: 23px !important;
+  padding: 0 5px !important;
+  border-radius: 6px !important;
+
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+}
+/* 임대·매매 검색목록 카드의 전화·문자 버튼만 축소 */
+.customer-property-card .property-card-actions {
+  gap: 8px !important;
+  margin-top: 6px !important;
+}
+
+.customer-property-card .property-card-actions a {
+  height: 23px !important;
+  min-height: 23px !important;
+  padding: 0 8px !important;
+  border-radius: 7px !important;
+
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+
+  /* 글씨 크기는 기존 그대로 */
+  line-height: 1 !important;
+}
+.customer-property-card .property-card-actions {
+  display: flex !important;
+  justify-content: center !important;
+  gap: 10px !important;
+  margin-top: 7px !important;
+}
+
+.customer-property-card .property-card-actions a {
+  flex: 0 0 43% !important;
+  width: 43% !important;
+
+  height: 27px !important;
+  min-height: 27px !important;
+  padding: 0 6px !important;
+  border-radius: 7px !important;
+
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+
+  line-height: 1 !important;
+}
+/* 검색목록 카드의 종류·거래형태 배지만 축소 */
+.customer-property-card .property-badge-row {
+  gap: 5px !important;
+  margin: 5px 0 7px !important;
+}
+
+.customer-property-card .property-badge-row > * {
+  min-height: 0 !important;
+  padding: 3px 8px !important;
+  border-radius: 10px !important;
+  font-size: 12px !important;
+  line-height: 1.2 !important;
+}
+/* 검색목록 카드의 사진은 크게 */
+.customer-property-card .list-thumb {
+  height: 190px !important;
+  min-height: 190px !important;
+}
+
+.customer-property-card .list-thumb img {
+  width: 100% !important;
+  height: 100% !important;
+  object-fit: cover !important;
+}
+
+/* 사진 아래 매물정보 영역은 짧게 */
+.customer-property-card .list-info.mobile-card-text {
+  padding: 9px 14px 7px !important;
+  min-height: 0 !important;
+}
+
+/* 내부 문구 사이의 불필요한 간격 축소 */
+.customer-property-card .list-info.mobile-card-text > * {
+  margin-top: 3px !important;
+  margin-bottom: 3px !important;
+}
+
+.customer-property-card .property-badge-row {
+  margin: 4px 0 !important;
+  gap: 5px !important;
+}
+/* 모바일 매물목록 카드: 사진 70%, 정보·버튼 30% */
+@media (max-width: 768px) {
+  .customer-property-card {
+    height: 380px !important;
+    overflow: hidden !important;
+    display: flex !important;
+    flex-direction: column !important;
+  }
+
+  .customer-property-card .property-card-main {
+    flex: 1 1 auto !important;
+    min-height: 0 !important;
+    display: flex !important;
+    flex-direction: column !important;
+  }
+
+  /* 사진 영역 약 70% */
+  .customer-property-card .list-thumb {
+    flex: 0 0 265px !important;
+    height: 265px !important;
+    min-height: 265px !important;
+    overflow: hidden !important;
+  }
+
+  .customer-property-card .list-thumb img {
+    width: 100% !important;
+    height: 100% !important;
+    object-fit: cover !important;
+    display: block !important;
+  }
+
+  /* 설명 영역 압축 */
+  .customer-property-card .list-info.mobile-card-text {
+    flex: 1 1 auto !important;
+    min-height: 0 !important;
+    padding: 7px 14px 3px !important;
+  }
+
+  .customer-property-card .list-info.mobile-card-text > * {
+    margin-top: 2px !important;
+    margin-bottom: 2px !important;
+  }
+
+  .customer-property-card .property-badge-row {
+    margin: 3px 0 !important;
+    gap: 5px !important;
+  }
+
+  /* 전화·문자 영역 */
+  .customer-property-card .property-card-actions {
+    flex: 0 0 33px !important;
+    height: 33px !important;
+    padding: 3px 14px 5px !important;
+    gap: 10px !important;
+    justify-content: center !important;
+  }
+
+  .customer-property-card .property-card-actions a {
+    flex: 0 0 43% !important;
+    width: 43% !important;
+    height: 27px !important;
+    min-height: 27px !important;
+    padding: 0 6px !important;
+    border-radius: 7px !important;
+  }
+}
+.customer-property-card .customer-card-title-line {
+  white-space: nowrap !important;
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
+}
+.customer-property-card .customer-card-first-line {
+  display: flex !important;
+  align-items: center !important;
+  gap: 6px !important;
+  width: 100% !important;
+  white-space: nowrap !important;
+}
+
+.customer-property-card .customer-card-first-line .customer-card-region {
+  margin: 0 !important;
+  flex-shrink: 0 !important;
+}
+
+.customer-property-card .customer-card-first-line .customer-card-type-row {
+  display: flex !important;
+  align-items: center !important;
+  gap: 5px !important;
+  margin: 0 !important;
+}
+/* 모바일 매물카드 정보가 잘리는 현상 복구 */
+@media (max-width: 768px) {
+  .customer-property-card {
+    height: auto !important;
+    overflow: visible !important;
+  }
+
+  .customer-property-card .property-card-main {
+    flex: none !important;
+    min-height: 0 !important;
+  }
+
+  /* 사진은 크게 유지 */
+  .customer-property-card .list-thumb {
+    flex: 0 0 255px !important;
+    height: 255px !important;
+    min-height: 255px !important;
+    overflow: hidden !important;
+  }
+
+  /* 지역·종류·가격·관리비가 전부 보이도록 */
+  .customer-property-card .list-info.mobile-card-text {
+    flex: none !important;
+    height: auto !important;
+    min-height: 98px !important;
+    overflow: visible !important;
+    padding: 8px 14px 6px !important;
+  }
+
+  /* 1번 줄: 지역 + 원룸 + 월세 */
+  .customer-property-card .customer-card-first-line {
+    display: flex !important;
+    align-items: center !important;
+    flex-wrap: nowrap !important;
+    gap: 6px !important;
+    width: 100% !important;
+    margin: 0 0 5px !important;
+  }
+
+  .customer-property-card .customer-card-first-line .customer-card-region {
+    margin: 0 !important;
+    min-width: 0 !important;
+    white-space: nowrap !important;
+  }
+
+  .customer-property-card .customer-card-first-line .customer-card-type-row {
+    display: flex !important;
+    align-items: center !important;
+    flex-shrink: 0 !important;
+    gap: 5px !important;
+    margin: 0 !important;
+  }
+
+  /* 2번 줄: 보증금·월세 */
+  .customer-property-card .list-price {
+    display: block !important;
+    visibility: visible !important;
+    opacity: 1 !important;
+    margin: 4px 0 2px !important;
+  }
+
+  /* 전화·문자는 내용 아래 정상 배치 */
+  .customer-property-card .property-card-actions {
+    position: static !important;
+    margin-top: 0 !important;
+  }
+}
+@media (max-width: 768px) {
+  /* 정보 영역을 세로 구조로 강제 */
+  .customer-property-card .list-info.mobile-card-text {
+    display: flex !important;
+    flex-direction: column !important;
+    align-items: stretch !important;
+    grid-template-columns: none !important;
+    width: 100% !important;
+    box-sizing: border-box !important;
+  }
+
+  /* 1번 줄: 지역 + 미니투룸 + 월세 */
+  .customer-property-card .customer-card-first-line {
+    display: flex !important;
+    align-items: center !important;
+    justify-content: flex-start !important;
+    flex-wrap: nowrap !important;
+    width: 100% !important;
+    gap: 6px !important;
+    overflow: hidden !important;
+  }
+
+  .customer-property-card .customer-card-region {
+    flex: 0 1 auto !important;
+    min-width: 0 !important;
+    margin: 0 !important;
+    white-space: nowrap !important;
+  }
+
+  .customer-property-card .customer-card-inline-badges {
+    display: flex !important;
+    flex: 0 0 auto !important;
+    align-items: center !important;
+    gap: 4px !important;
+    margin: 0 !important;
+    position: static !important;
+    left: auto !important;
+    right: auto !important;
+    transform: none !important;
+  }
+}
+@media (max-width: 768px) {
+  .customer-property-card .customer-card-first-line {
+    display: flex !important;
+    align-items: center !important;
+    justify-content: flex-start !important;
+    flex-wrap: nowrap !important;
+    gap: 5px !important;
+
+    width: 100% !important;
+    overflow: visible !important;
+  }
+
+  /* 구미 진평동 일원 */
+  .customer-property-card .customer-card-first-line .customer-card-region {
+    flex: 0 0 auto !important;
+    width: auto !important;
+    max-width: none !important;
+    min-width: 0 !important;
+    margin: 0 !important;
+    white-space: nowrap !important;
+    overflow: visible !important;
+  }
+
+  /* 미니투룸 · 월세 배지 */
+  .customer-property-card .customer-card-inline-badges {
+    display: flex !important;
+    flex: 0 0 auto !important;
+    width: auto !important;
+    min-width: max-content !important;
+    gap: 4px !important;
+    margin: 0 !important;
+
+    position: static !important;
+    inset: auto !important;
+    transform: none !important;
+    overflow: visible !important;
+  }
+
+  .customer-property-card .customer-card-inline-badges span {
+    flex: 0 0 auto !important;
+    white-space: nowrap !important;
+  }
+}/* 임대 목록 가격과 관리비를 한 줄로 */
+.customer-property-card .rental-price-line {
+  display: flex !important;
+  flex-direction: row !important;
+  align-items: baseline !important;
+  gap: 5px !important;
+  width: 100% !important;
+  margin: 3px 0 !important;
+  white-space: nowrap !important;
+}
+
+.customer-property-card .rental-price-line b {
+  flex: 0 0 auto !important;
+  white-space: nowrap !important;
+}
+
+.customer-property-card .maintenance-inline {
+  flex: 0 0 auto !important;
+  color: #786d61 !important;
+  font-size: 11px !important;
+  font-weight: 600 !important;
+  white-space: nowrap !important;
+}
+/* 첫째 줄: 지역명 + 원룸·월세 배지 */
+.customer-property-card .customer-card-first-line {
+  display: flex !important;
+  align-items: center !important;
+  gap: 5px !important;
+  width: 100% !important;
+  margin: 0 0 6px !important;
+  white-space: nowrap !important;
+}
+
+.customer-property-card .customer-card-first-line .customer-card-region {
+  margin: 0 !important;
+  flex: 0 0 auto !important;
+  white-space: nowrap !important;
+}
+
+/* 원룸·월세 배지 */
+.customer-property-card .customer-card-inline-badges {
+  display: inline-flex !important;
+  align-items: center !important;
+  gap: 4px !important;
+  width: auto !important;
+  margin: 0 !important;
+}
+
+.customer-property-card .customer-card-inline-badges span {
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+
+  height: 21px !important;
+  padding: 0 7px !important;
+  border-radius: 999px !important;
+
+  background: #eef4fb !important;
+  color: #173f6b !important;
+  font-size: 11px !important;
+  font-weight: 800 !important;
+  line-height: 1 !important;
+  white-space: nowrap !important;
+}
+
+/* 거래형태 배지는 베이지색 */
+.customer-property-card .customer-card-inline-badges span:last-child {
+  background: #fff2d7 !important;
+}
+/* 전화·문자 버튼: 가로 폭 유지, 세로 높이만 확대 */
+.customer-property-card .property-card-actions {
+  height: 36px !important;
+  min-height: 36px !important;
+  padding-top: 2px !important;
+  padding-bottom: 3px !important;
+}
+
+.customer-property-card .property-card-actions a {
+  height: 31px !important;
+  min-height: 31px !important;
+
+  /* 좌우 크기와 글씨 크기는 그대로 */
+  padding-left: 6px !important;
+  padding-right: 6px !important;
+}
+@media (max-width: 768px) {
+  /* 사진 아래 정보 영역의 강제 여백 제거 */
+  .customer-property-card .list-info.mobile-card-text {
+    height: auto !important;
+    min-height: 0 !important;
+    padding: 8px 14px 3px !important;
+  }
+
+  /* 가격줄 아래 간격 축소 */
+  .customer-property-card .rental-price-line,
+  .customer-property-card .list-price {
+    margin: 3px 0 1px !important;
+  }
+
+  /* 전화·문자 버튼을 정보 바로 아래로 붙임 */
+  .customer-property-card .property-card-actions {
+    margin-top: 2px !important;
+    padding-top: 0 !important;
+    padding-bottom: 4px !important;
+  }
+}
