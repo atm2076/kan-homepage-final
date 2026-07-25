@@ -1237,7 +1237,7 @@ if (currentHash.startsWith('/staff')) return 'staff';
     if (adminParam === '1') return 'admin';
     if (params.get('staff') === '1') return 'staff';
     return '';
-  }, [properties]);
+  }, []);
   const [properties, setProperties] = useState(sampleProperties);
   const [selected, setSelected] = useState(sampleProperties[0]);
   const [loading, setLoading] = useState(true);
@@ -1301,7 +1301,7 @@ if (currentHash.startsWith('/staff')) return 'staff';
 
   const categories = useMemo(() => {
     return CUSTOMER_PROPERTY_TYPES;
-  }, [properties]);
+  }, []);
 
    const filteredProperties = useMemo(() => {
     return properties.filter((item) => matchesCustomerFilters(item, keyword, category, filters, dealMode));
