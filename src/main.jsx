@@ -1562,7 +1562,6 @@ function Hero({ keyword, setKeyword, setDealMode, setCategory, setFilters, setSe
         </div>
 
    <NaverMapBox
-  properties={properties}
   setKeyword={setKeyword}
   setCategory={setCategory}
   setFilters={setFilters}
