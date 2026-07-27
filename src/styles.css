@@ -12543,3 +12543,38 @@ details.photo-caption-details[open] > summary::after {
   }
 }
 
+@media (min-width: 1025px) {
+  .customer-map-view {
+    width: 100% !important;
+    max-width: none !important;
+    grid-template-columns: minmax(0, 1fr) !important;
+    grid-template-areas: "map" !important;
+    gap: 0 !important;
+    box-sizing: border-box !important;
+  }
+
+  .customer-map-view > .map-property-panel {
+    display: none !important;
+  }
+
+  .customer-map-canvas {
+    grid-area: map !important;
+    width: 100% !important;
+    max-width: none !important;
+    min-width: 0 !important;
+    flex: 1 1 auto !important;
+  }
+
+  .customer-real-map,
+  .customer-real-map.map-area,
+  .customer-real-map > div {
+    width: 100% !important;
+    max-width: none !important;
+  }
+
+  .customer-map-topbar {
+    width: auto !important;
+    max-width: none !important;
+  }
+}
+
