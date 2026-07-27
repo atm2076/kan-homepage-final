@@ -1269,11 +1269,18 @@ if (currentHash.startsWith('/staff')) return 'staff';
   const canManageAll = portalMode === 'admin' && isAdmin;
   const isAdminRoute = portalMode === 'admin' || portalMode === 'staff';
   const isCustomerDetailRoute = Boolean(listingId) && !isAdminRoute;
+  const activeCustomerDetailProperty = !isAdminRoute ? (detailProperty || selected) : null;
+  const isCustomerDetailView = !isAdminRoute && Boolean(listingId || activeCustomerDetailProperty);
 
   useEffect(() => {
     const handlePopState = (event) => {
       const nextListingId = getCustomerListingId();
       setListingId(nextListingId);
+
+      if (!nextListingId) {
+        setSelected(null);
+        setDetailProperty(null);
+      }
 
       if (!nextListingId && event.state?.customerList) {
         const saved = event.state.customerList;
@@ -1499,9 +1506,9 @@ function selectProperty(property) {
   }, [isCustomerDetailRoute, listingId, properties]);
 
   useLayoutEffect(() => {
-    if (!isCustomerDetailRoute) return;
+    if (!isCustomerDetailView) return;
     window.scrollTo({ top: 0, left: 0, behavior: 'auto' });
-  }, [isCustomerDetailRoute, listingId]);
+  }, [isCustomerDetailView, listingId, activeCustomerDetailProperty?.id]);
 
   function returnToCustomerList() {
     if (window.history.state?.fromCustomerList) {
@@ -1511,6 +1518,8 @@ function selectProperty(property) {
 
     window.history.pushState({}, '', '/');
     setListingId('');
+    setSelected(null);
+    setDetailProperty(null);
     window.scrollTo(0, 0);
   }
 
@@ -1572,9 +1581,9 @@ async function handleQuickDeleteProperty(property) {
   await loadProperties();
 }
 
-  if (isCustomerDetailRoute) {
-    const detailInquiryBody = detailProperty
-      ? encodeURIComponent(buildInquiryMessage(detailProperty))
+  if (isCustomerDetailView) {
+    const detailInquiryBody = activeCustomerDetailProperty
+      ? encodeURIComponent(buildInquiryMessage(activeCustomerDetailProperty))
       : '';
 
     return (
@@ -1589,14 +1598,14 @@ async function handleQuickDeleteProperty(property) {
           </div>
           {detailLoading && <div className="empty-box">매물을 불러오는 중입니다.</div>}
           {!detailLoading && detailError && <ErrorNotice message={detailError} />}
-          {!detailLoading && detailProperty && (
+          {!detailLoading && activeCustomerDetailProperty && (
             <PropertyDetail
-              property={detailProperty}
+              property={activeCustomerDetailProperty}
               allProperties={properties}
               onSelect={selectProperty}
             />
           )}
-          {!detailLoading && detailProperty && (
+          {!detailLoading && activeCustomerDetailProperty && (
             <div className="mobile-detail-contact-bar">
               <a href={`tel:${OFFICE.phone}`}>전화</a>
               <a href={`sms:${OFFICE.phone}?body=${detailInquiryBody}`}>문자</a>
