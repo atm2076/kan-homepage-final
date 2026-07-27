@@ -1568,13 +1568,21 @@ async function handleQuickDeleteProperty(property) {
 }
 
   if (isCustomerDetailRoute) {
+    const detailInquiryBody = detailProperty
+      ? encodeURIComponent(buildInquiryMessage(detailProperty))
+      : '';
+
     return (
-      <div>
+      <div className="customer-detail-page">
         <Header portalMode="" isAdminRoute={false} onOpenAdmin={() => {}} />
         <main className="page-shell">
-          <button type="button" className="small-btn" onClick={returnToCustomerList}>
-            목록으로 돌아가기
-          </button>
+          <div className="mobile-detail-head">
+            <button type="button" className="small-btn" onClick={returnToCustomerList}>
+              ← 목록으로
+            </button>
+            <strong>매물 상세</strong>
+            <span aria-hidden="true" />
+          </div>
           {detailLoading && <div className="empty-box">매물을 불러오는 중입니다.</div>}
           {!detailLoading && detailError && <ErrorNotice message={detailError} />}
           {!detailLoading && detailProperty && (
@@ -1583,6 +1591,12 @@ async function handleQuickDeleteProperty(property) {
               allProperties={properties}
               onSelect={selectProperty}
             />
+          )}
+          {!detailLoading && detailProperty && (
+            <div className="mobile-detail-contact-bar">
+              <a href={`tel:${OFFICE.phone}`}>전화</a>
+              <a href={`sms:${OFFICE.phone}?body=${detailInquiryBody}`}>문자</a>
+            </div>
           )}
         </main>
         <Footer />
@@ -3133,6 +3147,15 @@ function PropertyDetail({ property: inputProperty, allProperties = [], onSelect 
   const inquiryBody = encodeURIComponent(buildInquiryMessage(safeProperty));
   const related = allProperties.map(normalizePropertyRecord).filter((item) => item.id !== safeProperty.id).slice(0, 4);
   const hasMap = Boolean(safeProperty.map_image || safeProperty.map_link);
+  const handleDetailTabClick = (event, targetId) => {
+    if (window.innerWidth > 768) return;
+
+    event.preventDefault();
+    const target = document.getElementById(targetId);
+    if (!target) return;
+    if (target.tagName === 'DETAILS') target.open = true;
+    target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  };
 const property = safeProperty;
 const isSaleProperty = property.category?.includes('매매') || property.trade_type === '매매';
 const primarySummaryPrice = isSaleProperty
@@ -3230,12 +3253,12 @@ const infoRows = isSaleProperty
   return (
     <section id="property-detail" className="detail-platform">
       <nav className="detail-tabs">
-        <a href="#detail-gallery">사진</a>
-        <a href="#detail-info">매물 정보</a>
-        <a href="#detail-desc">매물 설명</a>
-        <a href="#detail-options">옵션 정보</a>
-        {hasMap && <a href="#detail-location">위치</a>}
-        <a href="#detail-related">다른 매물</a>
+        <a href="#detail-gallery" onClick={(event) => handleDetailTabClick(event, 'detail-gallery')}>사진</a>
+        <a href="#detail-info" onClick={(event) => handleDetailTabClick(event, 'detail-info')}>매물 정보</a>
+        <a href="#detail-desc" onClick={(event) => handleDetailTabClick(event, 'detail-desc')}>매물 설명</a>
+        <a href="#detail-options" onClick={(event) => handleDetailTabClick(event, 'detail-options')}>옵션 정보</a>
+        {hasMap && <a href="#detail-location" onClick={(event) => handleDetailTabClick(event, 'detail-location')}>위치</a>}
+        <a href="#detail-related" onClick={(event) => handleDetailTabClick(event, 'detail-related')}>다른 매물</a>
       </nav>
 
       <div className="detail-body-layout">
@@ -3280,7 +3303,7 @@ const infoRows = isSaleProperty
             )}
           </section>
 
-          <details className="content-card mobile-info-accordion">
+          <details id="detail-info" className="content-card mobile-info-accordion">
   <summary className="mobile-info-summary">
     <span>기본 조건표</span>
     <span className="mobile-info-badge">실사진 · 직접 확인 매물</span>
