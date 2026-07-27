@@ -1630,6 +1630,7 @@ async function handleQuickDeleteProperty(property) {
   onOpenAdmin={() => setAdminOpen(true)}
 />
      <Hero
+       properties={properties}
   keyword={keyword}
   setKeyword={setKeyword}
   setDealMode={setDealMode}
@@ -1736,7 +1737,15 @@ function Header({ portalMode, isAdminRoute, onOpenAdmin }) {
 }
 
 
-function Hero({ keyword, setKeyword, setDealMode, setCategory, setFilters, setSelected }) {
+ function Hero({
+  properties = [],
+  keyword,
+  setKeyword,
+  setDealMode,
+  setCategory,
+  setFilters,
+  setSelected,
+}) {
   return (
     <section className="hero" id="top">
       <div className="hero-overlay" />
@@ -1787,10 +1796,11 @@ function Hero({ keyword, setKeyword, setDealMode, setCategory, setFilters, setSe
         </div>
 
    <NaverMapBox
+  properties={properties}
   setKeyword={setKeyword}
   setCategory={setCategory}
   setFilters={setFilters}
-        setSelected={setSelected}
+  setSelected={setSelected}
 />
         <a className="hero-map-page-link" href="#map-view">지도에서 가까운 방 찾기</a>
       </div>
