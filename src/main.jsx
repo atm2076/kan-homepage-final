@@ -2346,7 +2346,7 @@ function MapFilterDropdown({ label, active, onClick }) {
   );
 }
 
-function MapPropertyPanel({ property }) {
+/*function MapPropertyPanel({ property }) {
   if (!property) {
     return <aside className="map-property-panel empty-box">지도에서 매물을 선택하세요.</aside>;
   }
@@ -2393,6 +2393,10 @@ function MapPropertyPanel({ property }) {
       </div>
     </aside>
   );
+}
+*/
+function MapPropertyPanel() {
+  return null;
 }
 function CategoryStrip({ categories, category, setCategory }) {
   return (
