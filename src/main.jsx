@@ -3357,7 +3357,7 @@ const infoRows = isSaleProperty
           </details>
         </article>
 
-        <aside className="sticky-contact-card">
+        {/*<aside className="sticky-contact-card">
           <img
   className="sticky-card-photo"
   src={
@@ -3415,7 +3415,7 @@ const infoRows = isSaleProperty
             </div>
           </div>
           <a className="blog-link" href={OFFICE.blog} target="_blank" rel="noreferrer">구미 원룸 월세 전체 안내 보기</a>
-        </aside>
+        </aside>*/}
       </div>
     </section>
   );
