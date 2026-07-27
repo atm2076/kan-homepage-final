@@ -2228,16 +2228,18 @@ map.setCenter(new maps.LatLng(36.1195, 128.3906));
           },
     });
 
-    if (isCluster) {
-      naver.maps.Event.addListener(marker, 'click', () => {
-        map.setCenter(new naver.maps.LatLng(group.lat, group.lng));
-        map.setZoom(Math.min(map.getZoom() + 2, 17));
-      });
-    } else {
-      naver.maps.Event.addListener(marker, 'click', () => {
-        onSelect(firstItem.property);
-      });
-    }
+   if (isCluster) {
+  naver.maps.Event.addListener(marker, 'click', () => {
+    onSelect(firstItem.property);
+
+    map.setCenter(new naver.maps.LatLng(group.lat, group.lng));
+    map.setZoom(Math.min(map.getZoom() + 2, 17));
+  });
+} else {
+  naver.maps.Event.addListener(marker, 'click', () => {
+    onSelect(firstItem.property);
+  });
+}
 
     markersRef.current.push(marker);
   });
