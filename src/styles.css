@@ -12191,6 +12191,8 @@ details.photo-caption-details[open] > summary::after {
 
 @media (max-width: 768px) {
   .customer-real-map.map-area {
+    position: relative !important;
+    inset: auto !important;
     height: 520px !important;
     min-height: 520px !important;
     flex: 0 0 520px !important;
