@@ -1312,6 +1312,40 @@ if (currentHash.startsWith('/staff')) return 'staff';
     });
   }, [listingId, loading, customerPage, keyword, dealMode, category, filters]);
 
+  useLayoutEffect(() => {
+    if (loading || isCustomerDetailRoute || isAdminRoute) return undefined;
+
+    const mapSection = document.getElementById('map-view');
+    const resultsPanel = document.querySelector('.customer-results-panel');
+    if (!mapSection || !resultsPanel?.parentNode) return undefined;
+
+    const originalParent = mapSection.parentNode;
+    const originalNextSibling = mapSection.nextSibling;
+    const mobileQuery = window.matchMedia('(max-width: 768px)');
+
+    const updateMobileMapPosition = () => {
+      if (mobileQuery.matches) {
+        resultsPanel.parentNode.insertBefore(mapSection, resultsPanel);
+      } else if (originalNextSibling?.parentNode === originalParent) {
+        originalParent.insertBefore(mapSection, originalNextSibling);
+      } else {
+        originalParent.appendChild(mapSection);
+      }
+    };
+
+    updateMobileMapPosition();
+    mobileQuery.addEventListener('change', updateMobileMapPosition);
+
+    return () => {
+      mobileQuery.removeEventListener('change', updateMobileMapPosition);
+      if (originalNextSibling?.parentNode === originalParent) {
+        originalParent.insertBefore(mapSection, originalNextSibling);
+      } else {
+        originalParent.appendChild(mapSection);
+      }
+    };
+  }, [loading, isCustomerDetailRoute, isAdminRoute]);
+
   async function loadProperties() {
     setError('');
     setLoading(true);
