@@ -12188,3 +12188,12 @@ details.photo-caption-details[open] > summary::after {
     font-size: 14px;
   }
 }
+
+@media (max-width: 768px) {
+  .customer-real-map.map-area {
+    height: 520px !important;
+    min-height: 520px !important;
+    flex: 0 0 520px !important;
+  }
+}
+
