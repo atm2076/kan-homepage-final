@@ -6946,6 +6946,16 @@ if (isStaffMode && currentStaff?.code) {
               광고올리기
             </button>
 
+            {adminView === 'review' && (
+              <button
+                type="button"
+                className="primary-btn"
+                onClick={() => changePropertyStatus(property.id, 'published')}
+              >
+                공개(게시)
+              </button>
+            )}
+
             <button
               type="button"
               onClick={() => changePropertyStatus(property.id, 'hold')}
