@@ -12702,3 +12702,31 @@ details.photo-caption-details[open] > summary::after {
   }
 }
 
+.admin-menu-strip button.active {
+  color: #ffffff;
+  border-color: #173b67;
+  background: #173b67;
+}
+
+.admin-view-manage > .property-form,
+.admin-view-review > .property-form,
+.admin-view-duplicates > .property-form,
+.admin-view-staff > .property-form {
+  display: none;
+}
+
+.admin-view-manage,
+.admin-view-review,
+.admin-view-duplicates,
+.admin-view-staff {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.admin-view-manage > .admin-list,
+.admin-view-review > .admin-list,
+.admin-view-duplicates > .admin-list,
+.admin-view-staff > .admin-list {
+  width: 100%;
+  max-width: none;
+}
+

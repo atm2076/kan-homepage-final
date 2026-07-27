@@ -3883,6 +3883,14 @@ function AdminModal({ mode, setMode, isAdmin, setIsAdmin, onClose, properties, r
   const [staffProperties, setStaffProperties] = useState([]);
   const [duplicateWarning, setDuplicateWarning] = useState(null);
   const [duplicateManagerOpen, setDuplicateManagerOpen] = useState(false);
+  const [adminView, setAdminView] = useState(() => {
+    const hash = window.location.hash;
+    if (hash.includes('/admin/manage')) return 'manage';
+    if (hash.includes('/admin/review')) return 'review';
+    if (hash.includes('/admin/duplicates')) return 'duplicates';
+    if (hash.includes('/admin/staff')) return 'staff';
+    return 'register';
+  });
   const [adminDetailProperty, setAdminDetailProperty] = useState(null);
   const [adminDetailTab, setAdminDetailTab] = useState('public');
   const [photoEnhanceLevel, setPhotoEnhanceLevel] = useState('bright');
@@ -3930,6 +3938,19 @@ const [buildingLedgerSearching, setBuildingLedgerSearching] = useState(false);
   const canEditExisting = isAdminMode && isAdmin;
   const accessLabel = isStaffMode ? '직원용 관리자' : isAdminMode ? '대표 관리자' : '권한 선택';
   const photoUrls = linesToArray(form.photosText);
+  const adminStaffMembers = Array.from(
+    new Map(
+      (properties || [])
+        .filter((property) => property.staff_code || property.staff_name)
+        .map((property) => [
+          String(property.staff_code || property.staff_name),
+          {
+            code: property.staff_code || '-',
+            name: property.staff_name || property.created_by || '이름 미등록',
+          },
+        ])
+    ).values()
+  );
 const duplicatePropertyGroups = (() => {
   const grouped = new Map();
   const allItems = [...(properties || [])];
@@ -4107,6 +4128,25 @@ function chooseMode(nextMode) {
     '',
     `${url.pathname}${url.search}${url.hash}`
   );
+}
+function selectAdminView(nextView) {
+  const viewHashes = {
+    register: '/admin/listings',
+    manage: '/admin/manage',
+    review: '/admin/review',
+    duplicates: '/admin/duplicates',
+    staff: '/admin/staff',
+  };
+
+  setMode('admin');
+  setAdminView(nextView);
+  setDuplicateManagerOpen(nextView === 'duplicates');
+
+  const url = new URL(window.location.href);
+  url.searchParams.delete('staff');
+  url.searchParams.set('admin', '1');
+  url.hash = viewHashes[nextView] || viewHashes.register;
+  window.history.replaceState(null, '', `${url.pathname}${url.search}${url.hash}`);
 }
 async function loadStaffProperties(staffCode) {
 if (!isSupabaseReady || !staffCode) {
@@ -5412,38 +5452,35 @@ if (isStaffMode && currentStaff?.code) {
             현재 접속: <strong>{accessLabel}</strong>
           </div>
         )}
+{isAdminMode && (
 <nav className="admin-menu-strip" aria-label="관리자 메뉴">
   <button
     type="button"
-    onClick={() => {
-      setMode('admin');
-      setStaffView('register');
-    }}
+    className={isAdminMode && adminView === 'register' ? 'active' : ''}
+    onClick={() => selectAdminView('register')}
   >
     매물등록
   </button>
 
   <button
     type="button"
-    onClick={() => {
-      setMode('admin');
-      setStaffView('mine');
-    }}
+    className={isAdminMode && adminView === 'manage' ? 'active' : ''}
+    onClick={() => selectAdminView('manage')}
   >
     매물관리
   </button>
 
   <button
     type="button"
-    onClick={() => {
-      setMode('admin');
-    }}
+    className={isAdminMode && adminView === 'review' ? 'active' : ''}
+    onClick={() => selectAdminView('review')}
   >
     대표검수
   </button>
 <button
   type="button"
-  onClick={() => setDuplicateManagerOpen(true)}
+  className={isAdminMode && adminView === 'duplicates' ? 'active' : ''}
+  onClick={() => selectAdminView('duplicates')}
 >
   중복매물
   {duplicatePropertyGroups.length > 0
@@ -5452,11 +5489,13 @@ if (isStaffMode && currentStaff?.code) {
 </button>
 <button
   type="button"
-  onClick={() => chooseMode('staff')}
+  className={isAdminMode && adminView === 'staff' ? 'active' : ''}
+  onClick={() => selectAdminView('staff')}
 >
   직원관리
 </button>
 </nav>
+)}
 
         {!mode ? (
           <div className="mode-choice">
@@ -5509,7 +5548,7 @@ if (isStaffMode && currentStaff?.code) {
             </p>
           </form>
         ) : (
-          <div className="admin-grid simple-admin-grid">
+          <div className={`admin-grid simple-admin-grid admin-view-${isAdminMode ? adminView : 'staff-mode'}`}>
             <form className="property-form" onSubmit={saveProperty}>
               <div className="form-topline">
                 <h3>{editingId ? '매물 수정' : isStaffMode ? '직원 간단등록' : '간단 매물 등록'}</h3>
@@ -6676,6 +6715,25 @@ if (isStaffMode && currentStaff?.code) {
               <p className="status-text">{status}</p>
             </form>
 
+            {isAdminMode && adminView === 'staff' && (
+              <section className="admin-list admin-staff-manager">
+                <h3>직원관리</h3>
+                <p className="muted">직원이 등록한 매물의 담당자 정보를 확인합니다.</p>
+                {adminStaffMembers.length ? (
+                  adminStaffMembers.map((member) => (
+                    <div className="admin-list-item" key={`${member.code}-${member.name}`}>
+                      <div className="admin-item-title">
+                        <strong>{member.name}</strong>
+                      </div>
+                      <span>직원 코드: {member.code}</span>
+                    </div>
+                  ))
+                ) : (
+                  <div className="empty-box">등록된 직원 정보가 없습니다.</div>
+                )}
+              </section>
+            )}
+
             {false && isStaffMode && (
               <div className="admin-list staff-draft-list">
                 <h3>임시저장된 내가 등록한 매물 목록</h3>
@@ -6695,14 +6753,21 @@ if (isStaffMode && currentStaff?.code) {
               </div>
             )}
 
-            {canEditExisting && (
+            {canEditExisting && (adminView === 'manage' || adminView === 'review' || adminView === 'duplicates') && (
 
   <div className="admin-list">
-    <h3>등록 매물</h3>
-    <p className="muted">사진을 보고 매물을 확인한 뒤 수정 또는 광고올리기를 누르세요.</p>
+    <h3>{adminView === 'review' ? '대표검수' : '매물관리'}</h3>
+    <p className="muted">
+      {adminView === 'review'
+        ? '직원이 임시저장한 검수대기 매물을 확인하고 공개 또는 보류 처리하세요.'
+        : '사진을 보고 매물을 확인한 뒤 수정 또는 광고올리기를 누르세요.'}
+    </p>
     <AdminPropertyTabs property={adminDetailProperty} activeTab={adminDetailTab} setActiveTab={setAdminDetailTab} />
 
-{properties.map((property) => {
+{(adminView === 'review'
+  ? properties.filter((property) => (property.status || 'pending') === 'pending')
+  : properties
+).map((property) => {
   const isSale =
     property.category?.includes('매매') ||
     property.trade_type === '매매';
