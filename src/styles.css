@@ -12424,6 +12424,24 @@ details.photo-caption-details[open] > summary::after {
   }
 }
 
+.mobile-detail-request {
+  display: none;
+}
+
+@media (max-width: 768px) {
+  .mobile-detail-request {
+    display: block;
+    width: 100%;
+  }
+
+  .mobile-detail-request .custom-request-section {
+    width: 100%;
+    max-width: 100%;
+    margin: 10px 0 0;
+    box-sizing: border-box;
+  }
+}
+
 @media (max-width: 768px) {
   .customer-map-cluster-list {
     position: absolute;

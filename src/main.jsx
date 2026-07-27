@@ -1606,6 +1606,11 @@ async function handleQuickDeleteProperty(property) {
             />
           )}
           {!detailLoading && activeCustomerDetailProperty && (
+            <div className="mobile-detail-request">
+              <CustomRequestSection />
+            </div>
+          )}
+          {!detailLoading && activeCustomerDetailProperty && (
             <div className="mobile-detail-contact-bar">
               <a href={`tel:${OFFICE.phone}`}>전화</a>
               <a href={`sms:${OFFICE.phone}?body=${detailInquiryBody}`}>문자</a>
