@@ -1939,16 +1939,30 @@ const getPropertyMarkersByStage = (list, stage) => {
   const gridSize = stage === 'dong' ? 0.008 : 0.03;
   const grouped = new Map();
 
-  (Array.isArray(list) ? list : []).forEach((property) => {
-    const statusText = String(property.status || '');
+  const activeProperties = (Array.isArray(list) ? list : []).filter(
+    (property) => {
+      const statusText = String(property.status || '');
 
-    if (
-      property.is_active === false ||
-      property.hidden === true ||
-      /삭제|숨김|계약완료|거래완료/.test(statusText)
-    ) {
-      return;
+      return !(
+        property.is_active === false ||
+        property.hidden === true ||
+        /삭제|숨김|계약완료|거래완료/.test(statusText)
+      );
     }
+  );
+
+  if (stage === 'area') {
+    return [
+      {
+        lat: 36.1195,
+        lng: 128.3906,
+        count: activeProperties.length,
+        keyword: '',
+      },
+    ];
+  }
+
+  activeProperties.forEach((property) => {
 
     const lat = Number(
       property.lat ??
