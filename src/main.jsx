@@ -2244,20 +2244,25 @@ function CustomerMapView({ properties, selected, onSelect, keyword, setKeyword, 
   [properties]
 );
 const groupMarkerItems = (items, zoom) => {
-  if (zoom <= 13 && items.length > 1) {
-    return [
-      {
-        type: 'cluster',
-        lat:
-          items.reduce((sum, item) => sum + item.point.lat, 0) /
-          items.length,
-        lng:
-          items.reduce((sum, item) => sum + item.point.lng, 0) /
-          items.length,
-        items,
-      },
-    ];
-  }
+ if (zoom <= 13 && properties.length > 0) {
+  return [
+    {
+      type: 'cluster',
+      lat:
+        items.length > 0
+          ? items.reduce((sum, item) => sum + item.point.lat, 0) /
+            items.length
+          : 36.1195,
+      lng:
+        items.length > 0
+          ? items.reduce((sum, item) => sum + item.point.lng, 0) /
+            items.length
+          : 128.3906,
+      items,
+      displayCount: properties.length,
+    },
+  ];
+}
 
   if (zoom >= 20) {
     return items.map((item) => ({
@@ -2451,6 +2456,7 @@ map.setCenter(new maps.LatLng(36.1195, 128.3906));
   groupedItems.forEach((group) => {
     const isCluster = group.type === 'cluster';
     const firstItem = group.items[0];
+    if (!firstItem && group.type !== 'cluster') return;
 
     const marker = new naver.maps.Marker({
       position: new naver.maps.LatLng(group.lat, group.lng),
@@ -2459,7 +2465,7 @@ map.setCenter(new maps.LatLng(36.1195, 128.3906));
         ? {
           content: `
   <div class="customer-map-cluster-marker">
-    <span>${group.items.length}</span>
+    <span>${group.displayCount ?? group.items.length}</span>
   </div>
 `,
             size: new naver.maps.Size(44, 44),
@@ -2483,6 +2489,8 @@ map.setCenter(new maps.LatLng(36.1195, 128.3906));
     map.setCenter(new naver.maps.LatLng(group.lat, group.lng));
     map.setZoom(Math.min(map.getZoom() + 2, 17));
 
+    if (!firstItem) return;
+    
     if (window.innerWidth <= 768) {
       setSelectedClusterItems(group.items);
       return;
