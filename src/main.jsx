@@ -1498,6 +1498,11 @@ function selectProperty(property) {
     };
   }, [isCustomerDetailRoute, listingId, properties]);
 
+  useLayoutEffect(() => {
+    if (!isCustomerDetailRoute) return;
+    window.scrollTo({ top: 0, left: 0, behavior: 'auto' });
+  }, [isCustomerDetailRoute, listingId]);
+
   function returnToCustomerList() {
     if (window.history.state?.fromCustomerList) {
       window.history.back();
@@ -1574,7 +1579,6 @@ async function handleQuickDeleteProperty(property) {
 
     return (
       <div className="customer-detail-page">
-        <Header portalMode="" isAdminRoute={false} onOpenAdmin={() => {}} />
         <main className="page-shell">
           <div className="mobile-detail-head">
             <button type="button" className="small-btn" onClick={returnToCustomerList}>
