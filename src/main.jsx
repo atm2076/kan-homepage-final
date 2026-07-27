@@ -2181,6 +2181,7 @@ function CustomerMapView({ properties, selected, onSelect, keyword, setKeyword, 
   const markersRef = useRef([]);
   const mapRef = useRef(null);
   const [activeTab, setActiveTab] = useState('');
+  const [selectedClusterItems, setSelectedClusterItems] = useState([]);
   const selectedProperty = properties.find((item) => item.id === selected?.id) || properties[0];
   const markerItems = useMemo(
   () =>
@@ -2437,13 +2438,19 @@ map.setCenter(new maps.LatLng(36.1195, 128.3906));
 
    if (isCluster) {
   naver.maps.Event.addListener(marker, 'click', () => {
-    onSelect(firstItem.property);
-
     map.setCenter(new naver.maps.LatLng(group.lat, group.lng));
     map.setZoom(Math.min(map.getZoom() + 2, 17));
+
+    if (window.innerWidth <= 768) {
+      setSelectedClusterItems(group.items);
+      return;
+    }
+
+    onSelect(firstItem.property);
   });
 } else {
   naver.maps.Event.addListener(marker, 'click', () => {
+    setSelectedClusterItems([]);
     onSelect(firstItem.property);
   });
 }
@@ -2489,6 +2496,28 @@ zoomListener = naver.maps.Event.addListener(
     <section className="customer-map-view" id="map-view">
       <div className="customer-map-canvas">
         <div ref={mapElementRef} className="customer-real-map map-area" />
+        {selectedClusterItems.length > 0 && (
+          <div className="customer-map-cluster-list">
+            <div className="customer-map-cluster-list-head">
+              <strong>이 지역 매물 {selectedClusterItems.length}개</strong>
+              <button type="button" onClick={() => setSelectedClusterItems([])}>닫기</button>
+            </div>
+            {selectedClusterItems.map((item) => (
+              <button
+                key={item.property.id}
+                type="button"
+                className="customer-map-cluster-property"
+                onClick={() => {
+                  setSelectedClusterItems([]);
+                  onSelect(item.property);
+                }}
+              >
+                <strong>{item.property.title || shortAddress(item.property.address)}</strong>
+                <span>{getMapMarkerLabel(item.property)}</span>
+              </button>
+            ))}
+          </div>
+        )}
         <div className="customer-map-topbar mobile-map-filter-panel">
           <div className="map-search-inline">
             <span>⌕</span>
@@ -3128,6 +3157,7 @@ const cleanCategoryText = categoryText.endsWith(tradeText)
 function PropertyDetail({ property: inputProperty, allProperties = [], onSelect }) {
   const [photoCaptionOpen, setPhotoCaptionOpen] = useState(false);
   const [activePhoto, setActivePhoto] = useState(0);
+  const touchStartXRef = useRef(null);
 
   useEffect(() => {
     setActivePhoto(0);
@@ -3144,6 +3174,25 @@ function PropertyDetail({ property: inputProperty, allProperties = [], onSelect 
   const badges = toTextList(inputProperty.badges);
   const safeProperty = { ...inputProperty, photos, convenience, safety, education, badges };
   const mainPhoto = photos[activePhoto] || 'https://images.unsplash.com/photo-1564013799919-ab600027ffc6?auto=format&fit=crop&w=1600&q=80';
+  const showPreviousPhoto = () => {
+    if (photos.length < 2) return;
+    setActivePhoto((prev) => (prev - 1 + photos.length) % photos.length);
+  };
+  const showNextPhoto = () => {
+    if (photos.length < 2) return;
+    setActivePhoto((prev) => (prev + 1) % photos.length);
+  };
+  const handleGalleryTouchStart = (event) => {
+    touchStartXRef.current = event.touches[0]?.clientX ?? null;
+  };
+  const handleGalleryTouchEnd = (event) => {
+    const startX = touchStartXRef.current;
+    const endX = event.changedTouches[0]?.clientX;
+    touchStartXRef.current = null;
+    if (startX === null || endX === undefined || Math.abs(startX - endX) < 40) return;
+    if (startX > endX) showNextPhoto();
+    else showPreviousPhoto();
+  };
   const inquiryBody = encodeURIComponent(buildInquiryMessage(safeProperty));
   const related = allProperties.map(normalizePropertyRecord).filter((item) => item.id !== safeProperty.id).slice(0, 4);
   const hasMap = Boolean(safeProperty.map_image || safeProperty.map_link);
@@ -3264,13 +3313,17 @@ const infoRows = isSaleProperty
       <div className="detail-body-layout">
         <article className="detail-main">
           <section id="detail-gallery" className="gallery-card">
-            <div className="gallery-main">
+            <div
+              className="gallery-main"
+              onTouchStart={handleGalleryTouchStart}
+              onTouchEnd={handleGalleryTouchEnd}
+            >
               <img src={mainPhoto} alt={`${property.title} 대표사진`} />
-              <div className="photo-count">{photos.length ? `${activePhoto + 1}/${photos.length}` : '사진 준비중'}</div>
+              {photos.length > 1 && <div className="photo-count">{activePhoto + 1} / {photos.length}</div>}
               {photos.length > 1 && (
                 <>
-                  <button type="button" className="gallery-arrow left" onClick={() => setActivePhoto((prev) => (prev - 1 + photos.length) % photos.length)}>‹</button>
-                  <button type="button" className="gallery-arrow right" onClick={() => setActivePhoto((prev) => (prev + 1) % photos.length)}>›</button>
+                  <button type="button" className="gallery-arrow left" onClick={showPreviousPhoto}>‹</button>
+                  <button type="button" className="gallery-arrow right" onClick={showNextPhoto}>›</button>
                 </>
               )}
             </div>
@@ -3381,7 +3434,7 @@ const infoRows = isSaleProperty
   </div>
 </details>
 
-         <details className="content-card mobile-section-accordion">
+         <details className="content-card mobile-section-accordion detail-maintenance-section">
   <summary className="mobile-section-summary">
     <span>관리비 포함 항목</span>
     <span className="mobile-section-arrow">⌄</span>
@@ -3392,7 +3445,7 @@ const infoRows = isSaleProperty
   </div>
 </details>
 
-  <details className="content-card mobile-section-accordion">
+  <details className="content-card mobile-section-accordion detail-life-section">
   <summary className="mobile-section-summary">
     <span>위치·생활권</span>
     <span className="mobile-section-arrow">⌄</span>
