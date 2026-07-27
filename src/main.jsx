@@ -1223,6 +1223,16 @@ function getSaleCardPrimaryPrice(property = {}) {
   };
 }
 function App() {
+  const getCustomerListingId = () => {
+    const match = window.location.pathname.match(/^\/listing\/([^/]+)\/?$/);
+    if (!match) return '';
+
+    try {
+      return decodeURIComponent(match[1]);
+    } catch {
+      return match[1];
+    }
+  };
   const queryMode = useMemo(() => {
     const params = new URLSearchParams(window.location.search);
     const adminParam = params.get('admin');
@@ -1239,7 +1249,13 @@ if (currentHash.startsWith('/staff')) return 'staff';
     return '';
   }, []);
   const [properties, setProperties] = useState(sampleProperties);
-  const [selected, setSelected] = useState(sampleProperties[0]);
+  const [selected, setSelected] = useState(queryMode ? sampleProperties[0] : null);
+  const [listingId, setListingId] = useState(getCustomerListingId);
+  const [detailProperty, setDetailProperty] = useState(null);
+  const [detailLoading, setDetailLoading] = useState(Boolean(getCustomerListingId()));
+  const [detailError, setDetailError] = useState('');
+  const [customerPage, setCustomerPage] = useState(1);
+  const pendingScrollRef = useRef(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [keyword, setKeyword] = useState('');
@@ -1252,6 +1268,49 @@ if (currentHash.startsWith('/staff')) return 'staff';
   const [isAdmin, setIsAdmin] = useState(false);
   const canManageAll = portalMode === 'admin' && isAdmin;
   const isAdminRoute = portalMode === 'admin' || portalMode === 'staff';
+  const isCustomerDetailRoute = Boolean(listingId) && !isAdminRoute;
+
+  useEffect(() => {
+    const handlePopState = (event) => {
+      const nextListingId = getCustomerListingId();
+      setListingId(nextListingId);
+
+      if (!nextListingId && event.state?.customerList) {
+        const saved = event.state.customerList;
+        const savedPage = Math.max(1, Number(saved.page) || 1);
+        const savedScrollY = Number(saved.scrollY) || 0;
+        setKeyword(saved.keyword || '');
+        setDealMode(saved.dealMode || DEAL_MODES.RENT);
+        setCategory(saved.category || '전체');
+        setFilters(saved.filters || defaultFilters);
+        pendingScrollRef.current = {
+          scrollY: savedScrollY,
+          page: savedPage
+        };
+        requestAnimationFrame(() => {
+          setCustomerPage(savedPage);
+        });
+      }
+    };
+
+    window.addEventListener('popstate', handlePopState);
+    return () => window.removeEventListener('popstate', handlePopState);
+  }, []);
+
+  useEffect(() => {
+    if (
+      listingId ||
+      pendingScrollRef.current === null ||
+      loading ||
+      customerPage !== pendingScrollRef.current.page
+    ) return;
+
+    const { scrollY } = pendingScrollRef.current;
+    pendingScrollRef.current = null;
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => window.scrollTo(0, scrollY));
+    });
+  }, [listingId, loading, customerPage, keyword, dealMode, category, filters]);
 
   async function loadProperties() {
     setError('');
@@ -1261,7 +1320,7 @@ if (currentHash.startsWith('/staff')) return 'staff';
       const previewList = canManageAll ? sampleProperties : toPublicProperties(sampleProperties.filter((item) => item.status === 'published'));
       const visibleList = canManageAll ? previewList : dedupePublicProperties(previewList);
       setProperties(visibleList);
-      setSelected((prev) => visibleList.find((item) => item.id === prev?.id) || visibleList[0]);
+      setSelected((prev) => visibleList.find((item) => item.id === prev?.id) || (canManageAll ? visibleList[0] : null));
       setLoading(false);
       return;
     }
@@ -1283,13 +1342,13 @@ if (currentHash.startsWith('/staff')) return 'staff';
       const fallbackList = canManageAll ? sampleProperties : toPublicProperties(sampleProperties.filter((item) => item.status === 'published'));
       const visibleList = canManageAll ? fallbackList : dedupePublicProperties(fallbackList);
       setProperties(visibleList);
-      setSelected(visibleList[0]);
+      setSelected(canManageAll ? visibleList[0] : null);
     } else {
       const fallbackList = canManageAll ? sampleProperties : toPublicProperties(sampleProperties.filter((item) => item.status === 'published'));
       const rawList = data?.length ? data : fallbackList;
       const list = canManageAll ? rawList : dedupePublicProperties(toPublicProperties(rawList));
       setProperties(list);
-      setSelected((prev) => list.find((item) => item.id === prev?.id) || list[0]);
+      setSelected((prev) => list.find((item) => item.id === prev?.id) || (canManageAll ? list[0] : null));
     }
 
     setLoading(false);
@@ -1308,33 +1367,113 @@ if (currentHash.startsWith('/staff')) return 'staff';
   }, [properties, keyword, category, filters, dealMode]);
 
   useEffect(() => {
-    if (!filteredProperties.length) {
-      setSelected(null);
+    setSelected((prev) => {
+      if (!filteredProperties.length) return null;
+      return filteredProperties.find((item) => item.id === prev?.id) || (canManageAll ? filteredProperties[0] : null);
+    });
+  }, [filteredProperties, canManageAll]);
+
+function selectProperty(property) {
+  if (!property?.id) return;
+
+  const customerList = {
+    scrollY: window.scrollY,
+    page: customerPage,
+    keyword,
+    dealMode,
+    category,
+    filters
+  };
+
+  window.history.replaceState(
+    { ...(window.history.state || {}), customerList },
+    '',
+    `${window.location.pathname}${window.location.search}${window.location.hash}`
+  );
+  setSelected(property);
+  setDetailProperty(property);
+  const nextPath = `/listing/${encodeURIComponent(property.id)}`;
+  window.history.pushState({ fromCustomerList: true }, '', nextPath);
+  setListingId(String(property.id));
+  window.scrollTo(0, 0);
+}
+
+  useEffect(() => {
+    if (!isCustomerDetailRoute) {
+      setDetailProperty(null);
+      setDetailError('');
+      setDetailLoading(false);
       return;
     }
 
-    setSelected((prev) => filteredProperties.find((item) => item.id === prev?.id) || filteredProperties[0]);
-  }, [filteredProperties]);
+    const cachedProperty = properties.find((item) => String(item.id) === String(listingId));
+    if (cachedProperty) {
+      setDetailProperty(cachedProperty);
+      setDetailError('');
+      setDetailLoading(false);
+      return;
+    }
 
-function selectProperty(property) {
-  setSelected(property);
+    if (!isSupabaseReady) {
+      setDetailProperty(null);
+      setDetailError('매물 정보를 찾을 수 없습니다.');
+      setDetailLoading(false);
+      return;
+    }
 
-  requestAnimationFrame(() => {
-    setTimeout(() => {
-      const target =
-        window.innerWidth <= 768
-          ? document.getElementById('detail-gallery')
-          : document.getElementById('property-detail');
+    let cancelled = false;
+    setDetailProperty(null);
+    setDetailError('');
+    setDetailLoading(true);
 
-      if (target) {
-        target.scrollIntoView({
-          behavior: 'smooth',
-          block: 'start'
-        });
+    async function loadDetailProperty() {
+      try {
+        const { data, error: fetchError } = await supabase
+          .from('properties')
+          .select(PUBLIC_PROPERTY_COLUMNS)
+          .eq('id', listingId)
+          .eq('status', 'published')
+          .maybeSingle();
+
+        if (cancelled) return;
+        if (fetchError) {
+          setDetailError(fetchError.message);
+          setDetailProperty(null);
+        } else if (!data) {
+          setDetailError('공개된 매물 정보를 찾을 수 없습니다.');
+          setDetailProperty(null);
+        } else {
+          setDetailProperty(toPublicProperty(normalizePropertyRecord(data)));
+        }
+      } catch (fetchError) {
+        if (!cancelled) {
+          setDetailError(fetchError?.message || '매물 정보를 불러오지 못했습니다.');
+          setDetailProperty(null);
+        }
+      } finally {
+        if (!cancelled) {
+          setDetailLoading(false);
+        }
       }
-    }, 100);
-  });
-}
+    }
+
+    loadDetailProperty();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [isCustomerDetailRoute, listingId, properties]);
+
+  function returnToCustomerList() {
+    if (window.history.state?.fromCustomerList) {
+      window.history.back();
+      return;
+    }
+
+    window.history.pushState({}, '', '/');
+    setListingId('');
+    window.scrollTo(0, 0);
+  }
 
  const isOwnerAdmin = portalMode === 'admin' && isAdmin;
 const isManagementMode = isOwnerAdmin;
@@ -1394,6 +1533,29 @@ async function handleQuickDeleteProperty(property) {
   await loadProperties();
 }
 
+  if (isCustomerDetailRoute) {
+    return (
+      <div>
+        <Header portalMode="" isAdminRoute={false} onOpenAdmin={() => {}} />
+        <main className="page-shell">
+          <button type="button" className="small-btn" onClick={returnToCustomerList}>
+            목록으로 돌아가기
+          </button>
+          {detailLoading && <div className="empty-box">매물을 불러오는 중입니다.</div>}
+          {!detailLoading && detailError && <ErrorNotice message={detailError} />}
+          {!detailLoading && detailProperty && (
+            <PropertyDetail
+              property={detailProperty}
+              allProperties={properties}
+              onSelect={selectProperty}
+            />
+          )}
+        </main>
+        <Footer />
+      </div>
+    );
+  }
+
   return (
  <div className={isAdminRoute && adminOpen ? 'admin-app-mode' : undefined}>
     <Header
@@ -1421,6 +1583,8 @@ async function handleQuickDeleteProperty(property) {
             <CustomerListingSection
               properties={filteredProperties}
               selected={selected}
+              currentPage={customerPage}
+              setCurrentPage={setCustomerPage}
               dealMode={dealMode}
               setDealMode={setDealMode}
               category={category}
@@ -1438,14 +1602,9 @@ async function handleQuickDeleteProperty(property) {
   onHoldProperty={handleQuickHoldProperty}
   onDeleteProperty={handleQuickDeleteProperty}
             />
-            <PropertyDetail
-              property={selected || filteredProperties[0]}
-              allProperties={properties}
-              onSelect={selectProperty}
-            />
             <CustomerMapView
               properties={filteredProperties}
-              selected={selected || filteredProperties[0]}
+              selected={selected}
               onSelect={selectProperty}
               keyword={keyword}
               setKeyword={setKeyword}
@@ -2475,6 +2634,8 @@ function FilterBar({ filters, setFilters, onReset }) {
 function CustomerListingSection({
   properties,
   selected,
+  currentPage,
+  setCurrentPage,
   dealMode,
   setDealMode,
   category,
@@ -2492,8 +2653,6 @@ function CustomerListingSection({
   onHoldProperty,
   onDeleteProperty
 }) {
-  const [currentPage, setCurrentPage] = useState(1);
-
   const hasActiveSearch =
     Boolean(String(keyword || '').trim()) ||
     category !== '전체' ||
@@ -9911,3 +10070,4 @@ function Footer() {
 }
 
 createRoot(document.getElementById('root')).render(<App />);
+
