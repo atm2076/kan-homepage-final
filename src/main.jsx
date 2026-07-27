@@ -3243,7 +3243,7 @@ const infoRows = isSaleProperty
           </section>
 
           <section id="detail-related" className="content-card">
-            <section className="detail-map-section">
+           {/*} <section className="detail-map-section">
   <div className="detail-map-head">
     <div>
       <p className="section-eyebrow">LOCATION</p>
@@ -3270,6 +3270,7 @@ const infoRows = isSaleProperty
   />
 </div>
 </section>
+*/}
             <h2>구미시의 다른 매물</h2>
             <div className="related-grid">
              {related.map((item) => {
