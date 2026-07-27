@@ -1432,11 +1432,16 @@ function selectProperty(property) {
     `${window.location.pathname}${window.location.search}${window.location.hash}`
   );
   setSelected(property);
-  setDetailProperty(property);
-  const nextPath = `/listing/${encodeURIComponent(property.id)}`;
-  window.history.pushState({ fromCustomerList: true }, '', nextPath);
-  setListingId(String(property.id));
-  window.scrollTo(0, 0);
+setDetailProperty(property);
+
+const nextPath = `/listing/${encodeURIComponent(property.id)}`;
+
+sessionStorage.setItem(
+  'kanCustomerListState',
+  JSON.stringify(customerList)
+);
+
+window.location.assign(nextPath);
 }
 
   useEffect(() => {
@@ -2490,7 +2495,7 @@ map.setCenter(new maps.LatLng(36.1195, 128.3906));
     map.setZoom(Math.min(map.getZoom() + 2, 17));
 
     if (!firstItem) return;
-    
+
     if (window.innerWidth <= 768) {
       setSelectedClusterItems(group.items);
       return;
