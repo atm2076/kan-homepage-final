@@ -4954,8 +4954,12 @@ function startEdit(property) {
     return;
   }
 
-  setEditingId(property.id);
-  setStaffView('register');
+if (isAdminMode) {
+  selectAdminView('register');
+}
+
+setEditingId(property.id);
+setStaffView('register');
 setStaffStep(0);
   setDuplicateWarning(null);
     setAdminDetailProperty(property);
@@ -4995,6 +4999,14 @@ setStaffStep(0);
     setSelectedAddressItem(null);
     setDetailFieldsOpen(true);
     setStatus('선택한 매물을 수정 중입니다.');
+    requestAnimationFrame(() => {
+  requestAnimationFrame(() => {
+    document.querySelector('.property-form')?.scrollIntoView({
+      behavior: 'auto',
+      block: 'start',
+    });
+  });
+});
   }
 
   function resetForm() {
