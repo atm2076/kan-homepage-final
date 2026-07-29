@@ -12978,3 +12978,10 @@ main :is(div, figure, a, button):has(> picture > img) {
   mask: none !important;
   -webkit-mask: none !important;
 }
+/* 홈페이지 전체 모서리 완전 사각형 강제 */
+#root,
+#root *,
+#root *::before,
+#root *::after {
+  border-radius: 0 !important;
+}
