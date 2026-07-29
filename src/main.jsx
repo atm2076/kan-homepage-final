@@ -6966,6 +6966,12 @@ if (isStaffMode && currentStaff?.code) {
       `대표공인중개사: ${OFFICE.broker}`,
       `등록번호: ${OFFICE.regNo}`,
       `연락처: ${OFFICE.phone} / ${OFFICE.tel}`,
+            '',
+      '🌐 더 많은 구미 임대·매매 매물은 칸공인중개사 홈페이지에서 확인하세요.',
+      '홈페이지: https://kan-homepage-final.vercel.app',
+      '',
+      '📱 휴대폰에서 더 편리하게 매물을 확인하려면',
+      '플레이스토어에서 ‘칸공인중개사’를 검색하세요.',
       '',
       '#구미부동산 #구미원룸 #구미투룸 #구미다가구매매 #칸공인중개사'
     ]
@@ -8904,21 +8910,71 @@ if (index === 0) {
 }
 */
 
-   drawShareText(
-  ctx,
-  `${OFFICE.name}  ☎ ${OFFICE.phone}`,
-540,
-index === 0 ? 1252 : 1270,
-  {
-    font: 'bold 34px sans-serif',
-    color: '#ffffff',
-    align: 'center',
-    maxWidth: 960,
-    lineHeight: 40,
-    strokeColor: 'rgba(0,0,0,0.95)',
-    strokeWidth: index === 0 ? 0 : 7,
-  }
-);
+      if (index === 0 || index === selectedUrls.length - 1) {
+        drawShareText(
+          ctx,
+          '더 많은 구미 매물은 홈페이지·앱에서 확인',
+          540,
+          1142,
+          {
+            font: '900 29px "Noto Sans KR", "Malgun Gothic", sans-serif',
+            color: '#ffffff',
+            align: 'center',
+            maxWidth: 960,
+            lineHeight: 38,
+            strokeColor: 'rgba(0,0,0,0.95)',
+            strokeWidth: 7,
+          }
+        );
+
+        drawShareText(
+          ctx,
+          '홈페이지: kan-homepage-final.vercel.app',
+          540,
+          1188,
+          {
+            font: '900 28px "Noto Sans KR", "Malgun Gothic", sans-serif',
+            color: '#ffd600',
+            align: 'center',
+            maxWidth: 960,
+            lineHeight: 38,
+            strokeColor: 'rgba(0,0,0,0.95)',
+            strokeWidth: 7,
+          }
+        );
+
+        drawShareText(
+          ctx,
+          '플레이스토어에서 ‘칸공인중개사’를 검색하세요',
+          540,
+          1234,
+          {
+            font: '900 28px "Noto Sans KR", "Malgun Gothic", sans-serif',
+            color: '#ffffff',
+            align: 'center',
+            maxWidth: 960,
+            lineHeight: 38,
+            strokeColor: 'rgba(0,0,0,0.95)',
+            strokeWidth: 7,
+          }
+        );
+      }
+
+      drawShareText(
+        ctx,
+        `${OFFICE.name}  ☎ ${OFFICE.phone}`,
+        540,
+        1292,
+        {
+          font: 'bold 28px sans-serif',
+          color: '#ffffff',
+          align: 'center',
+          maxWidth: 960,
+          lineHeight: 40,
+          strokeColor: 'rgba(0,0,0,0.95)',
+          strokeWidth: 7,
+        }
+      );
 
       const file = await canvasToJpegFile(
         canvas,
@@ -9187,21 +9243,71 @@ drawRoundedRect(
         style.headerColor
       );
 */
-     drawShareText(
-  ctx,
-  `${OFFICE.name}  ☎ ${OFFICE.phone}`,
-  540,
-  1252,
-  {
-    font: 'bold 34px sans-serif',
-    color: '#ffffff',
-    align: 'center',
-    maxWidth: 960,
-    lineHeight: 40,
-    strokeColor: 'rgba(0,0,0,0.95)',
-    strokeWidth: 7,
-  }
-);
+      if (index === 0 || index === selectedUrls.length - 1) {
+        drawShareText(
+          ctx,
+          '더 많은 구미 매물은 홈페이지·앱에서 확인',
+          540,
+          1142,
+          {
+            font: '900 29px "Noto Sans KR", "Malgun Gothic", sans-serif',
+            color: '#ffffff',
+            align: 'center',
+            maxWidth: 960,
+            lineHeight: 38,
+            strokeColor: 'rgba(0,0,0,0.95)',
+            strokeWidth: 7,
+          }
+        );
+
+        drawShareText(
+          ctx,
+          '홈페이지: kan-homepage-final.vercel.app',
+          540,
+          1188,
+          {
+            font: '900 28px "Noto Sans KR", "Malgun Gothic", sans-serif',
+            color: '#ffd600',
+            align: 'center',
+            maxWidth: 960,
+            lineHeight: 38,
+            strokeColor: 'rgba(0,0,0,0.95)',
+            strokeWidth: 7,
+          }
+        );
+
+        drawShareText(
+          ctx,
+          '플레이스토어에서 ‘칸공인중개사’를 검색하세요',
+          540,
+          1234,
+          {
+            font: '900 28px "Noto Sans KR", "Malgun Gothic", sans-serif',
+            color: '#ffffff',
+            align: 'center',
+            maxWidth: 960,
+            lineHeight: 38,
+            strokeColor: 'rgba(0,0,0,0.95)',
+            strokeWidth: 7,
+          }
+        );
+      }
+
+      drawShareText(
+        ctx,
+        `${OFFICE.name}  ☎ ${OFFICE.phone}`,
+        540,
+        1292,
+        {
+          font: 'bold 28px sans-serif',
+          color: '#ffffff',
+          align: 'center',
+          maxWidth: 960,
+          lineHeight: 40,
+          strokeColor: 'rgba(0,0,0,0.95)',
+          strokeWidth: 7,
+        }
+      );
 
       const file = await canvasToJpegFile(
         canvas,
