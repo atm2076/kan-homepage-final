@@ -1433,7 +1433,7 @@ requestAnimationFrame(() => {
 
 function selectProperty(property) {
   if (!property?.id) return;
-  
+
     if (isAdminRoute) {
     window.open(
       `/listing/${encodeURIComponent(property.id)}`,
@@ -8338,10 +8338,14 @@ function buildNaverBlogAd(property) {
     ...section(data.is_sale ? '💹 매매·수익 조건' : '💳 관리비·주차·입주 조건', conditionLines), '',
     ...section(`📷 ${locationTitle} ${data.property_type} ${data.trade_type} 내부사진`, photoLines), '',
     ...section(data.is_sale ? '📈 투자 포인트' : '🙋 이런 분께 추천드립니다', data.is_sale ? [data.investment_point] : recommendedLines), '',
-    ...section('🌐 칸공인중개사 홈페이지·앱 안내', [
-      '더 많은 구미 임대·매매 매물은 칸공인중개사 홈페이지에서 확인하실 수 있습니다.',
-      '홈페이지: https://kan-homepage-final.vercel.app'
-    ]), '',
+ ...section('🌐 칸공인중개사 홈페이지·앱 안내', [
+  '이 매물 외에도 구미 원룸·미니투룸·투룸 임대와 상가·다가구·원룸건물 매매가 계속 등록되고 있습니다.',
+  '사진·가격·지도·상세정보는 칸공인중개사 홈페이지에서 편리하게 확인하실 수 있습니다.',
+  '홈페이지: https://kan-homepage-final.vercel.app',
+  '',
+  '휴대폰에서 더 편리하게 매물을 확인하려면',
+  '플레이스토어에서 ‘칸공인중개사’를 검색하세요.'
+]), '',
     ...section('📞 전화·문자·상담 문의', [
       '방문 전 전화 또는 문자로 매물 가능 여부를 확인해 주세요.',
       `문의: ${OFFICE.phone} / ${OFFICE.tel}`
