@@ -1433,6 +1433,15 @@ requestAnimationFrame(() => {
 
 function selectProperty(property) {
   if (!property?.id) return;
+  
+    if (isAdminRoute) {
+    window.open(
+      `/listing/${encodeURIComponent(property.id)}`,
+      '_blank',
+      'noopener,noreferrer'
+    );
+    return;
+  }
 
   const customerList = {
   scrollY: window.scrollY,
