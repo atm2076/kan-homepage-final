@@ -1291,9 +1291,10 @@ if (currentHash.startsWith('/staff')) return 'staff';
         setCategory(saved.category || '전체');
         setFilters(saved.filters || defaultFilters);
         pendingScrollRef.current = {
-          scrollY: savedScrollY,
-          page: savedPage
-        };
+  scrollY: savedScrollY,
+  page: savedPage,
+  returnListingId: saved.returnListingId || '',
+};
         requestAnimationFrame(() => {
           setCustomerPage(savedPage);
         });
@@ -1312,11 +1313,27 @@ if (currentHash.startsWith('/staff')) return 'staff';
       customerPage !== pendingScrollRef.current.page
     ) return;
 
-    const { scrollY } = pendingScrollRef.current;
-    pendingScrollRef.current = null;
-    requestAnimationFrame(() => {
-      requestAnimationFrame(() => window.scrollTo(0, scrollY));
-    });
+   const { scrollY, returnListingId } = pendingScrollRef.current;
+pendingScrollRef.current = null;
+
+requestAnimationFrame(() => {
+  requestAnimationFrame(() => {
+    const target = returnListingId
+      ? document.querySelector(
+          `[data-listing-id="${CSS.escape(String(returnListingId))}"]`
+        )
+      : null;
+
+    if (target) {
+      target.scrollIntoView({
+        behavior: 'auto',
+        block: 'center',
+      });
+    } else {
+      window.scrollTo(0, scrollY);
+    }
+  });
+});
   }, [listingId, loading, customerPage, keyword, dealMode, category, filters]);
 
   useLayoutEffect(() => {
@@ -1418,13 +1435,14 @@ function selectProperty(property) {
   if (!property?.id) return;
 
   const customerList = {
-    scrollY: window.scrollY,
-    page: customerPage,
-    keyword,
-    dealMode,
-    category,
-    filters
-  };
+  scrollY: window.scrollY,
+  page: customerPage,
+  keyword,
+  dealMode,
+  category,
+  filters,
+  returnListingId: property.id,
+};
 
   window.history.replaceState(
     { ...(window.history.state || {}), customerList },
@@ -1441,7 +1459,12 @@ sessionStorage.setItem(
   JSON.stringify(customerList)
 );
 
-window.location.assign(nextPath);
+window.history.pushState(
+  { fromCustomerList: true },
+  '',
+  nextPath
+);
+setListingId(String(property.id));
 }
 
   useEffect(() => {
@@ -1786,7 +1809,7 @@ function Header({ portalMode, isAdminRoute, onOpenAdmin }) {
           </div>
         </div>
 
-        <div className="map-control-row">
+        {/*<div className="map-control-row">
           <div className="map-search-box">
             <span>⌕</span>
             <input
@@ -1798,7 +1821,7 @@ function Header({ portalMode, isAdminRoute, onOpenAdmin }) {
           <button type="button" onClick={() => setKeyword(keyword.trim())}>
             검색
           </button>
-        </div>
+        </div>*/}
 
    <NaverMapBox
   properties={properties}
@@ -2574,10 +2597,10 @@ zoomListener = naver.maps.Event.addListener(
           </div>
         )}
         <div className="customer-map-topbar mobile-map-filter-panel">
-          <div className="map-search-inline">
+          {/*<div className="map-search-inline">
             <span>⌕</span>
             <input value={keyword} onChange={(e) => setKeyword(e.target.value)} placeholder="인의동 원룸, 진평동 투룸, 옥계동 월세 검색" />
-          </div>
+          </div>*/}
           <MapFilterDropdown label="전체" onClick={() => { setDealMode(DEAL_MODES.RENT); setCategory('전체'); setFilters(defaultFilters); }} />
           <MapFilterDropdown label="임대" active={dealMode === DEAL_MODES.RENT} onClick={() => applyMapFilter('dealMode', DEAL_MODES.RENT)} />
           <MapFilterDropdown label="매매" active={dealMode === DEAL_MODES.SALE} onClick={() => applyMapFilter('dealMode', DEAL_MODES.SALE)} />
@@ -2785,6 +2808,7 @@ function CustomerListingSection({
   onHoldProperty,
   onDeleteProperty
 }) {
+  const didMountPageResetRef = useRef(false);
   const hasActiveSearch =
     Boolean(String(keyword || '').trim()) ||
     category !== '전체' ||
@@ -2804,8 +2828,13 @@ function CustomerListingSection({
   );
 
   useEffect(() => {
-    setCurrentPage(1);
-  }, [dealMode, keyword, category, filters]);
+  if (!didMountPageResetRef.current) {
+    didMountPageResetRef.current = true;
+    return;
+  }
+
+  setCurrentPage(1);
+}, [dealMode, keyword, category, filters]);
 
   const resetAll = () => {
     setDealMode(DEAL_MODES.RENT);
@@ -3129,7 +3158,10 @@ const cleanCategoryText = categoryText.endsWith(tradeText)
   ? categoryText.slice(0, -tradeText.length).trim()
   : categoryText;
   return (
-    <article className={`property-list-item customer-property-card ${active ? 'active' : ''}`}>
+   <article
+  className={`property-list-item customer-property-card ${active ? 'active' : ''}`}
+  data-listing-id={property.id}
+>
       <button type="button" className="property-card-main" onClick={onClick}>
         <div className="list-thumb">
          <img
@@ -3565,7 +3597,7 @@ const infoRows = isSaleProperty
               <a className="secondary-btn" href={`sms:${OFFICE.phone}?body=${inquiryBody}`}>문자문의</a>
             </div>
           </section>
-
+          
           <section id="detail-related" className="content-card">
            {/*} <section className="detail-map-section">
   <div className="detail-map-head">
@@ -3595,6 +3627,59 @@ const infoRows = isSaleProperty
 </div>
 </section>
 */}
+<details className="legal-box content-card mobile-legal-accordion">
+  <summary className="mobile-legal-summary">
+    <span>중개대상물 표시·광고 안내</span>
+    <span className="mobile-legal-arrow">⌄</span>
+  </summary>
+
+  <div className="mobile-legal-content">
+    <p>중개대상물 종류: {property.category || '계약 전 확인'}</p>
+    <p>거래형태: {property.trade_type || '계약 전 확인'}</p>
+    <p>소재지: {property.address || '계약 전 확인'}</p>
+    <p>
+      가격:{' '}
+      {isSaleProperty
+        ? `매매가 ${
+            property.sale_price ||
+            property.deposit ||
+            '계약 전 확인'
+          }`
+        : `보증금 ${property.deposit || '-'} / 월세 ${
+            property.rent || '-'
+          }`}
+    </p>
+    <p>관리비: {maintenanceInfo.display || '계약 전 확인'}</p>
+
+    {maintenanceInfo.includedItems.length > 0 && (
+      <p>
+        관리비 포함 항목: {maintenanceInfo.includedItems.join(', ')}
+      </p>
+    )}
+
+    <p>층수: {getPublicFloorInfo(property.floor_info) || '계약 전 확인'}</p>
+    <p>방/욕실: {property.room_bath || '계약 전 확인'}</p>
+    <p>사용승인일: {property.approval_date || '계약 전 확인'}</p>
+    <p>주차: {property.parking || '계약 전 확인'}</p>
+    <p>난방: {heatingText || '계약 전 확인'}</p>
+    <p>엘리베이터: {property.elevator || '계약 전 확인'}</p>
+    <p>방향: {property.direction || '계약 전 확인'}</p>
+    <p>입주가능일: {property.move_in || '계약 전 확인'}</p>
+    <p>상호명: {OFFICE.name}</p>
+    <p>소재지: {OFFICE.address}</p>
+    <p>대표공인중개사: {OFFICE.broker}</p>
+    <p>등록번호: {OFFICE.regNo}</p>
+    <p>연락처: {OFFICE.phone} / {OFFICE.tel}</p>
+
+    {property.legal_notice && (
+      <TextLines value={property.legal_notice} />
+    )}
+
+    <p>
+      ※ 세부 조건은 계약 전 현장 및 공부서류 확인 후 최종 안내드립니다.
+    </p>
+  </div>
+</details>
             <h2>구미시의 다른 매물</h2>
             <div className="related-grid">
              {related.map((item) => {
@@ -3650,36 +3735,7 @@ const infoRows = isSaleProperty
             </div>
           </section>
 
- <details className="legal-box content-card mobile-legal-accordion">
-  <summary className="mobile-legal-summary">
-    <span>중개대상물 표시·광고 안내</span>
-    <span className="mobile-legal-arrow">⌄</span>
-  </summary>
-
-  <div className="mobile-legal-content">
-            <p>중개대상물 종류: {property.category || '계약 전 확인'}</p>
-            <p>거래형태: {property.trade_type || '계약 전 확인'}</p>
-            <p>소재지: {property.address || '계약 전 확인'}</p>
-            <p>가격: {isSaleProperty ? `매매가 ${property.sale_price || property.deposit || '계약 전 확인'}` : `보증금 ${property.deposit || '-'} / 월세 ${property.rent || '-'}`}</p>
-            <p>관리비: {maintenanceInfo.display || '계약 전 확인'}</p>
-            {maintenanceInfo.includedItems.length > 0 && <p>관리비 포함 항목: {maintenanceInfo.includedItems.join(', ')}</p>}
-            <p>층수: {getPublicFloorInfo(property.floor_info) || '계약 전 확인'}</p>
-            <p>방/욕실: {property.room_bath || '계약 전 확인'}</p>
-            <p>사용승인일: {property.approval_date || '계약 전 확인'}</p>
-            <p>주차: {property.parking || '계약 전 확인'}</p>
-            <p>난방: {heatingText || '계약 전 확인'}</p>
-            <p>엘리베이터: {property.elevator || '계약 전 확인'}</p>
-            <p>방향: {property.direction || '계약 전 확인'}</p>
-            <p>입주가능일: {property.move_in || '계약 전 확인'}</p>
-            <p>상호명: {OFFICE.name}</p>
-            <p>소재지: {OFFICE.address}</p>
-            <p>대표공인중개사: {OFFICE.broker}</p>
-            <p>등록번호: {OFFICE.regNo}</p>
-            <p>연락처: {OFFICE.phone} / {OFFICE.tel}</p>
-            {property.legal_notice && <TextLines value={property.legal_notice} />}
-            <p>※ 세부 조건은 계약 전 현장 및 공부서류 확인 후 최종 안내드립니다.</p>
-            </div>
-          </details>
+ 
         </article>
 
         {/*<aside className="sticky-contact-card">
