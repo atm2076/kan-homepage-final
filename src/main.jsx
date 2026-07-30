@@ -2422,7 +2422,8 @@ function CustomerMapView({ properties, selected, onSelect, keyword, setKeyword, 
   const mapElementRef = useRef(null);
   const markersRef = useRef([]);
   const mapRef = useRef(null);
-  const preserveClusterOnNextIdleRef = useRef(false);
+  const clusterSelectionRef = useRef([]);
+  const clusterNavigationRef = useRef(false);
   const [activeTab, setActiveTab] = useState('');
   const [selectedClusterItems, setSelectedClusterItems] = useState([]);
   const markerItems = useMemo(
@@ -2589,6 +2590,7 @@ return groups.map((group) => ({
 let resizeFrame = null;
 let zoomListener = null;
 let idleListener = null;
+let dragStartListener = null;
 const resizeTimers = [];
 let resizeCustomerMap = () => {};
 
@@ -2717,10 +2719,11 @@ maps.Event.trigger(map, 'resize');
     const clusterItems = dedupeMapItems(group.items);
     setPanelItems(clusterItems);
     setSelectedClusterItems(clusterItems);
+    clusterSelectionRef.current = clusterItems;
+    clusterNavigationRef.current = true;
     setSelectedMapPropertyId(clusterItems[0]?.property?.id || '');
     setPanelCollapsed(false);
     setSheetExpanded(true);
-    preserveClusterOnNextIdleRef.current = true;
     map.setCenter(new naver.maps.LatLng(group.lat, group.lng));
     map.setZoom(Math.min(map.getZoom() + 2, 17));
 
@@ -2728,6 +2731,7 @@ maps.Event.trigger(map, 'resize');
   });
 } else {
   naver.maps.Event.addListener(marker, 'click', () => {
+    clusterSelectionRef.current = [];
     setSelectedClusterItems([]);
     setSelectedMapPropertyId(firstItem.property.id);
     setPanelCollapsed(false);
@@ -2747,19 +2751,29 @@ zoomListener = naver.maps.Event.addListener(
   map,
   'zoom_changed',
   () => {
+    if (clusterNavigationRef.current) {
+      clusterNavigationRef.current = false;
+    } else {
+      clusterSelectionRef.current = [];
+      setSelectedClusterItems([]);
+    }
     renderCustomerMarkers(getItemsInsideMap());
   }
 );
 idleListener = naver.maps.Event.addListener(map, 'idle', () => {
   const visibleItems = getItemsInsideMap();
-  if (preserveClusterOnNextIdleRef.current) {
-    preserveClusterOnNextIdleRef.current = false;
+  if (clusterSelectionRef.current.length) {
+    setPanelItems(clusterSelectionRef.current);
     renderCustomerMarkers(visibleItems);
     return;
   }
   setPanelItems(visibleItems);
   setSelectedClusterItems([]);
   renderCustomerMarkers(visibleItems);
+});
+dragStartListener = naver.maps.Event.addListener(map, 'dragstart', () => {
+  clusterSelectionRef.current = [];
+  setSelectedClusterItems([]);
 });
         
       })
@@ -2772,6 +2786,9 @@ idleListener = naver.maps.Event.addListener(map, 'idle', () => {
   }
   if (idleListener && window.naver?.maps) {
     window.naver.maps.Event.removeListener(idleListener);
+  }
+  if (dragStartListener && window.naver?.maps) {
+    window.naver.maps.Event.removeListener(dragStartListener);
   }
 
   if (resizeFrame) cancelAnimationFrame(resizeFrame);
