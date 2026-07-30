@@ -6988,7 +6988,9 @@ if (isStaffMode && currentStaff?.code) {
     '',
     property.summary || property.description || '',
     '',
-    `문의: ${OFFICE.phone}`
+    '문의: 010-5323-3883 / 054-474-0367',
+    '홈페이지: https://kan-homepage-final.vercel.app',
+    '플레이스토어에서 ‘칸공인중개사’를 검색하세요.'
   ].filter(Boolean).join('\n');
 
   return (
@@ -9505,6 +9507,53 @@ await navigator.share({ files });
   setStatus(message);
   window.alert(message);
 }
+async function handleFacebookShare() {
+  const facebookTab = window.open('', '_blank');
+  let files = [];
+
+  try {
+    files = await buildSocialShareFiles(property, photoUrls);
+  } catch (error) {
+    console.warn('페이스북용 광고사진 생성 실패, 원본 사진으로 진행합니다.', error);
+  }
+
+  if (!files.length) {
+    files = photoState.files;
+  }
+
+  files = files.slice(0, 8);
+
+  if (files.length) {
+    downloadShareFiles(files);
+  }
+
+  let copied = copyAdvertisementTextSync(facebookText);
+
+  if (!copied) {
+    copied = await copyAdvertisementText(facebookText);
+  }
+
+  if (facebookTab) {
+    facebookTab.location.href = 'https://www.facebook.com/';
+  }
+
+  const photoMessage = files.length
+    ? `페이스북용 사진 ${files.length}장 다운로드를 시작했습니다.`
+    : '다운로드할 페이스북용 사진이 없습니다.';
+  const copyMessage = copied
+    ? '전체 문구를 복사했습니다. 페이스북에서 Ctrl + V를 눌러 붙여넣으세요.'
+    : '문구 복사에 실패했습니다. 문구를 직접 복사해 주세요.';
+  const tabMessage = facebookTab
+    ? '페이스북 홈페이지를 열었습니다.'
+    : '팝업이 차단되어 페이스북 홈페이지를 열지 못했습니다.';
+  const failedMessage = photoState.failedCount
+    ? ` 불러오지 못한 사진 ${photoState.failedCount}장은 제외되었습니다.`
+    : '';
+  const message = `${photoMessage} ${copyMessage} ${tabMessage}${failedMessage}`;
+
+  setStatus(message);
+  window.alert(message);
+}
   const preparingLabel = photoState.loading ? '사진 준비 중…' : '';
 
   return (
@@ -9535,7 +9584,7 @@ await navigator.share({ files });
       <button
         type="button"
         disabled={photoState.loading}
-        onClick={() => handleShare(facebookText, '페이스북')}
+        onClick={handleFacebookShare}
       >
         {preparingLabel || '페이스북 사진·문구'}
       </button>
