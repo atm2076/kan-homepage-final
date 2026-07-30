@@ -2297,16 +2297,138 @@ function escapeHtml(value) {
     .replaceAll("'", '&#39;');
 }
 
+function isPublicMapProperty(property = {}) {
+  const status = String(property.status || 'published').toLowerCase();
+  const visibility = String(property.ad_visibility || '공개');
+  const contractStatus = String(property.contract_status || property.deal_status || '');
+  return (
+    status === 'published' &&
+    !['비공개', '광고중지', '숨김'].includes(visibility) &&
+    !/계약완료|삭제|숨김|비공개/u.test(contractStatus)
+  );
+}
+
+function dedupeMapItems(items = []) {
+  const seen = new Set();
+  return items.filter((item) => {
+    const id = String(item?.property?.id || '');
+    if (!id || seen.has(id)) return false;
+    seen.add(id);
+    return true;
+  });
+}
+
+function MapPropertyPanel({
+  items,
+  selectedId,
+  collapsed,
+  setCollapsed,
+  sheetExpanded,
+  setSheetExpanded,
+  clusterMode,
+  onOpen,
+  onHighlight
+}) {
+  const cardRefs = useRef(new Map());
+  const touchStartY = useRef(0);
+
+  useEffect(() => {
+    if (!selectedId) return;
+    cardRefs.current.get(String(selectedId))?.scrollIntoView({
+      behavior: 'smooth',
+      block: 'nearest',
+      inline: 'nearest'
+    });
+  }, [selectedId, items]);
+
+  return (
+    <aside
+      className={`map-property-panel map-linked-panel ${collapsed ? 'is-collapsed' : ''} ${sheetExpanded ? 'is-expanded' : ''}`}
+      aria-label="현재 지도 영역 매물"
+    >
+      <button
+        type="button"
+        className="map-panel-mobile-handle"
+        aria-label={sheetExpanded ? '지도 매물목록 최소화' : '지도 매물목록 펼치기'}
+        onClick={() => setSheetExpanded((value) => !value)}
+        onTouchStart={(event) => {
+          touchStartY.current = event.touches[0]?.clientY || 0;
+        }}
+        onTouchEnd={(event) => {
+          const endY = event.changedTouches[0]?.clientY || 0;
+          const distance = touchStartY.current - endY;
+          if (distance > 30) setSheetExpanded(true);
+          if (distance < -30) setSheetExpanded(false);
+        }}
+      >
+        <span />
+      </button>
+      <div className="map-linked-panel-head">
+        <div>
+          <strong>지도 영역 매물</strong>
+          <span>{items.length}개</span>
+        </div>
+        <button
+          type="button"
+          className="map-panel-collapse"
+          onClick={() => setCollapsed((value) => !value)}
+          aria-label={collapsed ? '지도 매물패널 펼치기' : '지도 매물패널 접기'}
+        >
+          {collapsed ? '‹' : '›'}
+        </button>
+      </div>
+      {!collapsed && (
+        <div className={`map-linked-card-list ${clusterMode ? 'is-cluster' : ''}`}>
+          {items.length ? items.map(({ property }) => {
+            const photos = getCleanPropertyPhotos(property);
+            const cover = photos[0] || 'https://images.unsplash.com/photo-1564013799919-ab600027ffc6?auto=format&fit=crop&w=800&q=75';
+            const isSale = property.category?.includes('매매') || property.trade_type === '매매';
+            const price = isSale
+              ? `매매 ${formatAmount(property.sale_price || property.deposit)}`
+              : `보증금 ${formatAmount(property.deposit)} / 월세 ${formatAmount(property.rent)}`;
+            return (
+              <button
+                key={property.id}
+                ref={(node) => {
+                  if (node) cardRefs.current.set(String(property.id), node);
+                  else cardRefs.current.delete(String(property.id));
+                }}
+                type="button"
+                className={`map-linked-card ${String(selectedId || '') === String(property.id) ? 'is-active' : ''}`}
+                onMouseEnter={() => onHighlight(property.id)}
+                onMouseLeave={() => onHighlight(selectedId)}
+                onFocus={() => onHighlight(property.id)}
+                onClick={() => onOpen(property)}
+              >
+                <img src={cover} alt="" loading="lazy" decoding="async" />
+                <span className="map-linked-card-copy">
+                  <small>{shortAddress(property.address)}</small>
+                  <strong>{property.category || '매물'} · {property.trade_type || '거래형태 확인'}</strong>
+                  <b>{price}</b>
+                  <em>{property.area || '면적 확인'} · {getPublicFloorInfo(property.floor_info) || '층수 확인'}</em>
+                </span>
+              </button>
+            );
+          }) : (
+            <p className="map-linked-panel-empty">현재 지도 영역에 등록된 매물이 없습니다</p>
+          )}
+        </div>
+      )}
+    </aside>
+  );
+}
+
 function CustomerMapView({ properties, selected, onSelect, keyword, setKeyword, dealMode, setDealMode, category, setCategory, filters, setFilters }) {
   const mapElementRef = useRef(null);
   const markersRef = useRef([]);
   const mapRef = useRef(null);
+  const preserveClusterOnNextIdleRef = useRef(false);
   const [activeTab, setActiveTab] = useState('');
   const [selectedClusterItems, setSelectedClusterItems] = useState([]);
-  const selectedProperty = properties.find((item) => item.id === selected?.id) || properties[0];
   const markerItems = useMemo(
   () =>
     properties
+      .filter(isPublicMapProperty)
       .slice(0, 60)
       .map((property, index) => {
         const point = getPropertyMapPoint(property, index);
@@ -2322,8 +2444,27 @@ function CustomerMapView({ properties, selected, onSelect, keyword, setKeyword, 
       .filter(Boolean),
   [properties]
 );
+  const [panelItems, setPanelItems] = useState(() => dedupeMapItems(markerItems));
+  const [selectedMapPropertyId, setSelectedMapPropertyId] = useState(selected?.id || '');
+  const [panelCollapsed, setPanelCollapsed] = useState(false);
+  const [sheetExpanded, setSheetExpanded] = useState(false);
+
+  useEffect(() => {
+    setPanelItems((current) => current.length ? current : dedupeMapItems(markerItems));
+  }, [markerItems]);
+
+  useEffect(() => {
+    if (selected?.id) setSelectedMapPropertyId(selected.id);
+  }, [selected?.id]);
+
+  useEffect(() => {
+    const activeId = String(selectedMapPropertyId || '');
+    document.querySelectorAll('.customer-map-naver-marker[data-property-id]').forEach((element) => {
+      element.classList.toggle('is-active', element.dataset.propertyId === activeId);
+    });
+  }, [selectedMapPropertyId]);
 const groupMarkerItems = (items, zoom) => {
- if (zoom <= 13 && properties.length > 0) {
+ if (zoom <= 13 && items.length > 0) {
   return [
     {
       type: 'cluster',
@@ -2338,7 +2479,7 @@ const groupMarkerItems = (items, zoom) => {
             items.length
           : 128.3906,
       items,
-      displayCount: properties.length,
+      displayCount: items.length,
     },
   ];
 }
@@ -2447,17 +2588,11 @@ return groups.map((group) => ({
     let resizeObserver = null;
 let resizeFrame = null;
 let zoomListener = null;
+let idleListener = null;
 const resizeTimers = [];
 let resizeCustomerMap = () => {};
 
 const clearMarkers = () => {
-    if (
-    window.location.hostname === 'localhost' ||
-    window.location.hostname === '127.0.0.1'
-  ) {
-    markersRef.current = [];
-    return;
-  }
   const markers = Array.isArray(markersRef.current)
     ? markersRef.current
     : [];
@@ -2510,7 +2645,6 @@ const clearMarkers = () => {
           if (width > 0 && height > 0) {
            map.setSize(new maps.Size(width, height));
 maps.Event.trigger(map, 'resize');
-map.setCenter(new maps.LatLng(36.1195, 128.3906));
           }
         };
 
@@ -2526,11 +2660,26 @@ map.setCenter(new maps.LatLng(36.1195, 128.3906));
 
         window.addEventListener('resize', resizeCustomerMap);
 
-        const renderCustomerMarkers = () => {
+        const getItemsInsideMap = () => {
+          const bounds = map.getBounds?.();
+          if (!bounds?.hasLatLng) return dedupeMapItems(markerItems);
+          return dedupeMapItems(markerItems.filter((item) =>
+            bounds.hasLatLng(new naver.maps.LatLng(item.point.lat, item.point.lng))
+          ));
+        };
+
+        const updateMarkerHighlights = (propertyId) => {
+          const activeId = String(propertyId || '');
+          document.querySelectorAll('.customer-map-naver-marker[data-property-id]').forEach((element) => {
+            element.classList.toggle('is-active', element.dataset.propertyId === activeId);
+          });
+        };
+
+        const renderCustomerMarkers = (visibleItems = getItemsInsideMap()) => {
   clearMarkers();
 
   const zoom = map.getZoom();
-  const groupedItems = groupMarkerItems(markerItems, zoom);
+  const groupedItems = groupMarkerItems(visibleItems, zoom);
 
   groupedItems.forEach((group) => {
     const isCluster = group.type === 'cluster';
@@ -2552,7 +2701,7 @@ map.setCenter(new maps.LatLng(36.1195, 128.3906));
           }
         : {
             content: `
-              <div class="customer-map-naver-marker ${firstItem.markerClass}">
+              <div class="customer-map-naver-marker ${firstItem.markerClass} ${String(selectedMapPropertyId) === String(firstItem.property.id) ? 'is-active' : ''}" data-property-id="${escapeHtml(firstItem.property.id)}">
                 <span>${escapeHtml(
                   getMapMarkerLabel(firstItem.property)
                 )}</span>
@@ -2565,22 +2714,25 @@ map.setCenter(new maps.LatLng(36.1195, 128.3906));
 
    if (isCluster) {
   naver.maps.Event.addListener(marker, 'click', () => {
+    const clusterItems = dedupeMapItems(group.items);
+    setPanelItems(clusterItems);
+    setSelectedClusterItems(clusterItems);
+    setSelectedMapPropertyId(clusterItems[0]?.property?.id || '');
+    setPanelCollapsed(false);
+    setSheetExpanded(true);
+    preserveClusterOnNextIdleRef.current = true;
     map.setCenter(new naver.maps.LatLng(group.lat, group.lng));
     map.setZoom(Math.min(map.getZoom() + 2, 17));
 
     if (!firstItem) return;
-
-    if (window.innerWidth <= 768) {
-      setSelectedClusterItems(group.items);
-      return;
-    }
-
-    onSelect(firstItem.property);
   });
 } else {
   naver.maps.Event.addListener(marker, 'click', () => {
     setSelectedClusterItems([]);
-    onSelect(firstItem.property);
+    setSelectedMapPropertyId(firstItem.property.id);
+    setPanelCollapsed(false);
+    setSheetExpanded(false);
+    updateMarkerHighlights(firstItem.property.id);
   });
 }
 
@@ -2589,14 +2741,26 @@ map.setCenter(new maps.LatLng(36.1195, 128.3906));
 };
 
 renderCustomerMarkers();
+setPanelItems(getItemsInsideMap());
 
 zoomListener = naver.maps.Event.addListener(
   map,
   'zoom_changed',
   () => {
-    renderCustomerMarkers();
+    renderCustomerMarkers(getItemsInsideMap());
   }
 );
+idleListener = naver.maps.Event.addListener(map, 'idle', () => {
+  const visibleItems = getItemsInsideMap();
+  if (preserveClusterOnNextIdleRef.current) {
+    preserveClusterOnNextIdleRef.current = false;
+    renderCustomerMarkers(visibleItems);
+    return;
+  }
+  setPanelItems(visibleItems);
+  setSelectedClusterItems([]);
+  renderCustomerMarkers(visibleItems);
+});
         
       })
       .catch(() => {});
@@ -2605,6 +2769,9 @@ zoomListener = naver.maps.Event.addListener(
   mounted = false;
   if (zoomListener && window.naver?.maps) {
     window.naver.maps.Event.removeListener(zoomListener);
+  }
+  if (idleListener && window.naver?.maps) {
+    window.naver.maps.Event.removeListener(idleListener);
   }
 
   if (resizeFrame) cancelAnimationFrame(resizeFrame);
@@ -2622,31 +2789,9 @@ zoomListener = naver.maps.Event.addListener(
   };
 
   return (
-    <section className="customer-map-view" id="map-view">
+    <section className={`customer-map-view ${panelCollapsed ? 'map-panel-collapsed' : ''}`} id="map-view">
       <div className="customer-map-canvas">
         <div ref={mapElementRef} className="customer-real-map map-area" />
-        {selectedClusterItems.length > 0 && (
-          <div className="customer-map-cluster-list">
-            <div className="customer-map-cluster-list-head">
-              <strong>이 지역 매물 {selectedClusterItems.length}개</strong>
-              <button type="button" onClick={() => setSelectedClusterItems([])}>닫기</button>
-            </div>
-            {selectedClusterItems.map((item) => (
-              <button
-                key={item.property.id}
-                type="button"
-                className="customer-map-cluster-property"
-                onClick={() => {
-                  setSelectedClusterItems([]);
-                  onSelect(item.property);
-                }}
-              >
-                <strong>{item.property.title || shortAddress(item.property.address)}</strong>
-                <span>{getMapMarkerLabel(item.property)}</span>
-              </button>
-            ))}
-          </div>
-        )}
         <div className="customer-map-topbar mobile-map-filter-panel">
           {/*<div className="map-search-inline">
             <span>⌕</span>
@@ -2700,7 +2845,20 @@ zoomListener = naver.maps.Event.addListener(
 
       </div>
 
-      <MapPropertyPanel property={selectedProperty} />
+      <MapPropertyPanel
+        items={panelItems}
+        selectedId={selectedMapPropertyId}
+        collapsed={panelCollapsed}
+        setCollapsed={setPanelCollapsed}
+        sheetExpanded={sheetExpanded}
+        setSheetExpanded={setSheetExpanded}
+        clusterMode={selectedClusterItems.length > 0}
+        onHighlight={(propertyId) => setSelectedMapPropertyId(propertyId || '')}
+        onOpen={(property) => {
+          setSelectedMapPropertyId(property.id);
+          onSelect(property);
+        }}
+      />
     </section>
   );
 }
@@ -2762,9 +2920,6 @@ function MapFilterDropdown({ label, active, onClick }) {
   );
 }
 */
-function MapPropertyPanel() {
-  return null;
-}
 function CategoryStrip({ categories, category, setCategory }) {
   return (
     <section className="category-strip">

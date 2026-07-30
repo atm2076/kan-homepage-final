@@ -13198,3 +13198,301 @@ main :is(div, figure, a, button):has(> picture > img) {
 #root .customer-map-cluster-marker {
   border-radius: 50% !important;
 }
+
+/* 지도 연동 매물카드 패널 */
+.map-linked-panel {
+  box-sizing: border-box;
+  min-width: 0;
+  overflow: hidden;
+  background: #fff;
+  box-shadow: 0 18px 44px rgba(15, 23, 42, 0.12);
+}
+
+.map-linked-panel-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  min-height: 66px;
+  padding: 12px 14px;
+  border-bottom: 1px solid #e2e8f0;
+  background: #fff;
+}
+
+.map-linked-panel-head > div {
+  display: flex;
+  align-items: baseline;
+  gap: 7px;
+  min-width: 0;
+}
+
+.map-linked-panel-head strong {
+  color: #102a4c;
+  font-size: 17px;
+}
+
+.map-linked-panel-head span {
+  color: #a0782a;
+  font-size: 13px;
+  font-weight: 900;
+}
+
+.map-panel-collapse {
+  flex: 0 0 38px;
+  width: 38px;
+  min-height: 38px;
+  border: 1px solid #d5dfeb;
+  background: #f5f8fc;
+  color: #173b67;
+  font-size: 18px;
+  font-weight: 900;
+  cursor: pointer;
+}
+
+.map-panel-mobile-handle {
+  display: none;
+}
+
+.map-linked-card-list {
+  min-height: 0;
+  overflow-x: hidden;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding: 10px;
+  scrollbar-width: thin;
+}
+
+.map-linked-card {
+  display: grid;
+  grid-template-columns: 132px minmax(0, 1fr);
+  width: 100%;
+  min-width: 0;
+  margin: 0 0 10px;
+  padding: 0;
+  overflow: hidden;
+  border: 1px solid #dbe4ee;
+  background: #fff;
+  color: #172033;
+  text-align: left;
+  box-shadow: 0 5px 15px rgba(15, 23, 42, 0.07);
+  cursor: pointer;
+  transition: border-color 0.16s ease, box-shadow 0.16s ease, transform 0.16s ease;
+}
+
+.map-linked-card:hover,
+.map-linked-card:focus-visible,
+.map-linked-card.is-active {
+  border-color: #a0782a;
+  outline: 0;
+  box-shadow: inset 4px 0 #173b67, 0 9px 22px rgba(23, 59, 103, 0.18);
+  transform: translateY(-1px);
+}
+
+.map-linked-card img {
+  width: 132px;
+  height: 116px;
+  object-fit: cover;
+  background: #edf2f7;
+}
+
+.map-linked-card-copy {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  justify-content: center;
+  gap: 5px;
+  padding: 10px 11px;
+}
+
+.map-linked-card-copy small,
+.map-linked-card-copy strong,
+.map-linked-card-copy b,
+.map-linked-card-copy em {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.map-linked-card-copy small {
+  color: #64748b;
+  font-size: 12px;
+  font-weight: 750;
+}
+
+.map-linked-card-copy strong {
+  color: #173b67;
+  font-size: 13px;
+}
+
+.map-linked-card-copy b {
+  color: #111827;
+  font-size: 16px;
+}
+
+.map-linked-card-copy em {
+  color: #667085;
+  font-size: 12px;
+  font-style: normal;
+}
+
+.map-linked-panel-empty {
+  display: grid;
+  min-height: 180px;
+  margin: 0;
+  place-items: center;
+  padding: 24px;
+  color: #65758b;
+  text-align: center;
+  font-weight: 800;
+  line-height: 1.55;
+}
+
+.customer-map-naver-marker {
+  transition: transform 0.16s ease, box-shadow 0.16s ease;
+}
+
+.customer-map-naver-marker.is-active {
+  z-index: 5;
+  transform: scale(1.13);
+  outline: 3px solid rgba(218, 177, 85, 0.72);
+  background: #102a4c;
+  box-shadow: 0 12px 28px rgba(16, 42, 76, 0.42);
+}
+
+@media (min-width: 1025px) {
+  .customer-map-view {
+    grid-template-columns: minmax(0, 1fr) 380px !important;
+    grid-template-areas: "map panel" !important;
+    gap: 14px !important;
+    overflow: hidden !important;
+  }
+
+  .customer-map-view.map-panel-collapsed {
+    grid-template-columns: minmax(0, 1fr) 48px !important;
+  }
+
+  .customer-map-view > .map-linked-panel {
+    display: flex !important;
+    grid-area: panel;
+    width: 380px;
+    max-width: 100%;
+    min-height: 760px;
+    max-height: 760px;
+    flex-direction: column;
+  }
+
+  .customer-map-view > .map-linked-panel.is-collapsed {
+    width: 48px;
+  }
+
+  .map-linked-panel.is-collapsed .map-linked-panel-head {
+    height: 100%;
+    padding: 5px;
+    align-items: flex-start;
+    border: 0;
+  }
+
+  .map-linked-panel.is-collapsed .map-linked-panel-head > div {
+    display: none;
+  }
+
+  .map-linked-panel.is-collapsed .map-panel-collapse {
+    width: 38px;
+  }
+}
+
+@media (max-width: 1024px) {
+  .customer-map-view {
+    position: relative;
+    grid-template-columns: minmax(0, 1fr) !important;
+    grid-template-areas: "map" !important;
+    overflow: hidden !important;
+  }
+
+  .customer-map-view > .map-linked-panel {
+    position: absolute;
+    z-index: 12;
+    right: 8px;
+    bottom: 8px;
+    left: 8px;
+    display: flex !important;
+    width: auto !important;
+    height: auto !important;
+    min-height: 0;
+    max-width: none !important;
+    max-height: 190px !important;
+    margin: 0 !important;
+    flex-direction: column;
+    border: 1px solid #d6e0ea;
+    transition: max-height 0.22s ease;
+  }
+
+  .customer-map-view > .map-linked-panel.is-expanded {
+    max-height: min(66vh, 520px) !important;
+  }
+
+  .map-panel-mobile-handle {
+    display: grid;
+    flex: 0 0 28px;
+    min-height: 28px;
+    width: 100%;
+    place-items: center;
+    border: 0;
+    border-bottom: 1px solid #edf1f5;
+    background: #fff;
+    touch-action: none;
+  }
+
+  .map-panel-mobile-handle span {
+    width: 42px;
+    height: 4px;
+    background: #9aa9ba;
+  }
+
+  .map-linked-panel-head {
+    min-height: 42px;
+    padding: 5px 12px 7px;
+  }
+
+  .map-linked-panel-head strong {
+    font-size: 15px;
+  }
+
+  .map-panel-collapse {
+    display: none;
+  }
+
+  .map-linked-card-list {
+    display: flex;
+    flex: 1 1 auto;
+    gap: 9px;
+    overflow-x: auto;
+    overflow-y: hidden;
+    padding: 7px 9px 10px;
+    scroll-snap-type: x mandatory;
+  }
+
+  .map-linked-card {
+    flex: 0 0 calc(100vw - 58px);
+    grid-template-columns: 112px minmax(0, 1fr);
+    margin: 0;
+    scroll-snap-align: center;
+  }
+
+  .map-linked-card img {
+    width: 112px;
+    height: 104px;
+  }
+
+  .map-linked-panel.is-expanded .map-linked-card-list:not(.is-cluster) {
+    display: block;
+    overflow-x: hidden;
+    overflow-y: auto;
+  }
+
+  .map-linked-panel.is-expanded .map-linked-card-list:not(.is-cluster) .map-linked-card {
+    width: 100%;
+    margin-bottom: 9px;
+  }
+}
