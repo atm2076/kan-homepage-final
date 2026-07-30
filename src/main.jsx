@@ -5998,6 +5998,102 @@ if (isStaffMode && currentStaff?.code) {
     await reload();
   }
 
+  function getPropertyStoragePhotoUrls(property = {}) {
+    return [
+      property.photos,
+      property.photoUrls,
+      property.photo_urls,
+      property.clean_photos,
+      property.original_compressed_urls
+    ].flatMap(toTextList).map((url) => String(url || '').trim()).filter(Boolean);
+  }
+
+  function getPropertyImageStoragePath(url) {
+    try {
+      const parsed = new URL(url);
+      const markers = [
+        '/storage/v1/object/public/property-images/',
+        '/storage/v1/render/image/public/property-images/'
+      ];
+      const marker = markers.find((value) => parsed.pathname.includes(value));
+      if (!marker) return '';
+      return decodeURIComponent(parsed.pathname.split(marker)[1] || '').replace(/^\/+/, '');
+    } catch {
+      return '';
+    }
+  }
+
+  async function deleteReviewProperty(property) {
+    if (!canEditExisting || !isAdminMode || adminView !== 'review') {
+      setStatus('대표 관리자만 검수대기 매물을 삭제할 수 있습니다.');
+      return;
+    }
+    if (!isSupabaseReady) {
+      setStatus('Supabase 연결 전에는 삭제가 되지 않습니다.');
+      return;
+    }
+
+    const listingNumber = getPublicPropertyNumber(property) || '발급 대기';
+    const confirmed = window.confirm(
+      `매물번호 ${listingNumber}번을 삭제하시겠습니까?\n` +
+      '삭제 후 복구할 수 없습니다.'
+    );
+    if (!confirmed) return;
+
+    setStatus(`매물번호 ${listingNumber}번을 삭제하고 있습니다.`);
+    const targetUrls = [...new Set(getPropertyStoragePhotoUrls(property))];
+    let sharedUrls = new Set();
+    let canCleanStorage = true;
+
+    const { data: otherProperties, error: referenceError } = await supabase
+      .from('properties')
+      .select('id,photos')
+      .neq('id', property.id);
+
+    if (referenceError) {
+      canCleanStorage = false;
+      console.warn('사진 공유 여부 확인 실패로 Storage 삭제를 건너뜁니다:', referenceError);
+    } else {
+      const referencedElsewhere = new Set(
+        (otherProperties || []).flatMap((item) => toTextList(item.photos))
+      );
+      sharedUrls = new Set(targetUrls.filter((url) => referencedElsewhere.has(url)));
+    }
+
+    const { error: deleteError } = await supabase
+      .from('properties')
+      .delete()
+      .eq('id', property.id);
+
+    if (deleteError) {
+      setStatus(`삭제 실패: ${deleteError.message}`);
+      return;
+    }
+
+    let storageWarning = '';
+    if (canCleanStorage) {
+      const storagePaths = [...new Set(
+        targetUrls
+          .filter((url) => !sharedUrls.has(url))
+          .map(getPropertyImageStoragePath)
+          .filter(Boolean)
+      )];
+      if (storagePaths.length) {
+        const { error: storageError } = await supabase.storage
+          .from('property-images')
+          .remove(storagePaths);
+        if (storageError) {
+          storageWarning = ` 사진 파일 정리 실패: ${storageError.message}`;
+        }
+      }
+    } else if (targetUrls.length) {
+      storageWarning = ' 사진 공유 여부를 확인할 수 없어 DB만 삭제했습니다.';
+    }
+
+    setStatus(`매물번호 ${listingNumber}번을 삭제했습니다.${storageWarning}`);
+    await reload();
+  }
+
   return (
     <div className="modal-backdrop">
       <div className="admin-modal">
@@ -7628,7 +7724,7 @@ if (isStaffMode && currentStaff?.code) {
               : `보증금 ${formatAmount(property.deposit)} / 월세 ${formatAmount(property.rent)} / 관리비 ${property.maintenance_fee || '확인 필요'}`}
           </span>
 
-          <div style={{ marginTop: '10px', display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+          <div className="admin-review-card-actions">
             <button type="button" onClick={() => startEdit(property)}>
               수정
             </button>
@@ -7658,6 +7754,16 @@ if (isStaffMode && currentStaff?.code) {
             >
               보류
             </button>
+
+            {isAdminMode && adminView === 'review' && (
+              <button
+                type="button"
+                className="admin-review-delete-btn"
+                onClick={() => deleteReviewProperty(property)}
+              >
+                삭제
+              </button>
+            )}
           </div>
 
           {isAdvertisingOpen && (

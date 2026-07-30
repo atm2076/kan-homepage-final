@@ -13496,3 +13496,41 @@ main :is(div, figure, a, button):has(> picture > img) {
     margin-bottom: 9px;
   }
 }
+
+.admin-review-card-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 10px;
+}
+
+#root .admin-review-delete-btn {
+  border: 1px solid #b91c1c;
+  background: #fff1f2;
+  color: #b91c1c;
+  font-weight: 900;
+}
+
+#root .admin-review-delete-btn:hover,
+#root .admin-review-delete-btn:focus-visible {
+  border-color: #991b1b;
+  background: #b91c1c;
+  color: #fff;
+}
+
+@media (max-width: 768px) {
+  .admin-review-card-actions {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    width: 100%;
+  }
+
+  .admin-review-card-actions > button {
+    width: 100%;
+    min-width: 0;
+  }
+
+  .admin-review-card-actions > .admin-review-delete-btn {
+    grid-column: 1 / -1;
+  }
+}
