@@ -416,6 +416,11 @@ function getPublicPropertyNumber(property = {}) {
   ).trim();
 }
 
+function getShortPublicPropertyNumber(property = {}) {
+  const number = getPublicPropertyNumber(property);
+  return /^\d{1,8}$/.test(number) ? number : '';
+}
+
 function normalizeDuplicateAddress(value) {
   return String(value || '')
     .replace(/\([^)]*\)/g, '')
@@ -8834,17 +8839,23 @@ async function blogPhotoUrlToJpegBlob(url) {
     context.fillStyle = '#ffffff';
     context.fillRect(0, 0, canvas.width, canvas.height);
     context.drawImage(imageSource, 0, 0);
-    const watermarkHeight = Math.max(52, Math.round(canvas.height * 0.075));
-    context.fillStyle = 'rgba(0, 0, 0, 0.72)';
-    context.fillRect(0, canvas.height - watermarkHeight, canvas.width, watermarkHeight);
+    const watermarkY = canvas.height - Math.max(24, Math.round(canvas.height * 0.035));
     context.fillStyle = '#ffffff';
     context.font = `800 ${Math.max(20, Math.round(canvas.width * 0.025))}px "Noto Sans KR", "Malgun Gothic", sans-serif`;
     context.textAlign = 'center';
     context.textBaseline = 'middle';
+    context.lineWidth = Math.max(2, Math.round(canvas.width * 0.003));
+    context.strokeStyle = 'rgba(0, 0, 0, 0.9)';
+    context.strokeText(
+      `${OFFICE.name} ☎ ${OFFICE.phone}`,
+      canvas.width / 2,
+      watermarkY,
+      canvas.width - 40
+    );
     context.fillText(
       `${OFFICE.name} ☎ ${OFFICE.phone}`,
       canvas.width / 2,
-      canvas.height - watermarkHeight / 2,
+      watermarkY,
       canvas.width - 40
     );
 
@@ -9944,8 +9955,8 @@ function drawChannelLine(ctx, text, x, y, options = {}) {
     align: options.align || 'left',
     maxWidth: options.maxWidth || 940,
     lineHeight: options.lineHeight || 42,
-    strokeColor: options.strokeColor || '',
-    strokeWidth: options.strokeWidth || 0
+    strokeColor: options.strokeColor || 'rgba(0, 0, 0, 0.92)',
+    strokeWidth: options.strokeWidth ?? 4
   });
 }
 
@@ -9974,15 +9985,7 @@ async function buildInstagramShareFiles(property, photoUrls) {
       canvas.width = 1080;
       canvas.height = 1350;
       const ctx = canvas.getContext('2d');
-      ctx.fillStyle = '#111111';
-      ctx.fillRect(0, 0, 1080, 1350);
-      drawCoverImage(ctx, loaded.image, 0, 0, 1080, 930);
-      const gradient = ctx.createLinearGradient(0, 800, 0, 1350);
-      gradient.addColorStop(0, 'rgba(0,0,0,0)');
-      gradient.addColorStop(0.22, 'rgba(0,0,0,.84)');
-      gradient.addColorStop(1, 'rgba(0,0,0,.97)');
-      ctx.fillStyle = gradient;
-      ctx.fillRect(0, 780, 1080, 570);
+      drawCoverImage(ctx, loaded.image, 0, 0, 1080, 1350);
 
       if (index === 0) {
         [info.price, info.areaFloor, info.directionParking].filter(Boolean).slice(0, 3).forEach((line, lineIndex) => {
@@ -10019,22 +10022,33 @@ async function buildInstagramShareFiles(property, photoUrls) {
 async function buildFacebookShareFiles(property, photoUrls) {
   const selectedUrls = photoUrls.slice(0, 8);
   const files = [];
-  const listingNumber = getPublicPropertyNumber(property);
+  const listingNumber = getShortPublicPropertyNumber(property);
+  const fileNumber = getPublicPropertyNumber(property);
   for (let index = 0; index < selectedUrls.length; index += 1) {
     let loaded;
     try {
       loaded = await loadCleanPhotoForCanvas(selectedUrls[index]);
       const canvas = document.createElement('canvas');
-      canvas.width = 1200;
-      canvas.height = 1200;
+      canvas.width = loaded.image.naturalWidth || loaded.image.width;
+      canvas.height = loaded.image.naturalHeight || loaded.image.height;
       const ctx = canvas.getContext('2d');
-      ctx.fillStyle = '#111111';
-      ctx.fillRect(0, 0, 1200, 1200);
-      drawCoverImage(ctx, loaded.image, 0, 0, 1200, 1080);
-      ctx.fillStyle = 'rgba(0,0,0,.88)';
-      ctx.fillRect(0, 1080, 1200, 120);
-      drawChannelLine(ctx, `매물번호 ${listingNumber} · ${OFFICE.name} ☎ ${OFFICE.phone}`, 600, 1120, { font: '800 29px sans-serif', align: 'center', maxWidth: 1120 });
-      const file = await canvasToJpegFile(canvas, `K${listingNumber}_FACEBOOK_${String(index + 1).padStart(2, '0')}.jpg`);
+      ctx.drawImage(loaded.image, 0, 0, canvas.width, canvas.height);
+      const fontSize = Math.max(20, Math.round(canvas.width * 0.025));
+      const watermark = [
+        listingNumber ? `매물번호 ${listingNumber}` : '',
+        OFFICE.name,
+        `☎ ${OFFICE.phone}`
+      ].filter(Boolean).join(' · ');
+      ctx.font = `800 ${fontSize}px "Noto Sans KR", "Malgun Gothic", sans-serif`;
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'bottom';
+      ctx.lineWidth = Math.max(2, Math.round(fontSize * 0.14));
+      ctx.strokeStyle = 'rgba(0, 0, 0, 0.92)';
+      ctx.fillStyle = '#ffffff';
+      const watermarkY = canvas.height - Math.max(16, Math.round(canvas.height * 0.025));
+      ctx.strokeText(watermark, canvas.width / 2, watermarkY, canvas.width - 32);
+      ctx.fillText(watermark, canvas.width / 2, watermarkY, canvas.width - 32);
+      const file = await canvasToJpegFile(canvas, `K${fileNumber}_FACEBOOK_${String(index + 1).padStart(2, '0')}.jpg`);
       if (file) files.push(file);
       canvas.width = 1;
       canvas.height = 1;
