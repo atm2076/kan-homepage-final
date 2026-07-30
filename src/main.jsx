@@ -378,6 +378,44 @@ function linesToArray(value) {
     .filter(Boolean);
 }
 
+function getCleanPropertyPhotos(property = {}) {
+  const candidates = [
+    property.photos,
+    property.photoUrls,
+    property.photo_urls,
+    property.clean_photos,
+    property.photosText
+  ];
+  const seen = new Set();
+  const photos = [];
+
+  candidates.forEach((candidate) => {
+    toTextList(candidate).forEach((value) => {
+      const url = String(value || '').trim();
+      if (!/^https?:\/\//i.test(url) || seen.has(url)) return;
+      try {
+        new URL(url);
+      } catch {
+        return;
+      }
+      seen.add(url);
+      photos.push(url);
+    });
+  });
+
+  return photos;
+}
+
+function getPublicPropertyNumber(property = {}) {
+  return String(
+    property.property_number ??
+    property.listing_number ??
+    property.public_number ??
+    property.id ??
+    ''
+  ).trim();
+}
+
 function normalizeDuplicateAddress(value) {
   return String(value || '')
     .replace(/\([^)]*\)/g, '')
@@ -3092,7 +3130,7 @@ function ErrorNotice({ message }) {
   );
 }
 function PropertyListItem({ property, index = 0, active, onClick, isManagementMode = false, isOwnerAdmin = false, onEdit, onHold, onDelete }) {
-  const photos = toTextList(property.photos);
+  const photos = getCleanPropertyPhotos(property);
   const cover =
    photos.find(Boolean) ||
     'https://images.unsplash.com/photo-1564013799919-ab600027ffc6?auto=format&fit=crop&w=1200&q=80';
@@ -3263,7 +3301,7 @@ function PropertyDetail({ property: inputProperty, allProperties = [], onSelect 
     return <section id="property-detail" className="detail-empty empty-box">매물을 선택하세요.</section>;
   }
 
-  const photos = toTextList(inputProperty.photos);
+  const photos = getCleanPropertyPhotos(inputProperty);
   const convenience = toTextList(inputProperty.convenience);
   const safety = toTextList(inputProperty.safety);
   const education = toTextList(inputProperty.education);
@@ -3415,6 +3453,10 @@ const infoRows = isSaleProperty
               onTouchEnd={handleGalleryTouchEnd}
             >
               <img src={mainPhoto} alt={`${property.title} 대표사진`} />
+              <div className="gallery-photo-watermark">
+                <span>매물번호 {getPublicPropertyNumber(property)} · {OFFICE.name}</span>
+                <span>☎ {OFFICE.phone}</span>
+              </div>
               {photos.length > 1 && <div className="photo-count">{activePhoto + 1} / {photos.length}</div>}
               {photos.length > 1 && (
                 <>
@@ -4000,7 +4042,6 @@ function AdminModal({ mode, setMode, isAdmin, setIsAdmin, onClose, properties, r
   const [photoEnhanceMode, setPhotoEnhanceMode] = useState('batch');
   const [photoEnhanceByUrl, setPhotoEnhanceByUrl] = useState({});
   const [photoSourceByUrl, setPhotoSourceByUrl] = useState({});
-const [photoWatermark, setPhotoWatermark] = useState(true);
   const [entryMode, setEntryMode] = useState('detail');
   const [staffStep, setStaffStep] = useState(0);
     const [currentStaff, setCurrentStaff] = useState(null);
@@ -4034,6 +4075,11 @@ const [buildingLedgerSearching, setBuildingLedgerSearching] = useState(false);
   const [publishTab, setPublishTab] = useState('');
   const latestFormRef = useRef(form);
   const [advertisingPropertyId, setAdvertisingPropertyId] = useState(null);
+  const [blogPhotoProgress, setBlogPhotoProgress] = useState({
+    propertyId: '',
+    current: 0,
+    total: 0
+  });
   const [lookupNumber, setLookupNumber] = useState('');
   const [lookupResult, setLookupResult] = useState(null);
   const [lookupSearched, setLookupSearched] = useState(false);
@@ -4280,7 +4326,7 @@ function lookupPropertyByNumber(value) {
   }
 
   const matchedProperty = (properties || []).find(
-    (property) => String(property?.id ?? '').trim() === normalizedNumber
+    (property) => getPublicPropertyNumber(property) === normalizedNumber
   ) || null;
 
   setLookupResult(matchedProperty);
@@ -5109,7 +5155,7 @@ setStaffStep(0);
     setStatus('새 매물 등록 상태입니다.');
   }
 function autoEditPhoto(file, options = {}) {
-  const { enhanceLevel = 'bright', watermark = true } = options;
+  const { enhanceLevel = 'bright' } = options;
   const enhanceConfig = PHOTO_ENHANCE_LEVELS.find((level) => level.value === enhanceLevel) || PHOTO_ENHANCE_LEVELS[2];
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
@@ -5137,30 +5183,6 @@ function autoEditPhoto(file, options = {}) {
         ctx.filter = enhanceConfig.filter;
         ctx.drawImage(img, 0, 0, width, height);
         ctx.filter = 'none';
-if (watermark) {
-      // 워터마크 글씨만 중앙 하단에 표시
-const fontSize = Math.max(28, Math.round(width * 0.03));
-ctx.fillStyle = 'rgba(255, 255, 255, 0.88)';
-ctx.font = `bold ${fontSize}px sans-serif`;
-ctx.textAlign = 'center';
-ctx.textBaseline = 'bottom';
-
-ctx.shadowColor = 'rgba(0, 0, 0, 0.55)';
-ctx.shadowBlur = 4;
-ctx.shadowOffsetX = 1;
-ctx.shadowOffsetY = 1;
-
-ctx.fillText(
-  '칸공인중개사 010-5323-3883',
-  width / 2,
-  height - 20
-);
-
-ctx.shadowColor = 'transparent';
-ctx.shadowBlur = 0;
-ctx.shadowOffsetX = 0;
-ctx.shadowOffsetY = 0;
-}
         canvas.toBlob(
           (blob) => {
             if (!blob) {
@@ -5196,7 +5218,6 @@ const files = await Promise.all(
   originalFiles.map((file) =>
     autoEditPhoto(file, {
       enhanceLevel: photoEnhanceLevel,
-      watermark: photoWatermark,
     })
   )
 );
@@ -5273,7 +5294,6 @@ const files = await Promise.all(
     setStatus('선택한 사진만 다시 보정 중입니다.');
     const editedFile = await autoEditPhoto(originalFile, {
       enhanceLevel: nextLevel,
-      watermark: photoWatermark,
     });
     const uniqueId =
       typeof crypto !== 'undefined' && crypto.randomUUID
@@ -5922,9 +5942,7 @@ if (isStaffMode && currentStaff?.code) {
                           enhanceLevel={photoEnhanceLevel}
                           photoEnhanceByUrl={photoEnhanceByUrl}
                           onChangePhotoEnhance={reprocessPhoto}
-                          watermarkEnabled={photoWatermark}
                           onChangeEnhanceLevel={setPhotoEnhanceLevel}
-                          onToggleWatermark={setPhotoWatermark}
                         />
                       </section>
                     )}
@@ -6096,9 +6114,7 @@ if (isStaffMode && currentStaff?.code) {
         enhanceLevel={photoEnhanceLevel}
         photoEnhanceByUrl={photoEnhanceByUrl}
         onChangePhotoEnhance={reprocessPhoto}
-        watermarkEnabled={photoWatermark}
         onChangeEnhanceLevel={setPhotoEnhanceLevel}
-        onToggleWatermark={setPhotoWatermark}
       />
     </section>
 
@@ -6589,9 +6605,7 @@ if (isStaffMode && currentStaff?.code) {
   enhanceLevel={photoEnhanceLevel}
   photoEnhanceByUrl={photoEnhanceByUrl}
   onChangePhotoEnhance={reprocessPhoto}
-  watermarkEnabled={photoWatermark}
   onChangeEnhanceLevel={setPhotoEnhanceLevel}
-  onToggleWatermark={setPhotoWatermark}
 />
                 <details className="manual-url-box">
                   <summary>사진 주소 직접 확인/수정</summary>
@@ -6937,7 +6951,7 @@ if (isStaffMode && currentStaff?.code) {
                 {lookupResult && (
                   <div className="admin-property-lookup-result">
                     <dl>
-                      <div><dt>매물번호</dt><dd>{String(lookupResult.id)}</dd></div>
+                      <div><dt>매물번호</dt><dd>{getPublicPropertyNumber(lookupResult)}</dd></div>
                       <div><dt>등록자</dt><dd>{lookupResult.staff_name || lookupResult.created_by || '대표'}</dd></div>
                       <div><dt>등록자 식별정보</dt><dd>{lookupResult.staff_code || lookupResult.created_by || lookupResult.updated_by || '대표 관리자'}</dd></div>
                       <div>
@@ -7053,6 +7067,9 @@ if (isStaffMode && currentStaff?.code) {
       : '';
 
   const isAdvertisingOpen = advertisingPropertyId === property.id;
+  const cleanPhotoCount = getCleanPropertyPhotos(property).length;
+  const isBlogPhotoSaving =
+    String(blogPhotoProgress.propertyId) === String(property.id);
 
   const statusText =
     STATUS_LABELS[property.status || 'pending'] ||
@@ -7302,9 +7319,37 @@ if (isStaffMode && currentStaff?.code) {
 
               <button
                 type="button"
-                onClick={() => saveBlogPropertyPhotos(property, setStatus)}
+                disabled={!cleanPhotoCount || isBlogPhotoSaving}
+                onClick={async () => {
+                  setBlogPhotoProgress({
+                    propertyId: property.id,
+                    current: 0,
+                    total: cleanPhotoCount
+                  });
+                  try {
+                    await saveBlogPropertyPhotos(
+                      property,
+                      setStatus,
+                      ({ current, total }) => setBlogPhotoProgress({
+                        propertyId: property.id,
+                        current,
+                        total
+                      })
+                    );
+                  } finally {
+                    setBlogPhotoProgress({
+                      propertyId: '',
+                      current: 0,
+                      total: 0
+                    });
+                  }
+                }}
               >
-                블로그 사진 가져가기 {toTextList(property.photos).filter(Boolean).length}장
+                {!cleanPhotoCount
+                  ? '등록 사진 없음'
+                  : isBlogPhotoSaving
+                    ? `사진 준비 중 ${blogPhotoProgress.current}/${blogPhotoProgress.total}`
+                    : `블로그 사진 가져가기 ${cleanPhotoCount}장`}
               </button>
 
               <button
@@ -8735,7 +8780,7 @@ function sanitizeBlogPhotoName(value, fallback) {
 
 function getBlogPhotoNames(property = {}) {
   const listingNumber = sanitizeBlogPhotoName(
-    String(property.id ?? '').replace(/^K/i, ''),
+    getPublicPropertyNumber(property).replace(/^K/i, ''),
     '매물'
   );
   const dongName =
@@ -8789,6 +8834,19 @@ async function blogPhotoUrlToJpegBlob(url) {
     context.fillStyle = '#ffffff';
     context.fillRect(0, 0, canvas.width, canvas.height);
     context.drawImage(imageSource, 0, 0);
+    const watermarkHeight = Math.max(52, Math.round(canvas.height * 0.075));
+    context.fillStyle = 'rgba(0, 0, 0, 0.72)';
+    context.fillRect(0, canvas.height - watermarkHeight, canvas.width, watermarkHeight);
+    context.fillStyle = '#ffffff';
+    context.font = `800 ${Math.max(20, Math.round(canvas.width * 0.025))}px "Noto Sans KR", "Malgun Gothic", sans-serif`;
+    context.textAlign = 'center';
+    context.textBaseline = 'middle';
+    context.fillText(
+      `${OFFICE.name} ☎ ${OFFICE.phone}`,
+      canvas.width / 2,
+      canvas.height - watermarkHeight / 2,
+      canvas.width - 40
+    );
 
     const jpegBlob = await new Promise((resolve, reject) => {
       canvas.toBlob(
@@ -8894,8 +8952,8 @@ function buildStoredZip(entries) {
   });
 }
 
-async function saveBlogPropertyPhotos(property, setStatus) {
-  const photoUrls = toTextList(property?.photos).filter(Boolean);
+async function saveBlogPropertyPhotos(property, setStatus, onProgress = () => {}) {
+  const photoUrls = getCleanPropertyPhotos(property);
   if (!photoUrls.length) {
     const message = '저장할 매물 사진이 없습니다.';
     setStatus(message);
@@ -8909,6 +8967,8 @@ async function saveBlogPropertyPhotos(property, setStatus) {
     typeof window.FileSystemDirectoryHandle !== 'undefined';
   let savedCount = 0;
   let failedCount = 0;
+  const failedNumbers = [];
+  onProgress({ current: 0, total: photoUrls.length });
 
   try {
     if (supportsFileSystemAccess) {
@@ -8930,7 +8990,10 @@ async function saveBlogPropertyPhotos(property, setStatus) {
           savedCount += 1;
         } catch (error) {
           failedCount += 1;
+          failedNumbers.push(index + 1);
           console.warn(`블로그 사진 ${index + 1} 저장 실패:`, error);
+        } finally {
+          onProgress({ current: index + 1, total: photoUrls.length });
         }
       }
     } else {
@@ -8947,7 +9010,10 @@ async function saveBlogPropertyPhotos(property, setStatus) {
           savedCount += 1;
         } catch (error) {
           failedCount += 1;
+          failedNumbers.push(index + 1);
           console.warn(`블로그 ZIP 사진 ${index + 1} 변환 실패:`, error);
+        } finally {
+          onProgress({ current: index + 1, total: photoUrls.length });
         }
       }
 
@@ -8978,8 +9044,8 @@ async function saveBlogPropertyPhotos(property, setStatus) {
   }
 
   const message = failedCount
-    ? `사진 ${savedCount}장 저장 완료 (${failedCount}장 실패)`
-    : `사진 ${savedCount}장 저장 완료`;
+    ? `블로그 사진 ${savedCount}장 저장 완료 (실패: ${failedNumbers.join(', ')}번)`
+    : `블로그 사진 ${savedCount}장 저장 완료`;
   setStatus(message);
   window.alert(message);
 }
@@ -9830,26 +9896,166 @@ drawRoundedRect(
   return files;
 }
 
-async function buildSocialShareFiles(property, photoUrls) {
-  const isSale =
-    property?.trade_type === '매매' ||
-    !!property?.sale_price ||
-    !!property?.acquisition_price;
-
-  if (isSale) {
-    return await buildSaleShareFiles(property, photoUrls);
+async function loadCleanPhotoForCanvas(url) {
+  const response = await fetch(url, { mode: 'cors', credentials: 'omit', cache: 'no-store' });
+  if (!response.ok) throw new Error(`사진 불러오기 실패 (${response.status})`);
+  const blob = await response.blob();
+  if (!blob.type.startsWith('image/')) throw new Error('이미지 파일이 아닙니다.');
+  const objectUrl = URL.createObjectURL(blob);
+  try {
+    return { image: await loadShareImage(objectUrl), revoke: () => URL.revokeObjectURL(objectUrl) };
+  } catch (error) {
+    URL.revokeObjectURL(objectUrl);
+    throw error;
   }
+}
 
-  return await buildRentalShareFiles(property, photoUrls);
+function compactChannelValue(value) {
+  const text = String(value ?? '').trim();
+  return !text || /^(undefined|null|nan)$/i.test(text) ? '' : text;
+}
+
+function getChannelInfo(property = {}) {
+  const area = compactChannelValue(property.area || property.exclusive_area);
+  const floor = compactChannelValue(property.total_floor || property.total_floors || getPublicFloorInfo(property.floor_info));
+  const parking = compactChannelValue(property.parking_total || property.total_parking || property.parking);
+  return {
+    price: [
+      property.deposit ? `보증금 ${formatAmount(property.deposit)}` : '',
+      property.rent ? `월세 ${formatAmount(property.rent)}` : ''
+    ].filter(Boolean).join(' / '),
+    areaFloor: [
+      area ? `약 ${area.replace(/\s*㎡$/, '')}㎡` : '',
+      floor ? `총 ${floor}` : ''
+    ].filter(Boolean).join(' · '),
+    directionParking: [
+      compactChannelValue(property.direction),
+      parking && !/^0(?:대)?$/.test(parking) ? `총 ${parking.replace(/총\s*/g, '')}` : ''
+    ].filter(Boolean).join(' · '),
+    options: toTextList(property.convenience || property.options).filter(Boolean).slice(0, 4)
+  };
+}
+
+function drawChannelLine(ctx, text, x, y, options = {}) {
+  if (!text) return;
+  drawShareText(ctx, text, x, y, {
+    font: options.font || '700 30px "Noto Sans KR", "Malgun Gothic", sans-serif',
+    color: options.color || '#ffffff',
+    align: options.align || 'left',
+    maxWidth: options.maxWidth || 940,
+    lineHeight: options.lineHeight || 42,
+    strokeColor: options.strokeColor || '',
+    strokeWidth: options.strokeWidth || 0
+  });
+}
+
+async function buildInstagramShareFiles(property, photoUrls) {
+  const selectedUrls = photoUrls.slice(0, 8);
+  const files = [];
+  const listingNumber = getPublicPropertyNumber(property);
+  const info = getChannelInfo(property);
+  const pageTitles = ['', '기본 정보', '입주 · 주차', '면적 · 층수', '구조 · 옵션', '위치 · 생활권', '추천 포인트', '문의 · 현장안내'];
+  const pageLines = [
+    [],
+    [property.category, property.trade_type, property.room_bath],
+    [property.move_in, property.parking, property.elevator],
+    [property.area, getPublicFloorInfo(property.floor_info), property.direction],
+    [property.structure, ...info.options],
+    [property.address, property.location_description],
+    [property.investment_point || property.recommended_for || property.summary],
+    ['현장 확인 및 방문은 사전 문의해 주세요.', `${OFFICE.name} ${OFFICE.phone}`]
+  ];
+
+  for (let index = 0; index < selectedUrls.length; index += 1) {
+    let loaded;
+    try {
+      loaded = await loadCleanPhotoForCanvas(selectedUrls[index]);
+      const canvas = document.createElement('canvas');
+      canvas.width = 1080;
+      canvas.height = 1350;
+      const ctx = canvas.getContext('2d');
+      ctx.fillStyle = '#111111';
+      ctx.fillRect(0, 0, 1080, 1350);
+      drawCoverImage(ctx, loaded.image, 0, 0, 1080, 930);
+      const gradient = ctx.createLinearGradient(0, 800, 0, 1350);
+      gradient.addColorStop(0, 'rgba(0,0,0,0)');
+      gradient.addColorStop(0.22, 'rgba(0,0,0,.84)');
+      gradient.addColorStop(1, 'rgba(0,0,0,.97)');
+      ctx.fillStyle = gradient;
+      ctx.fillRect(0, 780, 1080, 570);
+
+      if (index === 0) {
+        [info.price, info.areaFloor, info.directionParking].filter(Boolean).slice(0, 3).forEach((line, lineIndex) => {
+          drawChannelLine(ctx, `✓ ${line}`, 70, 935 + lineIndex * 48, { font: '800 31px sans-serif' });
+        });
+        drawChannelLine(ctx, '더 많은 구미 매물은 홈페이지·앱에서 확인', 70, 1090, { font: '700 25px sans-serif' });
+        drawChannelLine(ctx, '홈페이지: kan-homepage-final.vercel.app', 70, 1128, { font: '700 25px sans-serif' });
+        drawChannelLine(ctx, "플레이스토어에서 '칸공인중개사' 검색하세요", 70, 1166, { font: '700 25px sans-serif' });
+      } else {
+        drawChannelLine(ctx, pageTitles[index], 70, 960, { font: '900 34px sans-serif', color: '#ffd54f' });
+        pageLines[index].flatMap((value) => toTextList(value)).map(compactChannelValue).filter(Boolean).slice(0, 4).forEach((line, lineIndex) => {
+          drawChannelLine(ctx, `• ${line}`, 70, 1015 + lineIndex * 45, { font: '700 27px sans-serif' });
+        });
+      }
+
+      if (selectedUrls.length > 1) {
+        if (index > 0) drawChannelLine(ctx, '‹', 34, 610, { font: '900 72px sans-serif', strokeColor: 'rgba(0,0,0,.8)', strokeWidth: 5 });
+        if (index < selectedUrls.length - 1) drawChannelLine(ctx, '›', 1046, 610, { font: '900 72px sans-serif', align: 'right', strokeColor: 'rgba(0,0,0,.8)', strokeWidth: 5 });
+      }
+      drawChannelLine(ctx, `${OFFICE.name} ☎ ${OFFICE.phone}`, 540, 1304, { font: '800 27px sans-serif', align: 'center' });
+      const file = await canvasToJpegFile(canvas, `K${listingNumber}_INSTAGRAM_${String(index + 1).padStart(2, '0')}.jpg`);
+      if (file) files.push(file);
+      canvas.width = 1;
+      canvas.height = 1;
+    } catch (error) {
+      console.warn(`인스타 사진 ${index + 1} 생성 실패:`, error);
+    } finally {
+      loaded?.revoke();
+    }
+  }
+  return files;
+}
+
+async function buildFacebookShareFiles(property, photoUrls) {
+  const selectedUrls = photoUrls.slice(0, 8);
+  const files = [];
+  const listingNumber = getPublicPropertyNumber(property);
+  for (let index = 0; index < selectedUrls.length; index += 1) {
+    let loaded;
+    try {
+      loaded = await loadCleanPhotoForCanvas(selectedUrls[index]);
+      const canvas = document.createElement('canvas');
+      canvas.width = 1200;
+      canvas.height = 1200;
+      const ctx = canvas.getContext('2d');
+      ctx.fillStyle = '#111111';
+      ctx.fillRect(0, 0, 1200, 1200);
+      drawCoverImage(ctx, loaded.image, 0, 0, 1200, 1080);
+      ctx.fillStyle = 'rgba(0,0,0,.88)';
+      ctx.fillRect(0, 1080, 1200, 120);
+      drawChannelLine(ctx, `매물번호 ${listingNumber} · ${OFFICE.name} ☎ ${OFFICE.phone}`, 600, 1120, { font: '800 29px sans-serif', align: 'center', maxWidth: 1120 });
+      const file = await canvasToJpegFile(canvas, `K${listingNumber}_FACEBOOK_${String(index + 1).padStart(2, '0')}.jpg`);
+      if (file) files.push(file);
+      canvas.width = 1;
+      canvas.height = 1;
+    } catch (error) {
+      console.warn(`페이스북 사진 ${index + 1} 생성 실패:`, error);
+    } finally {
+      loaded?.revoke();
+    }
+  }
+  return files;
+}
+
+async function buildSocialShareFiles(property, photoUrls, channel = 'instagram') {
+  return channel === 'facebook'
+    ? buildFacebookShareFiles(property, photoUrls)
+    : buildInstagramShareFiles(property, photoUrls);
 }
 function SocialPhotoShareButtons({ property, instagramText, facebookText, setStatus }) {
   const photoUrls = useMemo(
-    () =>
-      toTextList(property?.photos)
-        .map((url) => String(url || '').trim())
-        .filter((url) => /^https?:\/\//i.test(url))
-        .slice(0, MAX_SOCIAL_SHARE_PHOTOS),
-    [property?.photos]
+    () => getCleanPropertyPhotos(property).slice(0, MAX_SOCIAL_SHARE_PHOTOS),
+    [property]
   );
   const [photoState, setPhotoState] = useState({
     loading: photoUrls.length > 0,
@@ -9924,13 +10130,9 @@ async function handleShare(text, platformName) {
   let files = [];
 
   try {
-    files = await buildSocialShareFiles(property, photoUrls);
+    files = await buildSocialShareFiles(property, photoUrls, 'instagram');
   } catch (error) {
     console.warn('공유용 광고사진 생성 실패, 원본 사진으로 진행합니다.', error);
-  }
-
-  if (!files.length) {
-    files = photoState.files.slice(0, 8);
   }
 
   // 휴대폰이나 공유 기능을 지원하는 기기
@@ -10017,13 +10219,9 @@ async function handleFacebookShare() {
   let files = [];
 
   try {
-    files = await buildSocialShareFiles(property, photoUrls);
+    files = await buildSocialShareFiles(property, photoUrls, 'facebook');
   } catch (error) {
     console.warn('페이스북용 광고사진 생성 실패, 원본 사진으로 진행합니다.', error);
-  }
-
-  if (!files.length) {
-    files = photoState.files;
   }
 
   files = files.slice(0, 8);
@@ -10709,9 +10907,7 @@ function PhotoUploader({
   enhanceLevel = 'bright',
   photoEnhanceByUrl = {},
   onChangePhotoEnhance = () => {},
-  watermarkEnabled = true,
   onChangeEnhanceLevel = () => {},
-  onToggleWatermark = () => {},
 }) {
   const [dragging, setDragging] = useState(false);
 const [dragIndex, setDragIndex] = useState(null);
@@ -10779,16 +10975,7 @@ const [dragIndex, setDragIndex] = useState(null);
       >
         <strong>사진을 여기에 드래그하거나 아래 버튼으로 선택하세요.</strong>
         <p className="muted">여러 장을 한 번에 올릴 수 있습니다. 첫 번째 사진이 대표사진입니다.</p>
-        <div className="photo-edit-options">
-  <label>
-    <input
-      type="checkbox"
-      checked={watermarkEnabled}
-      onChange={(e) => onToggleWatermark(e.target.checked)}
-    />
-    워터마크 삽입
-  </label>
-</div>
+        <p className="muted">저장 사진은 워터마크 없이 깨끗한 공통 원본으로 보관됩니다.</p>
         <input type="file" accept="image/*" multiple onChange={(e) => { onUpload(e.target.files); e.target.value = ''; }} />
       </div>
 
