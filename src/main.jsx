@@ -4088,6 +4088,7 @@ const [buildingLedgerSearching, setBuildingLedgerSearching] = useState(false);
   const [lookupNumber, setLookupNumber] = useState('');
   const [lookupResult, setLookupResult] = useState(null);
   const [lookupSearched, setLookupSearched] = useState(false);
+  const [lookupSubmittedNumber, setLookupSubmittedNumber] = useState('');
   const [recentLookupNumbers, setRecentLookupNumbers] = useState(() => {
     try {
       const saved = JSON.parse(localStorage.getItem('kanAdminRecentPropertyLookups') || '[]');
@@ -4311,6 +4312,13 @@ function selectAdminView(nextView) {
     staff: '/admin/staff',
   };
 
+  if (nextView !== adminView) {
+    setLookupNumber('');
+    setLookupResult(null);
+    setLookupSearched(false);
+    setLookupSubmittedNumber('');
+  }
+
   setMode('admin');
   setAdminView(nextView);
   setDuplicateManagerOpen(nextView === 'duplicates');
@@ -4322,6 +4330,10 @@ function selectAdminView(nextView) {
   window.history.replaceState(null, '', `${url.pathname}${url.search}${url.hash}`);
 }
 function lookupPropertyByNumber(value) {
+  setLookupResult(null);
+  setLookupSearched(false);
+  setLookupSubmittedNumber('');
+
   const normalizedNumber = String(value ?? '').trim();
   if (!normalizedNumber) {
     setLookupResult(null);
@@ -4336,6 +4348,7 @@ function lookupPropertyByNumber(value) {
 
   setLookupResult(matchedProperty);
   setLookupSearched(true);
+  setLookupSubmittedNumber(normalizedNumber);
 
   const nextRecentNumbers = [
     normalizedNumber,
@@ -4351,6 +4364,9 @@ function lookupPropertyByNumber(value) {
 
 function handlePropertyLookup(event) {
   event.preventDefault();
+  setLookupResult(null);
+  setLookupSearched(false);
+  setLookupSubmittedNumber('');
   lookupPropertyByNumber(lookupNumber);
 }
 async function loadStaffProperties(staffCode) {
@@ -6920,7 +6936,12 @@ if (isStaffMode && currentStaff?.code) {
                     enterKeyHint="search"
                     autoComplete="off"
                     value={lookupNumber}
-                    onChange={(event) => setLookupNumber(event.target.value)}
+                    onChange={(event) => {
+                      setLookupNumber(event.target.value);
+                      setLookupResult(null);
+                      setLookupSearched(false);
+                      setLookupSubmittedNumber('');
+                    }}
                     placeholder="매물번호 입력"
                     aria-label="매물번호"
                   />
@@ -6936,6 +6957,9 @@ if (isStaffMode && currentStaff?.code) {
                           key={number}
                           type="button"
                           onClick={() => {
+                            setLookupResult(null);
+                            setLookupSearched(false);
+                            setLookupSubmittedNumber('');
                             setLookupNumber(number);
                             lookupPropertyByNumber(number);
                           }}
@@ -6947,13 +6971,15 @@ if (isStaffMode && currentStaff?.code) {
                   </div>
                 )}
 
-                {lookupSearched && !lookupResult && (
+                {lookupSearched &&
+                  lookupSubmittedNumber === lookupNumber.trim() &&
+                  !lookupResult && (
                   <p className="admin-property-lookup-empty">
                     해당 매물번호를 찾을 수 없습니다.
                   </p>
                 )}
 
-                {lookupResult && (
+                {lookupResult && lookupSubmittedNumber === lookupNumber.trim() && (
                   <div className="admin-property-lookup-result">
                     <dl>
                       <div><dt>매물번호</dt><dd>{getPublicPropertyNumber(lookupResult)}</dd></div>
@@ -6995,6 +7021,10 @@ if (isStaffMode && currentStaff?.code) {
                       onClick={() => {
                         setAdminDetailProperty(lookupResult);
                         setAdminDetailTab('public');
+                        setLookupNumber('');
+                        setLookupResult(null);
+                        setLookupSearched(false);
+                        setLookupSubmittedNumber('');
                         selectAdminView('manage');
                       }}
                     >
