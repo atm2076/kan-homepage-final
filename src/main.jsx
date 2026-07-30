@@ -2760,6 +2760,7 @@ maps.Event.trigger(map, 'resize');
   naver.maps.Event.addListener(marker, 'click', () => {
     clusterSelectionRef.current = [];
     setSelectedClusterItems([]);
+    setPanelItems(getItemsInsideMap());
     setSelectedMapPropertyId(firstItem.property.id);
     setPanelCollapsed(false);
     setSheetExpanded(false);
