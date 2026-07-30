@@ -2318,7 +2318,64 @@ function dedupeMapItems(items = []) {
   });
 }
 
-function MapPropertyPanel({
+function getMapCardThumbnail(property = {}) {
+  const storedThumbnail = toTextList(property.thumbnail_urls || property.thumbnail_url)[0];
+  if (storedThumbnail) return storedThumbnail;
+  const source = getCleanPropertyPhotos(property)[0] || '';
+  if (!source.includes('/storage/v1/object/public/')) return source;
+  const thumbnailUrl = source.replace('/storage/v1/object/public/', '/storage/v1/render/image/public/');
+  const separator = thumbnailUrl.includes('?') ? '&' : '?';
+  return `${thumbnailUrl}${separator}width=360&height=260&resize=cover&quality=68`;
+}
+
+const MapPropertyCard = React.memo(function MapPropertyCard({
+  property,
+  active,
+  registerCard,
+  onOpen,
+  onHighlight
+}) {
+  const fallbackCover = getCleanPropertyPhotos(property)[0] || '';
+  const cover = getMapCardThumbnail(property) ||
+    'https://images.unsplash.com/photo-1564013799919-ab600027ffc6?auto=format&fit=crop&w=400&q=65';
+  const isSale = property.category?.includes('매매') || property.trade_type === '매매';
+  const price = isSale
+    ? `매매 ${formatAmount(property.sale_price || property.deposit)}`
+    : `보증금 ${formatAmount(property.deposit)} / 월세 ${formatAmount(property.rent)}`;
+
+  return (
+    <button
+      ref={(node) => registerCard(property.id, node)}
+      type="button"
+      className={`map-linked-card ${active ? 'is-active' : ''}`}
+      onMouseEnter={() => onHighlight(property.id)}
+      onFocus={() => onHighlight(property.id)}
+      onClick={() => onOpen(property)}
+    >
+      <img
+        src={cover}
+        alt=""
+        loading="lazy"
+        decoding="async"
+        width="132"
+        height="116"
+        data-fallback={fallbackCover}
+        onError={(event) => {
+          const fallback = event.currentTarget.dataset.fallback;
+          if (fallback && event.currentTarget.src !== fallback) event.currentTarget.src = fallback;
+        }}
+      />
+      <span className="map-linked-card-copy">
+        <small>{shortAddress(property.address)}</small>
+        <strong>{property.category || '매물'} · {property.trade_type || '거래형태 확인'}</strong>
+        <b>{price}</b>
+        <em>{property.area || '면적 확인'} · {getPublicFloorInfo(property.floor_info) || '층수 확인'}</em>
+      </span>
+    </button>
+  );
+});
+
+const MapPropertyPanel = React.memo(function MapPropertyPanel({
   items,
   selectedId,
   collapsed,
@@ -2330,16 +2387,54 @@ function MapPropertyPanel({
   onHighlight
 }) {
   const cardRefs = useRef(new Map());
+  const loadMoreRef = useRef(null);
   const touchStartY = useRef(0);
+  const [visibleCount, setVisibleCount] = useState(20);
+  const [isMobilePanel, setIsMobilePanel] = useState(() => window.matchMedia('(max-width: 1024px)').matches);
+  const renderCount = isMobilePanel && !sheetExpanded ? Math.min(1, items.length) : Math.min(visibleCount, items.length);
+  const renderedItems = useMemo(() => items.slice(0, renderCount), [items, renderCount]);
+  const registerCard = React.useCallback((propertyId, node) => {
+    if (node) cardRefs.current.set(String(propertyId), node);
+    else cardRefs.current.delete(String(propertyId));
+  }, []);
+
+  useEffect(() => {
+    const query = window.matchMedia('(max-width: 1024px)');
+    const update = () => setIsMobilePanel(query.matches);
+    update();
+    query.addEventListener('change', update);
+    return () => query.removeEventListener('change', update);
+  }, []);
+
+  useEffect(() => {
+    setVisibleCount(Math.min(20, Math.max(items.length, 1)));
+  }, [items]);
 
   useEffect(() => {
     if (!selectedId) return;
+    const selectedIndex = items.findIndex(({ property }) => String(property.id) === String(selectedId));
+    if (selectedIndex >= visibleCount) {
+      setVisibleCount(Math.min(items.length, selectedIndex + 1));
+      return;
+    }
     cardRefs.current.get(String(selectedId))?.scrollIntoView({
       behavior: 'smooth',
       block: 'nearest',
       inline: 'nearest'
     });
-  }, [selectedId, items]);
+  }, [selectedId, items, visibleCount]);
+
+  useEffect(() => {
+    const target = loadMoreRef.current;
+    if (!target || visibleCount >= items.length || (isMobilePanel && !sheetExpanded)) return undefined;
+    const observer = new IntersectionObserver((entries) => {
+      if (entries[0]?.isIntersecting) {
+        setVisibleCount((count) => Math.min(items.length, count + 20));
+      }
+    }, { root: target.parentElement, rootMargin: '160px' });
+    observer.observe(target);
+    return () => observer.disconnect();
+  }, [items.length, visibleCount, isMobilePanel, sheetExpanded]);
 
   return (
     <aside
@@ -2379,44 +2474,28 @@ function MapPropertyPanel({
       </div>
       {!collapsed && (
         <div className={`map-linked-card-list ${clusterMode ? 'is-cluster' : ''}`}>
-          {items.length ? items.map(({ property }) => {
-            const photos = getCleanPropertyPhotos(property);
-            const cover = photos[0] || 'https://images.unsplash.com/photo-1564013799919-ab600027ffc6?auto=format&fit=crop&w=800&q=75';
-            const isSale = property.category?.includes('매매') || property.trade_type === '매매';
-            const price = isSale
-              ? `매매 ${formatAmount(property.sale_price || property.deposit)}`
-              : `보증금 ${formatAmount(property.deposit)} / 월세 ${formatAmount(property.rent)}`;
-            return (
-              <button
+          {items.length ? (
+            <>
+              {renderedItems.map(({ property }) => (
+              <MapPropertyCard
                 key={property.id}
-                ref={(node) => {
-                  if (node) cardRefs.current.set(String(property.id), node);
-                  else cardRefs.current.delete(String(property.id));
-                }}
-                type="button"
-                className={`map-linked-card ${String(selectedId || '') === String(property.id) ? 'is-active' : ''}`}
-                onMouseEnter={() => onHighlight(property.id)}
-                onMouseLeave={() => onHighlight(selectedId)}
-                onFocus={() => onHighlight(property.id)}
-                onClick={() => onOpen(property)}
-              >
-                <img src={cover} alt="" loading="lazy" decoding="async" />
-                <span className="map-linked-card-copy">
-                  <small>{shortAddress(property.address)}</small>
-                  <strong>{property.category || '매물'} · {property.trade_type || '거래형태 확인'}</strong>
-                  <b>{price}</b>
-                  <em>{property.area || '면적 확인'} · {getPublicFloorInfo(property.floor_info) || '층수 확인'}</em>
-                </span>
-              </button>
-            );
-          }) : (
+                property={property}
+                active={String(selectedId || '') === String(property.id)}
+                registerCard={registerCard}
+                onHighlight={onHighlight}
+                onOpen={onOpen}
+              />
+              ))}
+              {renderCount < items.length && <span ref={loadMoreRef} className="map-linked-load-more" aria-hidden="true" />}
+            </>
+          ) : (
             <p className="map-linked-panel-empty">현재 지도 영역에 등록된 매물이 없습니다</p>
           )}
         </div>
       )}
     </aside>
   );
-}
+});
 
 function CustomerMapView({ properties, selected, onSelect, keyword, setKeyword, dealMode, setDealMode, category, setCategory, filters, setFilters }) {
   const mapElementRef = useRef(null);
@@ -2431,7 +2510,7 @@ function CustomerMapView({ properties, selected, onSelect, keyword, setKeyword, 
   () =>
     properties
       .filter(isPublicMapProperty)
-      .slice(0, 60)
+      .slice(0, 100)
       .map((property, index) => {
         const point = getPropertyMapPoint(property, index);
 
@@ -2596,6 +2675,7 @@ let resizeFrame = null;
 let zoomListener = null;
 let idleListener = null;
 let dragStartListener = null;
+let idleDebounceTimer = null;
 const resizeTimers = [];
 let resizeCustomerMap = () => {};
 
@@ -2671,12 +2751,68 @@ maps.Event.trigger(map, 'resize');
 
         window.addEventListener('resize', resizeCustomerMap);
 
+        const boundsCache = new Map();
+        const serverBoundsCache = new Map();
+        const getBoundsKey = (bounds) => {
+          const southWest = bounds?.getSW?.();
+          const northEast = bounds?.getNE?.();
+          if (!southWest || !northEast) return '';
+          return [
+            southWest.lat().toFixed(4),
+            southWest.lng().toFixed(4),
+            northEast.lat().toFixed(4),
+            northEast.lng().toFixed(4),
+            map.getZoom()
+          ].join(':');
+        };
         const getItemsInsideMap = () => {
           const bounds = map.getBounds?.();
           if (!bounds?.hasLatLng) return dedupeMapItems(markerItems);
-          return dedupeMapItems(markerItems.filter((item) =>
+          const cacheKey = getBoundsKey(bounds);
+          if (cacheKey && boundsCache.has(cacheKey)) return boundsCache.get(cacheKey);
+          const visibleItems = dedupeMapItems(markerItems.filter((item) =>
             bounds.hasLatLng(new naver.maps.LatLng(item.point.lat, item.point.lng))
-          ));
+          )).slice(0, 100);
+          if (cacheKey) boundsCache.set(cacheKey, visibleItems);
+          return visibleItems;
+        };
+
+        const getSettledMapItems = async () => {
+          const localItems = getItemsInsideMap();
+          if (!isSupabaseReady || properties.length < 100) return localItems;
+          const bounds = map.getBounds?.();
+          const southWest = bounds?.getSW?.();
+          const northEast = bounds?.getNE?.();
+          const cacheKey = `server:${getBoundsKey(bounds)}`;
+          if (!southWest || !northEast || !cacheKey) return localItems;
+          if (serverBoundsCache.has(cacheKey)) return serverBoundsCache.get(cacheKey);
+
+          const request = supabase
+            .from('properties')
+            .select(PUBLIC_PROPERTY_COLUMNS)
+            .eq('status', 'published')
+            .gte('latitude', southWest.lat())
+            .lte('latitude', northEast.lat())
+            .gte('longitude', southWest.lng())
+            .lte('longitude', northEast.lng())
+            .limit(100)
+            .then(({ data, error: boundsError }) => {
+              if (boundsError || !data) return localItems;
+              return dedupeMapItems(
+                data
+                  .filter(isPublicMapProperty)
+                  .filter((property) => matchesCustomerFilters(property, keyword, category, filters, dealMode))
+                  .map((property, index) => {
+                    const point = getPropertyMapPoint(property, index);
+                    return point ? { property, point, markerClass: getCustomerMarkerClass(property) } : null;
+                  })
+                  .filter(Boolean)
+              ).slice(0, 100);
+            });
+          serverBoundsCache.set(cacheKey, request);
+          const result = await request;
+          serverBoundsCache.set(cacheKey, result);
+          return result;
         };
 
         const persistMapState = (items) => {
@@ -2785,23 +2921,27 @@ zoomListener = naver.maps.Event.addListener(
       clusterSelectionRef.current = [];
       setSelectedClusterItems([]);
     }
-    renderCustomerMarkers(getItemsInsideMap());
   }
 );
 idleListener = naver.maps.Event.addListener(map, 'idle', () => {
-  const visibleItems = getItemsInsideMap();
-  if (clusterSelectionRef.current.length) {
-    setPanelItems(clusterSelectionRef.current);
-    persistMapState(clusterSelectionRef.current);
+  clearTimeout(idleDebounceTimer);
+  idleDebounceTimer = setTimeout(async () => {
+    if (!mounted) return;
+    const visibleItems = await getSettledMapItems();
+    if (clusterSelectionRef.current.length) {
+      setPanelItems(clusterSelectionRef.current);
+      persistMapState(clusterSelectionRef.current);
+      renderCustomerMarkers(visibleItems);
+      return;
+    }
+    setPanelItems(visibleItems);
+    setSelectedClusterItems([]);
+    persistMapState(visibleItems);
     renderCustomerMarkers(visibleItems);
-    return;
-  }
-  setPanelItems(visibleItems);
-  setSelectedClusterItems([]);
-  persistMapState(visibleItems);
-  renderCustomerMarkers(visibleItems);
+  }, 400);
 });
 dragStartListener = naver.maps.Event.addListener(map, 'dragstart', () => {
+  clearTimeout(idleDebounceTimer);
   clusterSelectionRef.current = [];
   setSelectedClusterItems([]);
 });
@@ -2822,12 +2962,20 @@ dragStartListener = naver.maps.Event.addListener(map, 'dragstart', () => {
   }
 
   if (resizeFrame) cancelAnimationFrame(resizeFrame);
+  clearTimeout(idleDebounceTimer);
   resizeTimers.forEach((timer) => clearTimeout(timer));
   if (resizeObserver) resizeObserver.disconnect();
   window.removeEventListener('resize', resizeCustomerMap);
   clearMarkers();
 };
 }, [markerItems]);
+  const handlePanelHighlight = React.useCallback((propertyId) => {
+    setSelectedMapPropertyId(propertyId || '');
+  }, []);
+  const handlePanelOpen = React.useCallback((property) => {
+    setSelectedMapPropertyId(property.id);
+    onSelect(property);
+  }, [onSelect]);
   const applyMapFilter = (key, value) => {
     if (key === 'category') setCategory(value);
     else if (key === 'dealMode') setDealMode(value);
@@ -2900,11 +3048,8 @@ dragStartListener = naver.maps.Event.addListener(map, 'dragstart', () => {
         sheetExpanded={sheetExpanded}
         setSheetExpanded={setSheetExpanded}
         clusterMode={selectedClusterItems.length > 0}
-        onHighlight={(propertyId) => setSelectedMapPropertyId(propertyId || '')}
-        onOpen={(property) => {
-          setSelectedMapPropertyId(property.id);
-          onSelect(property);
-        }}
+        onHighlight={handlePanelHighlight}
+        onOpen={handlePanelOpen}
       />
     </section>
   );
