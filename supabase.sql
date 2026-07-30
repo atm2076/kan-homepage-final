@@ -21,6 +21,7 @@ create table if not exists public.properties (
   structure text default '',
   summary text default '',
   description text default '',
+  listing_number bigint unique,
   photos text[] default '{}',
   map_image text default '',
   map_link text default '',
@@ -35,6 +36,9 @@ create table if not exists public.properties (
 alter table public.properties
   add column if not exists status text default 'published'
   check (status in ('pending', 'published', 'hold'));
+
+-- 운영 환경의 공통 숫자 매물번호 시퀀스, 이관, 보호 트리거는
+-- supabase/migrations/20260730073000_global_listing_numbers.sql에서 관리합니다.
 
 alter table public.properties
   add column if not exists badges text[] default '{}',

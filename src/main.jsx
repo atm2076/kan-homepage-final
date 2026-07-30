@@ -217,6 +217,7 @@ const PRIVATE_PROPERTY_KEYS = [
 
 const PUBLIC_PROPERTY_COLUMNS = [
   'id',
+  'listing_number',
   'title',
   'category',
   'trade_type',
@@ -407,18 +408,16 @@ function getCleanPropertyPhotos(property = {}) {
 }
 
 function getPublicPropertyNumber(property = {}) {
-  return String(
-    property.property_number ??
-    property.listing_number ??
-    property.public_number ??
-    property.id ??
-    ''
-  ).trim();
+  const number = String(property.listing_number ?? '').trim();
+  return /^[1-9]\d*$/.test(number) ? number : '';
 }
 
 function getShortPublicPropertyNumber(property = {}) {
-  const number = getPublicPropertyNumber(property);
-  return /^\d{1,8}$/.test(number) ? number : '';
+  return getPublicPropertyNumber(property);
+}
+
+function getInitialPropertyRegistrant(property = {}) {
+  return property.staff_name || property.created_by || '대표';
 }
 
 function normalizeDuplicateAddress(value) {
@@ -3229,6 +3228,9 @@ const cleanCategoryText = categoryText.endsWith(tradeText)
   <p className="customer-card-region">{regionText}</p>
 
  <div className="customer-card-inline-badges">
+    {getPublicPropertyNumber(property) && (
+      <span>매물번호 {getPublicPropertyNumber(property)}</span>
+    )}
     <span>{cleanCategoryText}</span>
     <span>{tradeText}</span>
   </div>
@@ -4342,9 +4344,11 @@ function lookupPropertyByNumber(value) {
     return;
   }
 
-  const matchedProperty = (properties || []).find(
-    (property) => getPublicPropertyNumber(property) === normalizedNumber
-  ) || null;
+  const matchedProperty = /^\d+$/.test(normalizedNumber)
+    ? (properties || []).find(
+        (property) => getPublicPropertyNumber(property) === String(Number(normalizedNumber))
+      ) || null
+    : null;
 
   setLookupResult(matchedProperty);
   setLookupSearched(true);
@@ -4992,6 +4996,7 @@ function buildInstagramPublishData() {
 
   const body = [
     `🔥 ${locationTitle} ${propertyType} ${tradeType}`,
+    getPublicPropertyNumber(data) ? `매물번호 ${getPublicPropertyNumber(data)}` : '',
     priceText,
     `📍 위치: ${data.address || locationTitle}`,
     `📐 면적: ${data.area || '확인 필요'}`,
@@ -5000,7 +5005,7 @@ function buildInstagramPublishData() {
     `🗓 입주: ${data.move_in || '즉시입주 협의'}`,
     data.summary ? `✨ ${data.summary}` : '✨ 실사진 확인 매물, 빠른 안내 가능합니다.',
     `문의 ${OFFICE.phone}`
-  ].join('\n');
+  ].filter(Boolean).join('\n');
 
   return {
     body,
@@ -5509,7 +5514,9 @@ async function deleteDuplicateProperty(property) {
   status: isStaffMode ? staffStatusValue : (saveForm.status || 'published'),
   staff_name: isStaffMode ? (currentStaff?.name || saveForm.staff_name || '직원') : (saveForm.staff_name || ''),
 staff_code: isStaffMode ? (currentStaff?.code || saveForm.staff_code || 'staff') : (saveForm.staff_code || ''),
-created_by: editingId ? (saveForm.created_by || currentStaff?.name || '') : (isStaffMode ? (currentStaff?.name || saveForm.staff_name || '직원') : '대표'),
+created_by: editingId
+  ? saveForm.created_by
+  : (isStaffMode ? (currentStaff?.name || saveForm.staff_name || '직원') : '대표'),
 updated_by: isStaffMode ? (currentStaff?.name || saveForm.staff_name || '직원') : '대표',
   updated_at: new Date().toISOString()
 };
@@ -6087,6 +6094,9 @@ if (isStaffMode && currentStaff?.code) {
 
 </div>
 
+<span>
+  매물번호 {getPublicPropertyNumber(property) || '발급 대기'} / 최초 등록자 {getInitialPropertyRegistrant(property)}
+</span>
 <span>
   {property.address || '주소 미입력'}
   {' · '}
@@ -6983,7 +6993,7 @@ if (isStaffMode && currentStaff?.code) {
                   <div className="admin-property-lookup-result">
                     <dl>
                       <div><dt>매물번호</dt><dd>{getPublicPropertyNumber(lookupResult)}</dd></div>
-                      <div><dt>등록자</dt><dd>{lookupResult.staff_name || lookupResult.created_by || '대표'}</dd></div>
+                      <div><dt>최초 등록자</dt><dd>{getInitialPropertyRegistrant(lookupResult)}</dd></div>
                       <div><dt>등록자 식별정보</dt><dd>{lookupResult.staff_code || lookupResult.created_by || lookupResult.updated_by || '대표 관리자'}</dd></div>
                       <div>
                         <dt>등록일</dt>
@@ -7121,6 +7131,7 @@ if (isStaffMode && currentStaff?.code) {
 
     const instagramText = [
       `🏠 ${property.title || '구미 부동산 매물'}`,
+      `매물번호 ${getPublicPropertyNumber(property)}`,
       `📍 ${property.address || '구미시'}`,
       instagramPriceText,
       property.summary || '',
@@ -7193,6 +7204,7 @@ if (isStaffMode && currentStaff?.code) {
 
   const facebookText = [
     property.title || '구미 부동산 매물 안내',
+    `매물번호 ${getPublicPropertyNumber(property)}`,
     '',
     `위치: ${property.address || '구미시'}`,
     isSale
@@ -7258,6 +7270,8 @@ if (isStaffMode && currentStaff?.code) {
           </div>
 
           <p className="muted" style={{ margin: '4px 0 8px' }}>
+            매물번호 {getPublicPropertyNumber(property) || '발급 대기'} / 최초 등록자 {getInitialPropertyRegistrant(property)}
+            <br />
             {property.address || '주소 미입력'}
           </p>
 
@@ -8384,6 +8398,9 @@ function normalizeBlogProperty(property = {}) {
   return {
     raw: property,
     is_sale: isSale,
+    listing_number: /^[1-9]\d*$/.test(String(property.listing_number ?? '').trim())
+      ? String(property.listing_number).trim()
+      : '',
     title: String(property.title || '').trim(),
     address,
     dong,
@@ -8499,6 +8516,7 @@ function buildNaverBlogAd(property) {
   ];
 
   const basicInfo = [
+    infoLine('🔢', '매물번호', data.listing_number),
     infoLine('📍', '소재지', data.address),
     infoLine('🏢', '매물종류', data.property_type),
     infoLine('🔑', '거래형태', data.trade_type),
