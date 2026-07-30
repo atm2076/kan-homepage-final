@@ -208,7 +208,11 @@ const PRIVATE_PROPERTY_KEYS = [
   'request_method',
   'staff_memo',
   'ad_visibility',
-  'internal_tags'
+  'internal_tags',
+  'staff_name',
+  'staff_code',
+  'created_by',
+  'updated_by'
 ];
 
 const PUBLIC_PROPERTY_COLUMNS = [
@@ -279,10 +283,6 @@ const PUBLIC_PROPERTY_COLUMNS = [
  'longitude',
  'geocode_status',
   'geocoded_at',
- 'staff_name',
-  'staff_code',
-  'created_by',
-  'updated_by',
   'updated_at',
   'created_at'
 ].join(',');
@@ -3987,6 +3987,7 @@ function AdminModal({ mode, setMode, isAdmin, setIsAdmin, onClose, properties, r
   const [duplicateManagerOpen, setDuplicateManagerOpen] = useState(false);
   const [adminView, setAdminView] = useState(() => {
     const hash = window.location.hash;
+    if (hash.includes('/admin/lookup')) return 'lookup';
     if (hash.includes('/admin/manage')) return 'manage';
     if (hash.includes('/admin/review')) return 'review';
     if (hash.includes('/admin/duplicates')) return 'duplicates';
@@ -4033,6 +4034,18 @@ const [buildingLedgerSearching, setBuildingLedgerSearching] = useState(false);
   const [publishTab, setPublishTab] = useState('');
   const latestFormRef = useRef(form);
   const [advertisingPropertyId, setAdvertisingPropertyId] = useState(null);
+  const [lookupNumber, setLookupNumber] = useState('');
+  const [lookupResult, setLookupResult] = useState(null);
+  const [lookupSearched, setLookupSearched] = useState(false);
+  const [recentLookupNumbers, setRecentLookupNumbers] = useState(() => {
+    try {
+      const saved = JSON.parse(localStorage.getItem('kanAdminRecentPropertyLookups') || '[]');
+      return Array.isArray(saved) ? saved.map(String).slice(0, 5) : [];
+    } catch {
+      return [];
+    }
+  });
+  const lookupInputRef = useRef(null);
   const adminPassword = import.meta.env.VITE_ADMIN_PASSWORD || ['3', '8', '8', '3'].join('');
   const staffPassword = import.meta.env.VITE_STAFF_PASSWORD || ['0', '0', '0', '0'].join('');
   const isStaffMode = mode === 'staff';
@@ -4179,6 +4192,12 @@ const ledgerPreviewItems = [
   }, [form]);
 
   useEffect(() => {
+    if (!isAdmin || !isAdminMode || adminView !== 'lookup') return;
+    window.scrollTo({ top: 0, left: 0, behavior: 'auto' });
+    window.setTimeout(() => lookupInputRef.current?.focus(), 0);
+  }, [isAdmin, isAdminMode, adminView]);
+
+  useEffect(() => {
     if (isStaffMode) {
       setEntryMode('simple');
     } else if (isAdminMode) {
@@ -4233,6 +4252,7 @@ function chooseMode(nextMode) {
 }
 function selectAdminView(nextView) {
   const viewHashes = {
+    lookup: '/admin/lookup',
     register: '/admin/listings',
     manage: '/admin/manage',
     review: '/admin/review',
@@ -4249,6 +4269,38 @@ function selectAdminView(nextView) {
   url.searchParams.set('admin', '1');
   url.hash = viewHashes[nextView] || viewHashes.register;
   window.history.replaceState(null, '', `${url.pathname}${url.search}${url.hash}`);
+}
+function lookupPropertyByNumber(value) {
+  const normalizedNumber = String(value ?? '').trim();
+  if (!normalizedNumber) {
+    setLookupResult(null);
+    setLookupSearched(false);
+    lookupInputRef.current?.focus();
+    return;
+  }
+
+  const matchedProperty = (properties || []).find(
+    (property) => String(property?.id ?? '').trim() === normalizedNumber
+  ) || null;
+
+  setLookupResult(matchedProperty);
+  setLookupSearched(true);
+
+  const nextRecentNumbers = [
+    normalizedNumber,
+    ...recentLookupNumbers.filter((number) => number !== normalizedNumber)
+  ].slice(0, 5);
+
+  setRecentLookupNumbers(nextRecentNumbers);
+  localStorage.setItem(
+    'kanAdminRecentPropertyLookups',
+    JSON.stringify(nextRecentNumbers)
+  );
+}
+
+function handlePropertyLookup(event) {
+  event.preventDefault();
+  lookupPropertyByNumber(lookupNumber);
 }
 async function loadStaffProperties(staffCode) {
 if (!isSupabaseReady || !staffCode) {
@@ -5570,6 +5622,14 @@ if (isStaffMode && currentStaff?.code) {
 <nav className="admin-menu-strip" aria-label="관리자 메뉴">
   <button
     type="button"
+    className={isAdminMode && adminView === 'lookup' ? 'active' : ''}
+    onClick={() => selectAdminView('lookup')}
+  >
+    매물 빠른조회
+  </button>
+
+  <button
+    type="button"
     className={isAdminMode && adminView === 'register' ? 'active' : ''}
     onClick={() => selectAdminView('register')}
   >
@@ -6828,6 +6888,107 @@ if (isStaffMode && currentStaff?.code) {
 )}
               <p className="status-text">{status}</p>
             </form>
+
+            {canEditExisting && adminView === 'lookup' && (
+              <section className="admin-property-lookup" aria-labelledby="property-lookup-title">
+                <h1 id="property-lookup-title">매물번호 빠른조회</h1>
+
+                <form className="admin-property-lookup-form" onSubmit={handlePropertyLookup}>
+                  <input
+                    ref={lookupInputRef}
+                    type="text"
+                    inputMode="numeric"
+                    enterKeyHint="search"
+                    autoComplete="off"
+                    value={lookupNumber}
+                    onChange={(event) => setLookupNumber(event.target.value)}
+                    placeholder="매물번호 입력"
+                    aria-label="매물번호"
+                  />
+                  <button type="submit">조회</button>
+                </form>
+
+                {recentLookupNumbers.length > 0 && (
+                  <div className="admin-property-lookup-recent">
+                    <strong>최근 조회</strong>
+                    <div>
+                      {recentLookupNumbers.map((number) => (
+                        <button
+                          key={number}
+                          type="button"
+                          onClick={() => {
+                            setLookupNumber(number);
+                            lookupPropertyByNumber(number);
+                          }}
+                        >
+                          {number}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {lookupSearched && !lookupResult && (
+                  <p className="admin-property-lookup-empty">
+                    해당 매물번호를 찾을 수 없습니다.
+                  </p>
+                )}
+
+                {lookupResult && (
+                  <div className="admin-property-lookup-result">
+                    <dl>
+                      <div><dt>매물번호</dt><dd>{String(lookupResult.id)}</dd></div>
+                      <div><dt>등록자</dt><dd>{lookupResult.staff_name || lookupResult.created_by || '대표'}</dd></div>
+                      <div><dt>등록자 식별정보</dt><dd>{lookupResult.staff_code || lookupResult.created_by || lookupResult.updated_by || '대표 관리자'}</dd></div>
+                      <div>
+                        <dt>등록일</dt>
+                        <dd>
+                          {lookupResult.created_at && !Number.isNaN(new Date(lookupResult.created_at).getTime())
+                            ? new Date(lookupResult.created_at).toLocaleDateString('ko-KR')
+                            : '확인 필요'}
+                        </dd>
+                      </div>
+                      <div><dt>소재지</dt><dd>{lookupResult.address || '확인 필요'}</dd></div>
+                      <div><dt>매물 종류</dt><dd>{lookupResult.category || '확인 필요'}</dd></div>
+                      <div>
+                        <dt>거래·가격</dt>
+                        <dd>
+                          {lookupResult.trade_type === '매매' || lookupResult.category?.includes('매매')
+                            ? `${lookupResult.trade_type || '매매'} · ${formatAmount(lookupResult.sale_price)}`
+                            : `${lookupResult.trade_type || '임대'} · 보증금 ${formatAmount(lookupResult.deposit)} / 월세 ${formatAmount(lookupResult.rent)}`}
+                        </dd>
+                      </div>
+                      <div><dt>게시 상태</dt><dd>{STATUS_LABELS[lookupResult.status || 'pending'] || lookupResult.status || '확인 필요'}</dd></div>
+                      <div>
+                        <dt>대표검수</dt>
+                        <dd>
+                          {lookupResult.status === 'published'
+                            ? '검수완료'
+                            : lookupResult.status === 'hold'
+                              ? '보류'
+                              : '검수대기'}
+                        </dd>
+                      </div>
+                    </dl>
+                    <button
+                      type="button"
+                      className="admin-property-lookup-detail"
+                      onClick={() => {
+                        setAdminDetailProperty(lookupResult);
+                        setAdminDetailTab('public');
+                        selectAdminView('manage');
+                      }}
+                    >
+                      매물 상세보기
+                    </button>
+                  </div>
+                )}
+
+                <p className="admin-property-lookup-install">
+                  자주 사용하면 브라우저 메뉴에서 ‘홈 화면에 추가’를 선택하세요.
+                </p>
+              </section>
+            )}
 
             {isAdminMode && adminView === 'staff' && (
               <section className="admin-list admin-staff-manager">

@@ -12711,15 +12711,187 @@ details.photo-caption-details[open] > summary::after {
 .admin-view-manage > .property-form,
 .admin-view-review > .property-form,
 .admin-view-duplicates > .property-form,
-.admin-view-staff > .property-form {
+.admin-view-staff > .property-form,
+.admin-view-lookup > .property-form {
   display: none;
 }
 
 .admin-view-manage,
 .admin-view-review,
 .admin-view-duplicates,
-.admin-view-staff {
+.admin-view-staff,
+.admin-view-lookup {
   grid-template-columns: minmax(0, 1fr);
+}
+
+.admin-property-lookup {
+  width: min(100%, 620px);
+  margin: 0 auto;
+  padding: 24px;
+  border: 1px solid #d8dee8;
+  border-radius: 18px;
+  background: #ffffff;
+}
+
+.admin-property-lookup h1 {
+  margin: 0 0 20px;
+  color: #173b67;
+  font-size: clamp(26px, 5vw, 36px);
+  line-height: 1.15;
+}
+
+.admin-property-lookup-form {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 112px;
+  gap: 10px;
+}
+
+.admin-property-lookup-form input {
+  min-width: 0;
+  height: 58px;
+  padding: 0 16px;
+  border: 2px solid #9aa9bd;
+  border-radius: 12px;
+  background: #ffffff;
+  color: #172033;
+  font-size: 22px;
+  font-weight: 700;
+}
+
+.admin-property-lookup-form input:focus {
+  border-color: #173b67;
+  outline: 3px solid rgba(23, 59, 103, 0.15);
+}
+
+.admin-property-lookup-form button,
+.admin-property-lookup-detail {
+  min-height: 58px;
+  border: 0;
+  border-radius: 12px;
+  background: #173b67;
+  color: #ffffff;
+  font-size: 18px;
+  font-weight: 800;
+}
+
+.admin-property-lookup-recent {
+  margin-top: 18px;
+}
+
+.admin-property-lookup-recent > strong {
+  display: block;
+  margin-bottom: 8px;
+  color: #526173;
+  font-size: 14px;
+}
+
+.admin-property-lookup-recent > div {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.admin-property-lookup-recent button {
+  min-height: 40px;
+  padding: 8px 14px;
+  border: 1px solid #b9c5d4;
+  border-radius: 999px;
+  background: #f5f8fc;
+  color: #173b67;
+  font-weight: 700;
+}
+
+.admin-property-lookup-empty {
+  margin: 20px 0 0;
+  padding: 16px;
+  border-radius: 12px;
+  background: #fff3f3;
+  color: #a32020;
+  font-weight: 800;
+  text-align: center;
+}
+
+.admin-property-lookup-result {
+  margin-top: 20px;
+}
+
+.admin-property-lookup-result dl {
+  margin: 0;
+  overflow: hidden;
+  border: 1px solid #d8dee8;
+  border-radius: 14px;
+}
+
+.admin-property-lookup-result dl > div {
+  display: grid;
+  grid-template-columns: 112px minmax(0, 1fr);
+  gap: 12px;
+  padding: 10px 12px;
+  border-bottom: 1px solid #e8ecf2;
+}
+
+.admin-property-lookup-result dl > div:last-child {
+  border-bottom: 0;
+}
+
+.admin-property-lookup-result dt {
+  color: #647184;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.admin-property-lookup-result dd {
+  min-width: 0;
+  margin: 0;
+  color: #172033;
+  font-size: 14px;
+  font-weight: 700;
+  overflow-wrap: anywhere;
+}
+
+.admin-property-lookup-detail {
+  width: 100%;
+  margin-top: 12px;
+}
+
+.admin-property-lookup-install {
+  margin: 16px 0 0;
+  color: #6b7583;
+  font-size: 12px;
+  text-align: center;
+}
+
+@media (max-width: 768px) {
+  .admin-view-lookup {
+    display: block;
+  }
+
+  .admin-property-lookup {
+    width: 100%;
+    padding: 18px 14px;
+    border: 0;
+    border-radius: 0;
+    box-shadow: none;
+  }
+
+  .admin-property-lookup h1 {
+    margin-bottom: 16px;
+    font-size: 28px;
+  }
+
+  .admin-property-lookup-form {
+    grid-template-columns: minmax(0, 1fr) 92px;
+  }
+
+  .admin-property-lookup-form input,
+  .admin-property-lookup-form button {
+    height: 60px;
+  }
+
+  .admin-property-lookup-result dl > div {
+    grid-template-columns: 96px minmax(0, 1fr);
+    padding: 9px 10px;
+  }
 }
 
 .admin-view-manage > .admin-list,
