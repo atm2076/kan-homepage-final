@@ -6047,7 +6047,7 @@ if (isStaffMode && currentStaff?.code) {
 
     const { data: otherProperties, error: referenceError } = await supabase
       .from('properties')
-      .select('id,photos')
+      .select('*')
       .neq('id', property.id);
 
     if (referenceError) {
@@ -6055,7 +6055,7 @@ if (isStaffMode && currentStaff?.code) {
       console.warn('사진 공유 여부 확인 실패로 Storage 삭제를 건너뜁니다:', referenceError);
     } else {
       const referencedElsewhere = new Set(
-        (otherProperties || []).flatMap((item) => toTextList(item.photos))
+        (otherProperties || []).flatMap(getPropertyStoragePhotoUrls)
       );
       sharedUrls = new Set(targetUrls.filter((url) => referencedElsewhere.has(url)));
     }
