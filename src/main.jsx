@@ -2424,6 +2424,7 @@ function CustomerMapView({ properties, selected, onSelect, keyword, setKeyword, 
   const mapRef = useRef(null);
   const clusterSelectionRef = useRef([]);
   const clusterNavigationRef = useRef(false);
+  const restoredMapStateRef = useRef(window.history.state?.customerMap || null);
   const [activeTab, setActiveTab] = useState('');
   const [selectedClusterItems, setSelectedClusterItems] = useState([]);
   const markerItems = useMemo(
@@ -2445,7 +2446,11 @@ function CustomerMapView({ properties, selected, onSelect, keyword, setKeyword, 
       .filter(Boolean),
   [properties]
 );
-  const [panelItems, setPanelItems] = useState(() => dedupeMapItems(markerItems));
+  const [panelItems, setPanelItems] = useState(() => {
+    const restoredIds = new Set((restoredMapStateRef.current?.panelIds || []).map(String));
+    const restoredItems = markerItems.filter((item) => restoredIds.has(String(item.property.id)));
+    return dedupeMapItems(restoredItems.length ? restoredItems : markerItems);
+  });
   const [selectedMapPropertyId, setSelectedMapPropertyId] = useState(selected?.id || '');
   const [panelCollapsed, setPanelCollapsed] = useState(false);
   const [sheetExpanded, setSheetExpanded] = useState(false);
@@ -2625,9 +2630,13 @@ const clearMarkers = () => {
       .then(() => {
         if (!mounted || !mapElementRef.current || !window.naver?.maps) return;
         const naver = window.naver;
+        const restoredMapState = restoredMapStateRef.current;
         const map = mapRef.current || new naver.maps.Map(mapElementRef.current, {
-          center: new naver.maps.LatLng(36.1195, 128.3906),
-          zoom: 12,
+          center: new naver.maps.LatLng(
+            Number(restoredMapState?.lat) || 36.1195,
+            Number(restoredMapState?.lng) || 128.3906
+          ),
+          zoom: Number(restoredMapState?.zoom) || 12,
           minZoom: 10,
           maxZoom: 17,
           zoomControl: true,
@@ -2668,6 +2677,24 @@ maps.Event.trigger(map, 'resize');
           return dedupeMapItems(markerItems.filter((item) =>
             bounds.hasLatLng(new naver.maps.LatLng(item.point.lat, item.point.lng))
           ));
+        };
+
+        const persistMapState = (items) => {
+          const center = map.getCenter?.();
+          if (!center) return;
+          window.history.replaceState(
+            {
+              ...(window.history.state || {}),
+              customerMap: {
+                lat: center.lat(),
+                lng: center.lng(),
+                zoom: map.getZoom(),
+                panelIds: dedupeMapItems(items).map((item) => item.property.id)
+              }
+            },
+            '',
+            window.location.href
+          );
         };
 
         const updateMarkerHighlights = (propertyId) => {
@@ -2764,11 +2791,13 @@ idleListener = naver.maps.Event.addListener(map, 'idle', () => {
   const visibleItems = getItemsInsideMap();
   if (clusterSelectionRef.current.length) {
     setPanelItems(clusterSelectionRef.current);
+    persistMapState(clusterSelectionRef.current);
     renderCustomerMarkers(visibleItems);
     return;
   }
   setPanelItems(visibleItems);
   setSelectedClusterItems([]);
+  persistMapState(visibleItems);
   renderCustomerMarkers(visibleItems);
 });
 dragStartListener = naver.maps.Event.addListener(map, 'dragstart', () => {
