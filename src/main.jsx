@@ -7302,6 +7302,13 @@ if (isStaffMode && currentStaff?.code) {
 
               <button
                 type="button"
+                onClick={() => saveBlogPropertyPhotos(property, setStatus)}
+              >
+                블로그 사진 가져가기 {toTextList(property.photos).filter(Boolean).length}장
+              </button>
+
+              <button
+                type="button"
                 onClick={async () => {
                   const daangnAd = buildDaangnAd(property);
                   const copied = await copyAdvertisementText(
@@ -8640,6 +8647,343 @@ function downloadShareFiles(files) {
     window.setTimeout(() => downloadShareFile(file), index * 220);
   });
 }
+
+const BLOG_PHOTO_DIRECTORY_DB = 'kan-admin-blog-photo-directory';
+const BLOG_PHOTO_DIRECTORY_STORE = 'handles';
+const BLOG_PHOTO_DIRECTORY_KEY = 'blog-photos';
+
+function openBlogPhotoDirectoryDb() {
+  return new Promise((resolve, reject) => {
+    const request = indexedDB.open(BLOG_PHOTO_DIRECTORY_DB, 1);
+    request.onupgradeneeded = () => {
+      if (!request.result.objectStoreNames.contains(BLOG_PHOTO_DIRECTORY_STORE)) {
+        request.result.createObjectStore(BLOG_PHOTO_DIRECTORY_STORE);
+      }
+    };
+    request.onsuccess = () => resolve(request.result);
+    request.onerror = () => reject(request.error);
+  });
+}
+
+async function getStoredBlogPhotoDirectory() {
+  const db = await openBlogPhotoDirectoryDb();
+  try {
+    return await new Promise((resolve, reject) => {
+      const transaction = db.transaction(BLOG_PHOTO_DIRECTORY_STORE, 'readonly');
+      const request = transaction.objectStore(BLOG_PHOTO_DIRECTORY_STORE).get(BLOG_PHOTO_DIRECTORY_KEY);
+      request.onsuccess = () => resolve(request.result || null);
+      request.onerror = () => reject(request.error);
+    });
+  } finally {
+    db.close();
+  }
+}
+
+async function storeBlogPhotoDirectory(handle) {
+  const db = await openBlogPhotoDirectoryDb();
+  try {
+    await new Promise((resolve, reject) => {
+      const transaction = db.transaction(BLOG_PHOTO_DIRECTORY_STORE, 'readwrite');
+      transaction.objectStore(BLOG_PHOTO_DIRECTORY_STORE).put(handle, BLOG_PHOTO_DIRECTORY_KEY);
+      transaction.oncomplete = resolve;
+      transaction.onerror = () => reject(transaction.error);
+    });
+  } finally {
+    db.close();
+  }
+}
+
+async function getBlogPhotoDirectory() {
+  let directoryHandle = null;
+
+  try {
+    directoryHandle = await getStoredBlogPhotoDirectory();
+  } catch (error) {
+    console.warn('블로그 사진 저장 폴더 불러오기 실패:', error);
+  }
+
+  if (directoryHandle) {
+    const permission = await directoryHandle.queryPermission({ mode: 'readwrite' });
+    if (
+      permission === 'granted' ||
+      (permission === 'prompt' &&
+        await directoryHandle.requestPermission({ mode: 'readwrite' }) === 'granted')
+    ) {
+      return directoryHandle;
+    }
+  }
+
+  window.alert('최초 한 번 사용할 ‘블로그사진’ 저장 폴더를 선택해 주세요.');
+  directoryHandle = await window.showDirectoryPicker({
+    id: 'kan-blog-photos',
+    mode: 'readwrite',
+    startIn: 'pictures'
+  });
+  await storeBlogPhotoDirectory(directoryHandle);
+  return directoryHandle;
+}
+
+function sanitizeBlogPhotoName(value, fallback) {
+  const safeName = String(value || '')
+    .trim()
+    .replace(/[<>:"/\\|?*\u0000-\u001F]/g, '_')
+    .replace(/\s+/g, '_')
+    .replace(/[. ]+$/g, '')
+    .slice(0, 80);
+  return safeName || fallback;
+}
+
+function getBlogPhotoNames(property = {}) {
+  const listingNumber = sanitizeBlogPhotoName(
+    String(property.id ?? '').replace(/^K/i, ''),
+    '매물'
+  );
+  const dongName =
+    String(property.address || '').match(/([0-9A-Za-z가-힣]+(?:동|읍|면))/u)?.[1] ||
+    '지역미상';
+  const propertyType = sanitizeBlogPhotoName(
+    property.category || property.trade_type,
+    '매물'
+  );
+
+  return {
+    listingBase: `K${listingNumber}`,
+    folderName: sanitizeBlogPhotoName(
+      `K${listingNumber}_${dongName}_${propertyType}`,
+      `K${listingNumber}_블로그사진`
+    )
+  };
+}
+
+async function blogPhotoUrlToJpegBlob(url) {
+  const response = await fetch(url, {
+    mode: 'cors',
+    credentials: 'omit',
+    cache: 'no-store'
+  });
+
+  if (!response.ok) {
+    throw new Error(`사진 불러오기 실패 (${response.status})`);
+  }
+
+  const sourceBlob = await response.blob();
+  if (!sourceBlob.type.startsWith('image/')) {
+    throw new Error('이미지 파일이 아닙니다.');
+  }
+
+  let imageSource;
+  let sourceUrl = '';
+
+  if (typeof createImageBitmap === 'function') {
+    imageSource = await createImageBitmap(sourceBlob);
+  } else {
+    sourceUrl = URL.createObjectURL(sourceBlob);
+    imageSource = await loadShareImage(sourceUrl);
+  }
+
+  try {
+    const canvas = document.createElement('canvas');
+    canvas.width = imageSource.width || imageSource.naturalWidth;
+    canvas.height = imageSource.height || imageSource.naturalHeight;
+    const context = canvas.getContext('2d');
+    context.fillStyle = '#ffffff';
+    context.fillRect(0, 0, canvas.width, canvas.height);
+    context.drawImage(imageSource, 0, 0);
+
+    const jpegBlob = await new Promise((resolve, reject) => {
+      canvas.toBlob(
+        (blob) => blob ? resolve(blob) : reject(new Error('JPG 변환 실패')),
+        'image/jpeg',
+        0.94
+      );
+    });
+
+    return jpegBlob;
+  } finally {
+    imageSource.close?.();
+    if (sourceUrl) URL.revokeObjectURL(sourceUrl);
+  }
+}
+
+let zipCrcTable = null;
+
+function getZipCrcTable() {
+  if (zipCrcTable) return zipCrcTable;
+  zipCrcTable = Array.from({ length: 256 }, (_, index) => {
+    let value = index;
+    for (let bit = 0; bit < 8; bit += 1) {
+      value = (value & 1) ? (0xedb88320 ^ (value >>> 1)) : (value >>> 1);
+    }
+    return value >>> 0;
+  });
+  return zipCrcTable;
+}
+
+function getZipCrc32(bytes) {
+  const table = getZipCrcTable();
+  let crc = 0xffffffff;
+  bytes.forEach((byte) => {
+    crc = table[(crc ^ byte) & 0xff] ^ (crc >>> 8);
+  });
+  return (crc ^ 0xffffffff) >>> 0;
+}
+
+function getZipDateTime(date = new Date()) {
+  const year = Math.max(1980, date.getFullYear());
+  return {
+    date: ((year - 1980) << 9) | ((date.getMonth() + 1) << 5) | date.getDate(),
+    time: (date.getHours() << 11) | (date.getMinutes() << 5) | Math.floor(date.getSeconds() / 2)
+  };
+}
+
+function buildStoredZip(entries) {
+  const encoder = new TextEncoder();
+  const localParts = [];
+  const centralParts = [];
+  let localOffset = 0;
+  const { date, time } = getZipDateTime();
+
+  entries.forEach(({ name, bytes }) => {
+    const nameBytes = encoder.encode(name);
+    const crc = getZipCrc32(bytes);
+    const localHeader = new Uint8Array(30 + nameBytes.length);
+    const localView = new DataView(localHeader.buffer);
+    localView.setUint32(0, 0x04034b50, true);
+    localView.setUint16(4, 20, true);
+    localView.setUint16(6, 0x0800, true);
+    localView.setUint16(8, 0, true);
+    localView.setUint16(10, time, true);
+    localView.setUint16(12, date, true);
+    localView.setUint32(14, crc, true);
+    localView.setUint32(18, bytes.length, true);
+    localView.setUint32(22, bytes.length, true);
+    localView.setUint16(26, nameBytes.length, true);
+    localHeader.set(nameBytes, 30);
+    localParts.push(localHeader, bytes);
+
+    const centralHeader = new Uint8Array(46 + nameBytes.length);
+    const centralView = new DataView(centralHeader.buffer);
+    centralView.setUint32(0, 0x02014b50, true);
+    centralView.setUint16(4, 20, true);
+    centralView.setUint16(6, 20, true);
+    centralView.setUint16(8, 0x0800, true);
+    centralView.setUint16(10, 0, true);
+    centralView.setUint16(12, time, true);
+    centralView.setUint16(14, date, true);
+    centralView.setUint32(16, crc, true);
+    centralView.setUint32(20, bytes.length, true);
+    centralView.setUint32(24, bytes.length, true);
+    centralView.setUint16(28, nameBytes.length, true);
+    centralView.setUint32(42, localOffset, true);
+    centralHeader.set(nameBytes, 46);
+    centralParts.push(centralHeader);
+    localOffset += localHeader.length + bytes.length;
+  });
+
+  const centralSize = centralParts.reduce((sum, part) => sum + part.length, 0);
+  const endRecord = new Uint8Array(22);
+  const endView = new DataView(endRecord.buffer);
+  endView.setUint32(0, 0x06054b50, true);
+  endView.setUint16(8, entries.length, true);
+  endView.setUint16(10, entries.length, true);
+  endView.setUint32(12, centralSize, true);
+  endView.setUint32(16, localOffset, true);
+
+  return new Blob([...localParts, ...centralParts, endRecord], {
+    type: 'application/zip'
+  });
+}
+
+async function saveBlogPropertyPhotos(property, setStatus) {
+  const photoUrls = toTextList(property?.photos).filter(Boolean);
+  if (!photoUrls.length) {
+    const message = '저장할 매물 사진이 없습니다.';
+    setStatus(message);
+    window.alert(message);
+    return;
+  }
+
+  const { listingBase, folderName } = getBlogPhotoNames(property);
+  const supportsFileSystemAccess =
+    typeof window.showDirectoryPicker === 'function' &&
+    typeof window.FileSystemDirectoryHandle !== 'undefined';
+  let savedCount = 0;
+  let failedCount = 0;
+
+  try {
+    if (supportsFileSystemAccess) {
+      const rootDirectory = await getBlogPhotoDirectory();
+      const propertyDirectory = await rootDirectory.getDirectoryHandle(folderName, {
+        create: true
+      });
+
+      for (let index = 0; index < photoUrls.length; index += 1) {
+        try {
+          const jpegBlob = await blogPhotoUrlToJpegBlob(photoUrls[index]);
+          const fileName = `${listingBase}_${String(index + 1).padStart(2, '0')}.jpg`;
+          const fileHandle = await propertyDirectory.getFileHandle(fileName, {
+            create: true
+          });
+          const writable = await fileHandle.createWritable();
+          await writable.write(jpegBlob);
+          await writable.close();
+          savedCount += 1;
+        } catch (error) {
+          failedCount += 1;
+          console.warn(`블로그 사진 ${index + 1} 저장 실패:`, error);
+        }
+      }
+    } else {
+      const zipEntries = [];
+
+      for (let index = 0; index < photoUrls.length; index += 1) {
+        try {
+          const jpegBlob = await blogPhotoUrlToJpegBlob(photoUrls[index]);
+          const fileName = `${listingBase}_${String(index + 1).padStart(2, '0')}.jpg`;
+          zipEntries.push({
+            name: `${folderName}/${fileName}`,
+            bytes: new Uint8Array(await jpegBlob.arrayBuffer())
+          });
+          savedCount += 1;
+        } catch (error) {
+          failedCount += 1;
+          console.warn(`블로그 ZIP 사진 ${index + 1} 변환 실패:`, error);
+        }
+      }
+
+      if (zipEntries.length) {
+        const zipBlob = buildStoredZip(zipEntries);
+        const zipUrl = URL.createObjectURL(zipBlob);
+        const anchor = document.createElement('a');
+        anchor.href = zipUrl;
+        anchor.download = `${folderName}.zip`;
+        anchor.style.display = 'none';
+        document.body.appendChild(anchor);
+        anchor.click();
+        document.body.removeChild(anchor);
+        window.setTimeout(() => URL.revokeObjectURL(zipUrl), 1500);
+      }
+    }
+  } catch (error) {
+    if (error?.name === 'AbortError') {
+      const message = '블로그 사진 저장 폴더 선택을 취소했습니다.';
+      setStatus(message);
+      return;
+    }
+    console.error('블로그 사진 전체 저장 실패:', error);
+    const message = `블로그 사진 저장을 시작하지 못했습니다: ${error?.message || '알 수 없는 오류'}`;
+    setStatus(message);
+    window.alert(message);
+    return;
+  }
+
+  const message = failedCount
+    ? `사진 ${savedCount}장 저장 완료 (${failedCount}장 실패)`
+    : `사진 ${savedCount}장 저장 완료`;
+  setStatus(message);
+  window.alert(message);
+}
+
 function safeShareText(value, fallback = '확인 필요') {
   const text = String(value ?? '').trim();
   return text || fallback;
