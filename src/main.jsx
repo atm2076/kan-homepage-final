@@ -4927,8 +4927,20 @@ setStaffProperties(data || []);
   }
 // 당근 업로드용 CSV 다운로드 함수
 // 당근 원본 양식 맞춤 CSV 다운로드 함수
-function handleDaangnExcelDownload() {
-  const payload = typeof formToPayload === 'function' ? formToPayload(form) : form;
+async function handleDaangnExcelDownload(selectedOverride = null) {
+  const selectedProperty = selectedOverride?.id
+    ? selectedOverride
+    : adminDetailProperty || properties.find((item) => item.id === editingId);
+
+  if (!selectedProperty?.id) {
+    const message = '당근에 보낼 매물을 먼저 선택하세요.';
+    setStatus(message);
+    window.alert(message);
+    return;
+  }
+
+  try {
+  const payload = selectedProperty;
 
   const clean = (value) => {
     if (value === null || value === undefined) return '';
@@ -5189,7 +5201,23 @@ function handleDaangnExcelDownload() {
 
   URL.revokeObjectURL(url);
 
-  setStatus('당근 원본 양식에 맞춘 CSV 파일을 다운로드했습니다.');
+  setAdvertisingPropertyId(selectedProperty.id);
+  setAdminDetailProperty(selectedProperty);
+  setAdminDetailTab('ad');
+
+  const result = await prepareDaangnPosting(selectedProperty, setStatus);
+  const message = result.photoCount
+    ? `당근 게시자료가 준비되었습니다. 사진 ${result.photoCount}장을 준비했습니다.`
+    : '당근 게시자료가 준비되었습니다. 등록된 사진이 없어 문구와 매물 링크만 준비했습니다.';
+  setStatus(message);
+  window.alert(message);
+  } catch (error) {
+    console.error('당근 게시자료 준비 실패:', error);
+    const reason = error?.message || '알 수 없는 오류';
+    const message = `당근 게시자료 준비에 실패했습니다: ${reason}`;
+    setStatus(message);
+    window.alert(message);
+  }
 }
 function compactPublishText(value) {
   return String(value || '').replace(/\s+/g, ' ').trim();
@@ -7856,13 +7884,7 @@ if (isStaffMode && currentStaff?.code) {
 
               <button
                 type="button"
-                onClick={async () => {
-                  const daangnAd = buildDaangnAd(property);
-                  const copied = await copyAdvertisementText(
-                    `${daangnAd.title}\n\n${daangnAd.body}`
-                  );
-                  setStatus(copied ? '당근 문구 복사 완료' : '복사 실패');
-                }}
+                onClick={() => handleDaangnExcelDownload(property)}
               >
                 당근
               </button>
@@ -8138,14 +8160,14 @@ function getDaangnPrice(property) {
     property.trade_type === '매매';
 
   if (isSale) {
-    return `매매 ${property.sale_price || '가격협의'}만원`;
+    return property.sale_price ? `매매 ${formatAmount(property.sale_price)}` : '매매 가격협의';
   }
 
   if (property.trade_type === '전세') {
-    return `전세 ${property.deposit || '가격협의'}만원`;
+    return property.deposit ? `전세 ${formatAmount(property.deposit)}` : '전세 가격협의';
   }
 
-  return `보증금 ${property.deposit || '-'}만원 / 월세 ${property.rent || '-'}만원`;
+  return `보증금 ${formatAmount(property.deposit)} / 월세 ${formatAmount(property.rent)}`;
 }
 
 function buildDaangnAd(property) {
@@ -8221,6 +8243,139 @@ function buildDaangnAd(property) {
 
   return { title, body };
 }
+
+function getPublicAdvertisingProperty(property) {
+  const {
+    private_memo,
+    real_unit,
+    entrance_password,
+    key_location,
+    owner_name,
+    owner_phone,
+    client_info,
+    request_method,
+    staff_memo,
+    internal_tags,
+    ...publicProperty
+  } = property || {};
+
+  return publicProperty;
+}
+
+function requestDaangnConnector(job, timeout = 500) {
+  return new Promise((resolve) => {
+    const requestId = `kan-daangn-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+    let timer;
+
+    const finish = (connected) => {
+      window.removeEventListener('message', handleMessage);
+      window.clearTimeout(timer);
+      resolve(connected);
+    };
+
+    const handleMessage = (event) => {
+      if (event.source !== window || event.origin !== window.location.origin) return;
+      if (event.data?.type !== 'KAN_DAANGN_CONNECTOR_ACK') return;
+      if (event.data?.requestId !== requestId) return;
+      finish(Boolean(event.data.ok));
+    };
+
+    window.addEventListener('message', handleMessage);
+    timer = window.setTimeout(() => finish(false), timeout);
+    window.postMessage(
+      {
+        type: 'KAN_DAANGN_PREPARE',
+        requestId,
+        payload: job
+      },
+      window.location.origin
+    );
+  });
+}
+
+function prepareDaangnPhotoFile(url, index, property, timeout = 8000) {
+  return Promise.race([
+    photoUrlToShareFile(url, index, property),
+    new Promise((_, reject) => {
+      window.setTimeout(() => reject(new Error(`사진 ${index + 1} 준비 시간이 초과되었습니다.`)), timeout);
+    })
+  ]);
+}
+
+async function prepareDaangnPosting(property, setStatus) {
+  if (!property?.id) throw new Error('선택된 매물 정보가 없습니다.');
+
+  const reservedDaangnTab = window.open('https://www.daangn.com/', '_blank');
+  const publicProperty = getPublicAdvertisingProperty(property);
+  const detailUrl = `${window.location.origin}/listing/${encodeURIComponent(property.id)}`;
+  const daangnAd = buildDaangnAd({ ...publicProperty, homepage_url: detailUrl });
+  const text = `${daangnAd.title}\n\n${daangnAd.body}\n\n홈페이지 매물 상세보기: ${detailUrl}`;
+  const photoUrls = toTextList(publicProperty.photos)
+    .map((url) => String(url || '').trim())
+    .filter((url) => /^https?:\/\//i.test(url))
+    .slice(0, MAX_SOCIAL_SHARE_PHOTOS);
+  const connectorProperty = {
+    ...publicProperty,
+    homepage_url: detailUrl,
+    daangn_title: daangnAd.title,
+    daangn_body: daangnAd.body,
+    photos: photoUrls
+  };
+  const job = {
+    property: connectorProperty,
+    channels: ['daangn'],
+    createdAt: new Date().toISOString(),
+    source: 'admin-daangn-button'
+  };
+
+  window.localStorage.setItem('kanAdConnectorProperty', JSON.stringify(connectorProperty));
+  window.localStorage.setItem('kanAdConnectorJob', JSON.stringify(job));
+  setStatus('당근 문구와 원본 압축사진을 준비하고 있습니다.');
+
+  const [copied, connectorConnected] = await Promise.all([
+    copyAdvertisementText(text),
+    requestDaangnConnector(job)
+  ]);
+
+  if (!copied) throw new Error('클립보드에 당근 문구를 복사하지 못했습니다. 브라우저의 클립보드 권한을 확인하세요.');
+
+  if (connectorConnected) {
+    if (reservedDaangnTab && !reservedDaangnTab.closed) reservedDaangnTab.close();
+  } else if (!reservedDaangnTab) {
+    window.open('https://www.daangn.com/', '_blank', 'noopener,noreferrer');
+  }
+
+  const photoResults = await Promise.allSettled(
+    photoUrls.map((url, index) => prepareDaangnPhotoFile(url, index, property))
+  );
+  const photoFiles = photoResults
+    .filter((result) => result.status === 'fulfilled')
+    .map((result) => result.value);
+
+  if (photoUrls.length && !photoFiles.length) {
+    throw new Error('등록된 사진을 다운로드하지 못했습니다. 사진 URL 또는 저장소 접근 권한을 확인하세요.');
+  }
+
+  if (photoFiles.length) {
+    if (canSharePhotoFiles(photoFiles) && /Android|iPhone|iPad|iPod/i.test(navigator.userAgent)) {
+      try {
+        await navigator.share({ files: photoFiles, title: daangnAd.title, text });
+      } catch (error) {
+        if (error?.name !== 'AbortError') downloadShareFiles(photoFiles);
+      }
+    } else {
+      downloadShareFiles(photoFiles);
+    }
+  }
+
+  return {
+    photoCount: photoFiles.length,
+    failedPhotoCount: photoResults.length - photoFiles.length,
+    detailUrl,
+    connectorConnected
+  };
+}
+
 function buildDaangnRegistrationHelper(property) {
   const allText = [
     property.category,

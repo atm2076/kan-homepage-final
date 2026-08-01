@@ -424,6 +424,45 @@
   function start() {
     ensureButton();
 
+    window.addEventListener("message", function (event) {
+      if (event.source !== window || event.origin !== window.location.origin) return;
+      if (!event.data || event.data.type !== "KAN_DAANGN_PREPARE") return;
+
+      var requestId = event.data.requestId;
+      var job = event.data.payload;
+
+      if (!job || !job.property) {
+        window.postMessage({
+          type: "KAN_DAANGN_CONNECTOR_ACK",
+          requestId: requestId,
+          ok: false,
+          error: "선택된 매물 정보가 없습니다."
+        }, window.location.origin);
+        return;
+      }
+
+      var saveData = {};
+      saveData[PROPERTY_STORAGE_KEY] = job.property;
+      saveData[JOB_STORAGE_KEY] = job;
+
+      chrome.storage.local.set(saveData, function () {
+        chrome.runtime.sendMessage(
+          { type: "KAN_START_AD_PREP", payload: job },
+          function (response) {
+            var runtimeError = chrome.runtime.lastError;
+            window.postMessage({
+              type: "KAN_DAANGN_CONNECTOR_ACK",
+              requestId: requestId,
+              ok: !runtimeError && Boolean(response && response.ok),
+              error: runtimeError
+                ? runtimeError.message
+                : response && response.error
+            }, window.location.origin);
+          }
+        );
+      });
+    });
+
     var observer = new MutationObserver(function () {
       ensureButton();
     });
