@@ -7697,7 +7697,7 @@ if (isStaffMode && currentStaff?.code) {
                   }
                 }}
               >
-                네이버 블로그
+                네이버 블로그 내용
               </button>
 
               <button
@@ -8726,8 +8726,57 @@ function normalizeBlogText(value) {
     .replace(/천장형실링펜/gu, '천장형 실링팬')
     .replace(/해당층/gu, '해당 층')
     .replace(/수도용금|수고요금/gu, '수도요금')
+    .replace(/남향ㅂ/gu, '남향')
+    .replace(/국가\s*3\s*산업단지/gu, '국가3산단')
     .replace(/[ \t]+/g, ' ')
     .trim();
+}
+
+const BLOG_DIRECTIONS = new Set(['동향', '서향', '남향', '북향', '남동향', '남서향', '북동향', '북서향']);
+
+function normalizeBlogMoney(value) {
+  const text = normalizeBlogText(value);
+  if (!text) return '';
+  if (/억|만원|원/u.test(text)) return text.replace(/만\s*원/gu, '만원');
+  const number = Number(text.replaceAll(',', ''));
+  if (!Number.isFinite(number)) return text;
+  if (number >= 10000) {
+    const eok = Math.floor(number / 10000);
+    const man = number % 10000;
+    return man ? `${eok}억 ${man.toLocaleString()}만원` : `${eok}억원`;
+  }
+  return `${number.toLocaleString()}만원`;
+}
+
+function normalizeBlogArea(value) {
+  const text = normalizeBlogText(value);
+  if (!text) return '';
+  if (/㎡|평/u.test(text)) return text.startsWith('약 ') ? text : `약 ${text}`;
+  return /^\d+(?:\.\d+)?$/u.test(text.replaceAll(',', '')) ? `약 ${text}㎡` : text;
+}
+
+function normalizeBlogDate(value) {
+  const text = normalizeBlogText(value);
+  if (!text) return '';
+  const match = text.match(/^(\d{4})[-./년]\s*(\d{1,2})[-./월]\s*(\d{1,2})/u);
+  return match ? `${Number(match[1])}년 ${Number(match[2])}월 ${Number(match[3])}일` : text;
+}
+
+function parseBlogRegion(address) {
+  const text = normalizeBlogText(address);
+  const cityCounty = text.match(/([가-힣]+(?:시|군|구))/u)?.[1] || '';
+  const town = text.match(/([가-힣0-9]+(?:읍|면))/u)?.[1] || '';
+  const neighborhoods = [...text.matchAll(/([가-힣0-9]+(?:동|리))/gu)].map((match) => match[1]);
+  const neighborhood = neighborhoods.at(-1) || '';
+  const shortAdmin = cityCounty.replace(/[시군구]$/u, '');
+  return {
+    city_county: cityCounty,
+    town,
+    neighborhood,
+    short_admin: shortAdmin,
+    display: [shortAdmin, town, neighborhood].filter(Boolean).join(' ') || text,
+    formal: [cityCounty, town, neighborhood].filter(Boolean).join(' ') || text
+  };
 }
 
 function normalizeBlogList(...sources) {
@@ -8777,23 +8826,26 @@ function normalizeBlogProperty(property = {}) {
   const propertyType = clean(
     category.replace(/월세|전세|반전세|단기임대|매매/gu, '').replace(/\s+/gu, ' ')
   ) || (isSale ? '건물' : '매물');
-  const address = clean(property.address) || '소재지 계약 전 확인';
-  const dongMatches = [...address.matchAll(/([가-힣0-9]+(?:동|읍|면|리))/gu)];
-  const dong = dongMatches.length ? dongMatches[dongMatches.length - 1][1] : '';
+  const address = clean(property.address);
+  const region = parseBlogRegion(address);
+  const dong = region.neighborhood || region.town;
 
   const floorSource = clean(property.floor_info || property.floorInfo);
   const floorParts = floorSource.split('/').map(clean).filter(Boolean);
   const narrative = [property.description, property.legal_notice].map(clean).join(' ');
-  const floor = clean(
+  let floor = clean(
     property.current_floor || property.currentFloor ||
     floorParts.find((part) => !/(총|지상|지하)/u.test(part)) ||
     narrative.match(/해당\s*층\s*:?\s*(\d+\s*층)/u)?.[1]
   );
+  if (/^\d+$/u.test(floor)) floor = `${floor}층`;
   let totalFloors = clean(
     property.total_floor_info || property.totalFloors ||
-    floorParts.find((part) => /(총|지상)/u.test(part)) || property.floor_count
+    floorParts.find((part) => /(총|지상)/u.test(part)) ||
+    (floorParts.length > 1 ? floorParts[1] : '') || property.floor_count
   );
-  if (/^\d+$/u.test(totalFloors)) totalFloors = `지상 ${totalFloors}층`;
+  if (/^\d+$/u.test(totalFloors)) totalFloors = `${totalFloors}층`;
+  totalFloors = totalFloors.replace(/^지상\s*/u, '');
 
   const roomBath = clean(property.room_bath || property.roomBath);
   const roomBathNumbers = roomBath.match(/(?:방\s*)?(\d+(?:\.\d+)?)\s*(?:개)?\s*[\/.]\s*(?:욕실\s*)?(\d+(?:\.\d+)?)/u) ||
@@ -8802,18 +8854,24 @@ function normalizeBlogProperty(property = {}) {
   const bathrooms = clean(property.bathrooms || property.bathroom) || (roomBathNumbers?.[2] || '');
 
   const directionSource = clean(property.direction);
-  const directionMatch = directionSource.match(/^(\S+향)\s*\/?\s*(.*?기준)?$/u);
-  const direction = clean(directionMatch?.[1] || directionSource);
+  const directionMatch = directionSource.match(/^(동향|서향|남향|북향|남동향|남서향|북동향|북서향)(?:\s*[(/]?\s*(.*?기준)\s*[)]?)?$/u);
+  const directionCandidate = clean(directionMatch?.[1]);
+  const direction = BLOG_DIRECTIONS.has(directionCandidate) ? directionCandidate : '';
   const directionBasis = clean(property.direction_basis || directionMatch?.[2]);
 
   const parkingSource = clean(property.parking);
-  const parkingMatch = parkingSource.match(/(?:총\s*)?(\d+(?:\.\d+)?\s*대)/u);
+  const parkingMatch = parkingSource.match(/(?:총\s*)?(\d+(?:\.\d+)?)\s*대?/u);
   const maintenanceFeeSource = clean(property.maintenance_fee || property.maintenanceFee);
-  const maintenanceFee = clean(
+  let maintenanceFee = clean(
     maintenanceFeeSource
       .replace(/^관리비\s*/u, '')
       .replace(/\s*(?:별도|포함)(?:\s*\(.*)?$/u, '')
   ) || maintenanceFeeSource;
+  if (/^\d+(?:\.\d+)?$/u.test(maintenanceFee.replaceAll(',', ''))) {
+    maintenanceFee = `월 ${Number(maintenanceFee.replaceAll(',', '')).toLocaleString()}만원`;
+  } else if (maintenanceFee && !/포함|없음|월/u.test(maintenanceFee)) {
+    maintenanceFee = `월 ${maintenanceFee}`;
+  }
   const maintenanceFromFee = maintenanceFeeSource.match(/포함\s*항목\s*:\s*([^)]*)/u)?.[1] || '';
 
   const photoSource = normalizeBlogList(property.photos, property.photoUrls);
@@ -8831,28 +8889,29 @@ function normalizeBlogProperty(property = {}) {
       : '',
     title: String(property.title || '').trim(),
     address,
+    region,
     dong,
     property_type: propertyType,
-    legal_property_type: clean(property.main_use) && !clean(property.main_use).includes(propertyType)
-      ? `${clean(property.main_use)}(${propertyType})`
-      : propertyType,
+    legal_property_type: clean(property.main_use),
     trade_type: tradeType,
-    deposit: clean(property.deposit),
-    monthly_rent: clean(property.rent || property.monthly_rent),
-    sale_price: clean(property.sale_price || property.salePrice || (isSale ? property.deposit : '')),
+    deposit: normalizeBlogMoney(property.deposit),
+    monthly_rent: normalizeBlogMoney(property.rent || property.monthly_rent),
+    sale_price: normalizeBlogMoney(property.sale_price || property.salePrice || (isSale ? property.deposit : '')),
     maintenance_fee: maintenanceFee,
     maintenance_includes: normalizeBlogList(property.maintenance_includes, maintenanceFromFee),
-    exclusive_area: clean(property.area || property.exclusive_area),
+    exclusive_area: normalizeBlogArea(
+      property.area || property.exclusive_area || (isSale ? property.building_area || property.total_area : '')
+    ),
     floor,
     total_floors: totalFloors,
     rooms,
     bathrooms,
-    room_bath: rooms || bathrooms ? `${rooms || '확인 필요'}/${bathrooms || '확인 필요'}` : roomBath,
+    room_bath: rooms && bathrooms ? `방 ${rooms}개/욕실 ${bathrooms}개` : '',
     direction,
     direction_basis: directionBasis,
-    parking_total: clean(parkingMatch?.[1]),
+    parking_total: parkingMatch?.[1] ? `${Number(parkingMatch[1]).toLocaleString()}대` : '',
     move_in_date: clean(property.move_in || property.move_in_date),
-    approval_date: clean(property.approval_date),
+    approval_date: normalizeBlogDate(property.approval_date),
     main_use: clean(property.main_use),
     building_structure: clean(property.structure || property.building_structure),
     short_description: clean(property.summary || property.short_description),
@@ -8861,6 +8920,7 @@ function normalizeBlogProperty(property = {}) {
     representative_location: normalizeBlogList(
       property.representative_location,
       property.location_keyword,
+      property.location_description,
       !isSale ? property.investment_point : ''
     )[0] || '',
     recommended_for: normalizeBlogList(property.recommended_for).join(', '),
@@ -8897,9 +8957,25 @@ function validateNaverBlogAd({ body, normalized }) {
   if (new Set(floorValues.filter(Boolean)).size > 1) warnings.push('해당 층 값이 서로 충돌합니다.');
   const photoNumbers = [...body.matchAll(/📷\s*(\d+)번\s*사진/gu)].map((match) => match[1]);
   if (photoNumbers.length !== new Set(photoNumbers).size) warnings.push('사진 번호가 중복됐습니다.');
-  const requiredLegalLabels = ['중개대상물 종류', '거래형태', '소재지', '거래가격', '관리비', '면적', '해당 층', '총층수', '방/욕실', '방향', '입주가능일', '사용승인일'];
-  const missingLabels = requiredLegalLabels.filter((label) => !body.includes(`- ${label}:`));
-  if (!normalized.is_sale && missingLabels.length) warnings.push(`필수 표시·광고 누락: ${missingLabels.join(', ')}`);
+  const requiredValues = [
+    ['중개대상물 종류', normalized.legal_property_type],
+    ['거래가격', normalized.is_sale ? normalized.sale_price : (normalized.deposit && normalized.monthly_rent)],
+    ['소재지', normalized.address],
+    ['면적', normalized.exclusive_area],
+    ['해당 층', normalized.floor],
+    ['총층수', normalized.total_floors],
+    ['방/욕실', normalized.room_bath],
+    ['총주차대수', normalized.parking_total],
+    ['방향', normalized.direction],
+    ['방향 기준', normalized.direction_basis],
+    ['사용승인일', normalized.approval_date],
+    ...(!normalized.is_sale ? [
+      ['관리비', normalized.maintenance_fee],
+      ['입주가능일', normalized.move_in_date]
+    ] : [])
+  ];
+  const missingFields = requiredValues.filter(([, value]) => !value).map(([label]) => label);
+  if (missingFields.length) warnings.push(`게시 전 확인 필요: ${missingFields.join(', ')}`);
   return warnings;
 }
 
@@ -8920,25 +8996,31 @@ function buildNaverBlogAd(property) {
   };
   const titleMoney = (value) => moneyText(value).replace(/만원$/u, '');
   const rentalTitlePrice = [titleMoney(data.deposit), titleMoney(data.monthly_rent)].filter(Boolean).join('/');
-  const locationTitle = data.dong ? `구미 ${data.dong}` : '구미';
-  const automaticFeature = data.representative_location || data.remodeling || data.short_description.split(/[,.]/u)[0];
+  const locationTitle = data.region.display || data.address;
+  const storedFeatures = normalizeBlogList(
+    data.representative_location,
+    data.remodeling,
+    data.raw.badges,
+    data.raw.structure
+  ).filter((value) => !locationTitle.includes(value));
+  const automaticFeature = storedFeatures.slice(0, 3).join(' ');
   const automaticTitle = data.is_sale
-    ? `${locationTitle} ${data.property_type} 매매｜${data.sale_price ? `매매가 ${moneyText(data.sale_price)}` : '가격 확인'}`
+    ? [`${locationTitle} ${data.property_type} 매매`, data.sale_price ? `매매가 ${moneyText(data.sale_price)}` : ''].filter(Boolean).join('｜')
     : [
-        `${locationTitle} ${data.property_type} ${data.trade_type}｜${rentalTitlePrice || '가격 확인'}`,
+        [`${locationTitle} ${data.property_type} ${data.trade_type}`, rentalTitlePrice].filter(Boolean).join('｜'),
         automaticFeature
       ].filter(Boolean).join(' ');
-  const title = data.title || automaticTitle;
+  const title = automaticTitle.replace(/\s+/gu, ' ').trim().slice(0, 90);
   const priceText = data.is_sale
-    ? (data.sale_price ? `매매가 ${moneyText(data.sale_price)}` : '매매가 계약 전 확인')
+    ? (data.sale_price ? `매매가 ${moneyText(data.sale_price)}` : '')
     : [
         data.deposit ? `보증금 ${moneyText(data.deposit)}` : '',
         data.monthly_rent ? `월세 ${moneyText(data.monthly_rent)}` : ''
-      ].filter(Boolean).join(' / ') || '가격 계약 전 확인';
+      ].filter(Boolean).join(' / ');
   const directionText = [data.direction, data.direction_basis ? `(${data.direction_basis})` : ''].join('');
   const floorText = [data.floor, data.total_floors].filter(Boolean).join(' / ');
-  const infoLine = (icon, label, value) => `${icon} ${label}: ${value || '계약 전 확인'}`;
-  const legalLine = (label, value) => `- ${label}: ${value || '계약 전 확인'}`;
+  const infoLine = (icon, label, value) => value ? `${icon} ${label}: ${value}` : '';
+  const legalLine = (label, value) => value ? `- ${label}: ${value}` : '';
   const section = (heading, lines) => [
     '━━━━━━━━━━━━━━━━━━', heading, '━━━━━━━━━━━━━━━━━━', '', ...lines.filter(Boolean)
   ];
@@ -8961,8 +9043,8 @@ function buildNaverBlogAd(property) {
   const introduction = data.is_sale
     ? [`${locationTitle}에 위치한 ${data.property_type} 매매 매물입니다.`, `${priceText} 조건입니다.`]
     : [
-        `${locationTitle}에 위치한 ${data.property_type} ${data.trade_type} 매물입니다.`,
-        `${priceText} 조건이며 ${data.room_bath ? `방/욕실 ${data.room_bath}` : '구조는 계약 전 확인'}${data.exclusive_area ? `, 전용면적 ${data.exclusive_area}` : ''}입니다.`
+        `${locationTitle} ${data.property_type} ${data.trade_type}을 찾는 분께 추천하는 매물입니다.`,
+        [automaticFeature, `${priceText}${data.maintenance_fee ? ` / 관리비 ${data.maintenance_fee}` : ''}`, data.move_in_date].filter(Boolean).join('\n')
       ];
   const structureLines = [
     data.detailed_description,
@@ -8979,19 +9061,19 @@ function buildNaverBlogAd(property) {
         data.net_income ? `월순수익: ${moneyText(data.net_income)}` : ''
       ]
     : [
-        `관리비: ${data.maintenance_fee || '계약 전 확인'}`,
+        data.maintenance_fee ? `관리비: ${data.maintenance_fee}` : '',
         data.maintenance_includes.length ? `관리비 포함 항목: ${data.maintenance_includes.join(', ')}` : '',
-        `총주차대수: ${data.parking_total || '계약 전 확인'}`,
-        `입주가능일: ${data.move_in_date || '계약 전 확인'}`
+        data.parking_total ? `총주차대수: ${data.parking_total}` : '',
+        data.move_in_date ? `입주가능일: ${data.move_in_date}` : ''
       ];
-  const photoCount = Math.max(data.photos.length, data.photo_captions.length);
+  const photoCount = data.photos.length;
   const photoLines = photoCount
     ? Array.from({ length: photoCount }, (_, index) =>
         `📷 ${index + 1}번 사진 — ${data.photo_captions[index] || '매물 내부 모습'}`
       )
     : ['등록된 사진이 없습니다.'];
   const recommendedLines = [
-    data.recommended_for || `${locationTitle}에서 ${data.property_type}을 찾는 분께 추천드립니다.`
+    data.recommended_for || `${locationTitle} ${data.property_type} ${data.trade_type}을 찾는 분께 추천드립니다.`
   ];
   const legalNoticeExtra = data.legal_notice
     .split(/\n|(?<=[.!?])\s+/u)
@@ -9035,7 +9117,7 @@ function buildNaverBlogAd(property) {
     '구미 원룸·미니투룸·투룸 임대와 상가·다가구·원룸건물 매매를 전문으로 안내하는 칸공인중개사입니다.',
     '', ...introduction, '',
     ...section(`🏠 ${locationTitle} ${data.property_type} ${data.trade_type} 기본정보`, basicInfo), '',
-    ...section('📍 위치와 생활권', [data.location_description || '정확한 위치와 생활권은 상담 시 안내드립니다.']), '',
+    ...section('📍 위치와 생활권', [data.address, data.location_description]), '',
     ...section(data.is_sale ? '🏢 건물 구성과 상태' : '🛋️ 구조와 옵션', structureLines), '',
     ...section(data.is_sale ? '💹 매매·수익 조건' : '💳 관리비·주차·입주 조건', conditionLines), '',
     ...section(`📷 ${locationTitle} ${data.property_type} ${data.trade_type} 내부사진`, photoLines), '',
@@ -9065,15 +9147,32 @@ function buildNaverBlogAd(property) {
   ];
   const body = cleanBlogBodyStart(bodyLines.join('\n'));
   const makeTag = (value) => String(value || '').replace(/[#\s]/gu, '').replace(/[^0-9A-Za-z가-힣_]/gu, '');
+  const admin = data.region.short_admin;
+  const town = data.region.town;
+  const neighborhood = data.region.neighborhood;
+  const place = town || neighborhood;
   const tags = [...new Set([
-    '구미부동산', '칸공인중개사', data.dong ? `구미${data.dong}` : '',
-    data.property_type ? `구미${data.property_type}` : '',
-    data.dong && data.property_type ? `${data.dong}${data.property_type}` : '',
-    data.trade_type.includes('월세') ? '구미월세' : '',
-    `${data.property_type}${data.trade_type}`
-  ].map(makeTag).filter(Boolean))].map((tag) => `#${tag}`).join(' ');
+    admin && `${admin}부동산`,
+    town && `${town}부동산`,
+    town && neighborhood && `${town}${neighborhood}`,
+    neighborhood && `${neighborhood}부동산`,
+    admin && data.property_type && `${admin}${data.property_type}`,
+    place && data.property_type && `${place}${data.property_type}`,
+    neighborhood && data.property_type && `${neighborhood}${data.property_type}`,
+    admin && data.trade_type && `${admin}${data.trade_type}`,
+    place && data.trade_type && `${place}${data.trade_type}`,
+    data.property_type && data.trade_type && `${data.property_type}${data.trade_type}`,
+    ...storedFeatures.map((feature) => `${feature}${data.property_type}`),
+    ...data.options.slice(0, 3).map((option) => `${option}${data.property_type}`),
+    '칸공인중개사',
+    '부동산매물',
+    data.is_sale ? '수익형부동산' : '원룸월세정보'
+  ].map(makeTag).filter(Boolean))].slice(0, 18).map((tag) => `#${tag}`).join(' ');
   const warnings = validateNaverBlogAd({ body, normalized: data });
-  return { title, body, tags, warnings, normalized: data };
+  const missingFields = warnings
+    .filter((warning) => warning.startsWith('게시 전 확인 필요:'))
+    .flatMap((warning) => warning.replace('게시 전 확인 필요:', '').split(',').map((item) => item.trim()).filter(Boolean));
+  return { title, body, tags, warnings, missingFields, photoCount, normalized: data };
 }
 
 async function copyAdvertisementText(text) {
