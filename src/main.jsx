@@ -8833,16 +8833,19 @@ function normalizeBlogProperty(property = {}) {
   const floorSource = clean(property.floor_info || property.floorInfo);
   const floorParts = floorSource.split('/').map(clean).filter(Boolean);
   const narrative = [property.description, property.legal_notice].map(clean).join(' ');
+  const buildingFloorMatch = narrative.match(/(\d+)\s*층\s*건물(?:의|\s+)(\d+)\s*층/u);
   let floor = clean(
     property.current_floor || property.currentFloor ||
     floorParts.find((part) => !/(총|지상|지하)/u.test(part)) ||
-    narrative.match(/해당\s*층\s*:?\s*(\d+\s*층)/u)?.[1]
+    narrative.match(/해당\s*층\s*:?\s*(\d+\s*층)/u)?.[1] ||
+    (buildingFloorMatch?.[2] ? `${buildingFloorMatch[2]}층` : '')
   );
   if (/^\d+$/u.test(floor)) floor = `${floor}층`;
   let totalFloors = clean(
     property.total_floor_info || property.totalFloors ||
     floorParts.find((part) => /(총|지상)/u.test(part)) ||
-    (floorParts.length > 1 ? floorParts[1] : '') || property.floor_count
+    (floorParts.length > 1 ? floorParts[1] : '') || property.floor_count ||
+    (buildingFloorMatch?.[1] ? `${buildingFloorMatch[1]}층` : '')
   );
   if (/^\d+$/u.test(totalFloors)) totalFloors = `${totalFloors}층`;
   totalFloors = totalFloors.replace(/^지상\s*/u, '');
@@ -8997,11 +9000,23 @@ function buildNaverBlogAd(property) {
   const titleMoney = (value) => moneyText(value).replace(/만원$/u, '');
   const rentalTitlePrice = [titleMoney(data.deposit), titleMoney(data.monthly_rent)].filter(Boolean).join('/');
   const locationTitle = data.region.display || data.address;
-  const storedFeatures = normalizeBlogList(
-    data.representative_location,
-    data.remodeling,
+  const featureCorpus = normalizeBlogList(
+    data.short_description,
+    data.detailed_description,
+    data.location_description,
+    data.recommended_for,
     data.raw.badges,
-    data.raw.structure
+    data.remodeling
+  ).join(' ');
+  const locationFeature = data.representative_location.includes('국가3산단')
+    ? `국가3산단 ${data.representative_location.includes('인근') ? '인근' : '출퇴근'}`
+    : data.representative_location.split(/[,.]/u)[0].slice(0, 24);
+  const storedFeatures = normalizeBlogList(
+    locationFeature,
+    /리모델링/u.test(featureCorpus) ? '리모델링' : '',
+    /풀옵션/u.test(featureCorpus) ? '풀옵션' : '',
+    /(?:거실.?침실\s*분리|분리형)/u.test(featureCorpus) ? '거실·침실 분리형' : '',
+    /즉시\s*입주/u.test(featureCorpus) ? '즉시입주' : ''
   ).filter((value) => !locationTitle.includes(value));
   const automaticFeature = storedFeatures.slice(0, 3).join(' ');
   const automaticTitle = data.is_sale
