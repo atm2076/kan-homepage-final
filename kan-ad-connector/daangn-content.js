@@ -539,6 +539,7 @@ if (
 
 function createAdTitle(property) {
 const title = getValue(property, [
+"daangn_title",
 "title",
 "property_title",
 "propertyTitle",
@@ -588,6 +589,21 @@ return [
 }
 
 function createAdBody(property) {
+const preparedBody = getValue(property, [
+  "daangn_body",
+  "adDescription"
+]);
+const homepageUrl = getValue(property, [
+  "homepage_url",
+  "homepageUrl",
+  "detail_url",
+  "detailUrl"
+]);
+
+if (preparedBody) {
+  return preparedBody + (homepageUrl ? "\n\n홈페이지 매물 상세보기: " + homepageUrl : "");
+}
+
 const title = createAdTitle(property);
 
 const address = getValue(property, [
@@ -1084,6 +1100,182 @@ return result;
 
 }
 
+const photoFileCache = new Map();
+let autoFillTimer = null;
+let autoFillAttempt = 0;
+
+function getPhotoUrls(property) {
+  const values = Array.isArray(property && property.photos)
+    ? property.photos
+    : cleanText(property && property.photos).split(/\n|,/);
+
+  return Array.from(new Set(values
+    .map(cleanText)
+    .filter(function (url) {
+      return /^https?:\/\//i.test(url);
+    })));
+}
+
+function getPhotoExtension(type, url) {
+  const normalized = cleanText(type).toLowerCase();
+  if (normalized.includes("png")) return "png";
+  if (normalized.includes("webp")) return "webp";
+  if (normalized.includes("gif")) return "gif";
+  const match = cleanText(url).match(/\.(jpe?g|png|webp|gif)(?:[?#]|$)/i);
+  return match ? match[1].toLowerCase().replace("jpeg", "jpg") : "jpg";
+}
+
+async function photoUrlToFile(url, index, property) {
+  if (photoFileCache.has(url)) return photoFileCache.get(url);
+
+  const promise = fetch(url, {
+    credentials: "omit",
+    cache: "no-store"
+  }).then(function (response) {
+    if (!response.ok) throw new Error("사진 불러오기 실패 (" + response.status + ")");
+    return response.blob();
+  }).then(function (blob) {
+    if (!blob.type || !blob.type.startsWith("image/")) {
+      throw new Error("이미지 파일이 아닙니다.");
+    }
+    const listingNumber = getValue(property, ["listing_number", "listingNumber"]) || "PROPERTY";
+    const extension = getPhotoExtension(blob.type, url);
+    return new File(
+      [blob],
+      "K" + listingNumber + "_DAANGN_" + String(index + 1).padStart(2, "0") + "." + extension,
+      { type: blob.type, lastModified: Date.now() }
+    );
+  });
+
+  photoFileCache.set(url, promise);
+  return promise;
+}
+
+function findPhotoInput() {
+  const inputs = Array.from(document.querySelectorAll("input[type='file']"));
+  let best = null;
+  let bestScore = -1;
+
+  inputs.forEach(function (input) {
+    if (input.disabled) return;
+    const accept = normalizeText(input.getAttribute("accept"));
+    const context = normalizeText([
+      getDirectText(input),
+      getLabelText(input),
+      input.parentElement && (input.parentElement.innerText || input.parentElement.textContent)
+    ].filter(Boolean).join(" "));
+    let score = 0;
+    if (accept.includes("image") || accept.includes(".jpg") || accept.includes(".png")) score += 100;
+    if (input.multiple) score += 50;
+    if (includesAny(context, ["사진", "이미지", "photo", "image", "업로드", "첨부"])) score += 80;
+    if (score > bestScore) {
+      best = input;
+      bestScore = score;
+    }
+  });
+
+  return best;
+}
+
+async function attachPropertyPhotos(property) {
+  const urls = getPhotoUrls(property);
+  if (!urls.length) return { attached: 0, failed: 0, missingInput: false };
+
+  const input = findPhotoInput();
+  if (!input) return { attached: 0, failed: 0, missingInput: true };
+
+  const signature = urls.join("|");
+  if (input.dataset.kanDaangnPhotoSignature === signature && input.files && input.files.length === urls.length) {
+    return { attached: input.files.length, failed: 0, missingInput: false };
+  }
+
+  const results = await Promise.allSettled(urls.map(function (url, index) {
+    return photoUrlToFile(url, index, property);
+  }));
+  const files = results
+    .filter(function (result) { return result.status === "fulfilled"; })
+    .map(function (result) { return result.value; });
+
+  if (!files.length) {
+    return { attached: 0, failed: results.length, missingInput: false };
+  }
+
+  const transfer = new DataTransfer();
+  files.forEach(function (file) { transfer.items.add(file); });
+  input.files = transfer.files;
+  input.dataset.kanDaangnPhotoSignature = signature;
+  input.dispatchEvent(new Event("input", { bubbles: true }));
+  input.dispatchEvent(new Event("change", { bubbles: true }));
+
+  return {
+    attached: files.length,
+    failed: results.length - files.length,
+    missingInput: false
+  };
+}
+
+function clickButtonByText(text) {
+  const normalizedTarget = normalizeText(text);
+  const candidates = Array.from(document.querySelectorAll("button, [role='button']"));
+  const button = candidates.find(function (candidate) {
+    const text = normalizeText(candidate.innerText || candidate.textContent);
+    return isVisible(candidate) && (text === normalizedTarget || text.includes(normalizedTarget));
+  });
+  if (!button) return false;
+  button.click();
+  return true;
+}
+
+function advanceToAdvertisementForm() {
+  if (document.querySelector("input[type='file'], textarea, [contenteditable='true']")) return false;
+  const pageText = normalizeText(document.body.innerText || document.body.textContent);
+
+  if (pageText.includes("광고할 내용을 선택")) {
+    if (clickButtonByText("새 소식 작성")) return true;
+    if (clickButtonByText("새로 만들기")) return true;
+  }
+  return false;
+}
+
+async function runCompleteAutoFill(job, status) {
+  const property = job && job.property;
+  if (!property) return;
+
+  try {
+    if (advanceToAdvertisementForm()) {
+      if (status) status.textContent = "당근 실제 작성 입력칸을 여는 중입니다.";
+      return;
+    }
+
+    const firstResult = autoFillProperty(property);
+    await new Promise(function (resolve) { window.setTimeout(resolve, 700); });
+    const secondResult = autoFillProperty(property);
+    const photoResult = await attachPropertyPhotos(property);
+    const filled = Array.from(new Set(firstResult.filled.concat(secondResult.filled)));
+    const expectedPhotos = getPhotoUrls(property).length;
+
+    if (status) {
+      if (photoResult.missingInput) {
+        status.textContent = "제목·내용·링크 " + filled.length + "개 입력. 사진 업로드 영역을 찾는 중입니다 (" + expectedPhotos + "장 대기).";
+      } else {
+        status.textContent = "자동입력 완료: 제목·내용·링크 " + filled.length + "개, 사진 " + photoResult.attached + "/" + expectedPhotos + "장 첨부" + (photoResult.failed ? " (실패 " + photoResult.failed + "장)" : "") + ". 최종 게시 전 내용만 확인하세요.";
+      }
+    }
+  } catch (error) {
+    if (status) status.textContent = "자동입력 실패: " + (error && error.message ? error.message : "알 수 없는 오류");
+  }
+}
+
+function scheduleCompleteAutoFill(job, status) {
+  if (!job || !job.property) return;
+  window.clearTimeout(autoFillTimer);
+  autoFillTimer = window.setTimeout(async function () {
+    await runCompleteAutoFill(job, status);
+    autoFillAttempt += 1;
+    if (autoFillAttempt < 60) scheduleCompleteAutoFill(job, status);
+  }, autoFillAttempt === 0 ? 250 : 1000);
+}
+
 function addStyles() {
 if (document.getElementById(STYLE_ID)) {
 return;
@@ -1193,11 +1385,11 @@ panel.innerHTML =
   "</p>" +
   "<button type='button' " +
   "id='kanDaangnFillButton'>" +
-  "현재 화면 자동입력" +
+  "자동등록 다시 실행" +
   "</button>" +
   "<p class='kan-status' " +
   "id='kanDaangnFillStatus'>" +
-  "입력칸이 보이는 화면에서 버튼을 눌러주세요." +
+  "사진 URL을 불러와 제목·내용·링크·사진을 자동입력하고 있습니다." +
   "</p>";
 
 const button = document.getElementById(
@@ -1208,57 +1400,14 @@ const status = document.getElementById(
   "kanDaangnFillStatus"
 );
 
-button.addEventListener(
-  "click",
-  function () {
-    status.textContent =
-      "자동입력 실행 중입니다. 거래유형 선택 후 나머지 항목을 다시 확인합니다.";
+button.addEventListener("click", function () {
+  autoFillAttempt = 0;
+  status.textContent = "자동등록을 다시 실행하고 있습니다.";
+  scheduleCompleteAutoFill(job, status);
+});
 
-    const firstResult =
-      autoFillProperty(property);
-
-    setTimeout(function () {
-      const secondResult =
-        autoFillProperty(property);
-
-      const filled = Array.from(
-        new Set(
-          firstResult.filled.concat(
-            secondResult.filled
-          )
-        )
-      );
-
-      const missing = Array.from(
-        new Set(
-          firstResult.missing.concat(
-            secondResult.missing
-          )
-        )
-      ).filter(function (name) {
-        return filled.indexOf(name) === -1;
-      });
-
-      if (filled.length > 0) {
-        status.textContent =
-          "자동입력 " +
-          filled.length +
-          "개: " +
-          filled.join(", ") +
-          (
-            missing.length > 0
-              ? " / 현재 화면에서 못 찾음: " +
-                missing.join(", ")
-              : ""
-          ) +
-          ". 내용을 확인해 주세요.";
-      } else {
-        status.textContent =
-          "현재 화면에서 입력 가능한 항목을 찾지 못했습니다. 입력칸이 보이는 단계에서 다시 눌러주세요.";
-      }
-    }, 900);
-  }
-);
+autoFillAttempt = 0;
+scheduleCompleteAutoFill(job, status);
 
 }
 
@@ -1290,6 +1439,17 @@ null;
 }
 
 );
+
+const pageObserver = new MutationObserver(function () {
+  if (currentJob && !document.getElementById(PANEL_ID)) {
+    renderPanel(currentJob);
+  }
+});
+
+pageObserver.observe(document.documentElement, {
+  childList: true,
+  subtree: true
+});
 
 if (document.readyState === "loading") {
 document.addEventListener(

@@ -345,14 +345,11 @@
 
     box.innerHTML =
       "<strong>당근 한 번에 보내기</strong>" +
-      "<p>홈페이지 매물자료를 당근 간편입력 문구와 엑셀용 CSV로 만듭니다.</p>" +
+      "<p>선택 매물의 원본 사진 URL과 제목·내용·상세주소를 당근 실제 광고 작성 화면에 자동입력합니다.</p>" +
       "<div class='kan-button-row'>" +
-      "<button type='button' data-action='quick'>간편입력 복사 + 당근 열기</button>" +
-      "<button type='button' class='secondary' data-action='csv'>당근 엑셀 CSV 다운로드</button>" +
-      "<button type='button' class='light' data-action='photo'>사진 URL 복사</button>" +
-      "<button type='button' class='secondary' data-action='open'>기존 자동입력 화면 열기</button>" +
+      "<button type='button' data-action='quick'>당근에 바로 등록하기</button>" +
       "</div>" +
-      "<div class='status'>1번 버튼부터 누르세요. 문구가 복사되고 당근이 열립니다.</div>";
+      "<div class='status'>한 번 누르면 당근 작성 화면이 열리고 사진·제목·내용·링크가 자동입력됩니다.</div>";
 
     var parent = daangnButton.parentElement;
 
@@ -361,9 +358,6 @@
 
     var status = box.querySelector(".status");
     var quickButton = box.querySelector("[data-action='quick']");
-    var csvButton = box.querySelector("[data-action='csv']");
-    var photoButton = box.querySelector("[data-action='photo']");
-    var openButton = box.querySelector("[data-action='open']");
 
     quickButton.addEventListener("click", async function () {
       var property = getProperty();
@@ -373,51 +367,8 @@
         return;
       }
 
-      var copied = await copyText(buildQuickInput(property));
-
-      if (!copied) {
-        status.textContent = "간편입력 문구 복사 실패. 클립보드 권한을 확인하세요.";
-        return;
-      }
-
-      status.textContent = "간편입력 문구 복사 완료. 당근 화면을 엽니다.";
+      status.textContent = "당근 실제 광고 작성 화면에 사진·제목·내용·링크를 전송합니다.";
       openDaangn(status, quickButton);
-    });
-
-    csvButton.addEventListener("click", function () {
-      var property = getProperty();
-
-      if (!property) {
-        status.textContent = "매물 정보가 없습니다. 광고관리 탭에서 매물을 다시 선택해주세요.";
-        return;
-      }
-
-      downloadFile(
-        safeName(property.title || property.address) + "_당근등록.csv",
-        buildCsv(property)
-      );
-
-      status.textContent = "당근 엑셀용 CSV 파일을 만들었습니다. 당근 엑셀 매물 등록에서 첨부하세요.";
-    });
-
-    photoButton.addEventListener("click", async function () {
-      var property = getProperty();
-      var photos = property ? list(property.photos) : [];
-
-      if (!photos.length) {
-        status.textContent = "등록된 사진 URL이 없습니다. 홈페이지 사진등록부터 확인하세요.";
-        return;
-      }
-
-      var copied = await copyText(photos.join("\n"));
-
-      status.textContent = copied
-        ? "사진 URL " + photos.length + "개 복사 완료. 사진 파일 업로드는 당근 화면에서 직접 선택해야 합니다."
-        : "사진 URL 복사 실패.";
-    });
-
-    openButton.addEventListener("click", function () {
-      openDaangn(status, openButton);
     });
   }
 

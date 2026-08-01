@@ -4926,8 +4926,6 @@ setStaffProperties(data || []);
     setLatestForm((prev) => ({ ...prev, ...parsed }));
     setStatus(`일괄입력 ${Object.keys(parsed).length}개 항목을 자동 채웠습니다. 사진 확인 후 저장을 누르세요.`);
   }
-// 당근 업로드용 CSV 다운로드 함수
-// 당근 원본 양식 맞춤 CSV 다운로드 함수
 async function handleDaangnExcelDownload(selectedOverride = null) {
   const selectedProperty = selectedOverride?.id
     ? selectedOverride
@@ -4941,294 +4939,32 @@ async function handleDaangnExcelDownload(selectedOverride = null) {
   }
 
   try {
-  setDaangnPreparationResult({
-    status: 'preparing',
-    property: selectedProperty,
-    title: selectedProperty.title || '선택 매물',
-    message: '당근 게시자료를 준비하고 있습니다.'
-  });
-  const payload = selectedProperty;
+    setDaangnPreparationResult({
+      status: 'preparing',
+      property: selectedProperty,
+      title: selectedProperty.title || '선택 매물',
+      message: '당근 실제 광고 작성 화면으로 매물자료를 전송하고 있습니다.'
+    });
+    setAdvertisingPropertyId(selectedProperty.id);
+    setAdminDetailProperty(selectedProperty);
+    setAdminDetailTab('ad');
 
-  const clean = (value) => {
-    if (value === null || value === undefined) return '';
-    return String(value)
-      .replace(/\r?\n+/g, ' / ')
-      .replace(/\s+/g, ' ')
-      .trim();
-  };
-
-  const toManwon = (value) => {
-    const text = clean(value).replaceAll(',', '');
-    if (!text) return '';
-
-    const eokMatch = text.match(/(\d+(?:\.\d+)?)\s*억/);
-    const manMatch = text.match(/(\d+(?:\.\d+)?)\s*만/);
-
-    if (eokMatch) {
-      const eok = Number(eokMatch[1]) * 10000;
-      const man = manMatch ? Number(manMatch[1]) : 0;
-      return String(Math.round(eok + man));
-    }
-
-    const numberMatch = text.match(/\d+(?:\.\d+)?/);
-    return numberMatch ? numberMatch[0] : '';
-  };
-
-  const getRoomBath = () => {
-    const text = clean(payload.room_bath || form.room_bath);
-    const match =
-      text.match(/방\s*(\d+).*욕실\s*(\d+)/) ||
-      text.match(/(\d+)\s*\/\s*(\d+)/);
-
-    return {
-      room: match ? match[1] : '1',
-      bath: match ? match[2] : '1'
-    };
-  };
-
-  const getFloor = () => {
-    const floorText = clean(payload.floor_info || form.floor_info);
-    const totalText = clean(payload.total_floor_info || form.total_floor_info);
-
-    const floorMatch = floorText.match(/(\d+)\s*층/);
-    const totalMatch =
-      floorText.match(/총\s*(\d+)\s*층/) ||
-      totalText.match(/지상\s*(\d+)\s*층/) ||
-      totalText.match(/총\s*(\d+)\s*층/);
-
-    return {
-      floor: floorMatch ? floorMatch[1] : '',
-      totalFloor: totalMatch ? totalMatch[1] : ''
-    };
-  };
-
-  const getYear = () => {
-    const text = clean(payload.approval_date || form.approval_date);
-    const match = text.match(/(19|20)\d{2}/);
-    return match ? match[0] : '';
-  };
-
-  const getMaintenanceType = () => {
-    const text = clean(payload.maintenance_fee || form.maintenance_fee);
-
-    if (!text) return '확인 필요';
-    if (text.includes('없음')) return '관리비 없음';
-    return '정액 관리비';
-  };
-
-  const getMaintenanceItems = () => {
-    const direct = clean(payload.maintenance_includes || form.maintenance_includes || maintenanceItemsText);
-    if (direct) return direct;
-
-    const text = clean(payload.maintenance_fee || form.maintenance_fee);
-    const match = text.match(/포함 항목:\s*([^)]+)/);
-    if (match) return clean(match[1]);
-
-    return '';
-  };
-
-  const getParking = () => {
-    const text = clean(payload.parking || form.parking);
-
-    if (text.includes('불가')) return '불가능';
-    if (text.includes('가능') || text.includes('대')) return '가능';
-    return '확인 필요';
-  };
-
-  const getDirection = () => {
-    const text = clean(payload.direction || form.direction)
-      .replace('/ 주출입구 기준', '')
-      .replace('주출입구 기준', '')
-      .trim();
-
-    return text || '주출입구';
-  };
-
-  const getOptions = () => {
-    const convenience = Array.isArray(payload.convenience)
-      ? payload.convenience
-      : linesToArray(form.convenienceText);
-
-    return convenience
-      .map((item) => clean(item).replace(/^난방:\s*/, ''))
-      .filter(Boolean)
-      .join(', ');
-  };
-
-  const getPropertyType = () => {
-    const text = clean(payload.category || form.category || '');
-
-    if (text.includes('미니투룸')) return '미니투룸';
-    if (text.includes('투룸')) return '투룸';
-    if (text.includes('상가')) return '상가';
-    if (text.includes('토지')) return '토지';
-    if (text.includes('다가구') || text.includes('원룸건물')) return '다가구';
-    if (text.includes('아파트')) return '아파트';
-    return '원룸';
-  };
-
-  const getTradeType = () => {
-    const text = clean(payload.trade_type || form.trade_type || '');
-
-    if (text.includes('매매')) return '매매';
-    if (text.includes('전세')) return '전세';
-    if (text.includes('단기')) return '단기';
-    return '월세';
-  };
-
-  const roomBath = getRoomBath();
-  const floor = getFloor();
-  const tradeType = getTradeType();
-
-  const priceValue =
-    tradeType === '매매'
-      ? toManwon(payload.sale_price || form.sale_price)
-      : toManwon(payload.deposit || form.deposit);
-
-  const monthlyRentValue =
-    tradeType === '월세' || tradeType === '단기'
-      ? toManwon(payload.rent || form.rent)
-      : '';
-
-  const description = [
-    payload.title || form.title,
-    payload.summary || form.summary,
-    payload.description || form.description,
-    payload.location_description || form.location_description,
-    payload.recommended_for || form.recommended_for,
-    payload.investment_point || form.investment_point,
-    payload.risk_note || form.risk_note
-  ]
-    .map(clean)
-    .filter(Boolean)
-    .join(' / ');
-
-  const headers = [
-    '매물유형',
-    '거래유형',
-    '보증금/매매가(만원)',
-    '월세(만원)',
-    '주소',
-    '상세주소',
-    '면적(㎡)',
-    '방 수',
-    '욕실 수',
-    '층',
-    '총 층',
-    '향',
-    '입주가능일',
-    '관리비 유형',
-    '총 관리비(만원)',
-    '관리비 포함항목',
-    '관리비 기준',
-    '관리비 실비근거',
-    '관리비 확인일자 사유',
-    '주차',
-    '반려동물',
-    '대출',
-    '옵션',
-    '건축년도',
-    '매물 설명',
-    '메모',
-    '토지 지목',
-    '용도지역',
-    '권리금(만원)',
-    '건물용도'
-  ];
-
-  const rowData = [
-    getPropertyType(),
-    tradeType,
-    priceValue,
-    monthlyRentValue,
-    clean(payload.address || form.address),
-    clean(payload.real_unit || form.real_unit || quickUnit),
-    toManwon(payload.area || form.area),
-    roomBath.room,
-    roomBath.bath,
-    floor.floor,
-    floor.totalFloor,
-    getDirection(),
-    clean(payload.move_in || form.move_in) || '즉시입주',
-    getMaintenanceType(),
-    toManwon(payload.maintenance_fee || form.maintenance_fee),
-    getMaintenanceItems(),
-    '직접 월 기재',
-    '세대별 사용량 또는 계약 내용 기준',
-    '확인 필요',
-    getParking(),
-    '확인 필요',
-    '확인 필요',
-    getOptions(),
-    getYear(),
-    description,
-    clean(payload.private_memo || form.private_memo),
-    clean(payload.land_category || form.land_category),
-    clean(payload.zoning || form.zoning),
-    toManwon(payload.premium || form.premium),
-    clean(payload.main_use || form.main_use)
-  ];
-
-  const escapeCSV = (value) => {
-    const text = clean(value);
-
-    if (text.includes(',') || text.includes('"')) {
-      return `"${text.replace(/"/g, '""')}"`;
-    }
-
-    return text;
-  };
-
-  const csvContent =
-    '\uFEFF' +
-    headers.map(escapeCSV).join(',') +
-    '\n' +
-    rowData.map(escapeCSV).join(',');
-
-  const today = new Date();
-  const yyyy = today.getFullYear();
-  const mm = String(today.getMonth() + 1).padStart(2, '0');
-  const dd = String(today.getDate()).padStart(2, '0');
-  const filename = `daangn-property-${yyyy}${mm}${dd}.csv`;
-
-  const blob = new Blob([csvContent], {
-    type: 'text/csv;charset=utf-8;'
-  });
-
-  const link = document.createElement('a');
-  const url = URL.createObjectURL(blob);
-
-  link.href = url;
-  link.download = filename;
-  link.style.display = 'none';
-
-  document.body.appendChild(link);
-  link.click();
-  document.body.removeChild(link);
-
-  URL.revokeObjectURL(url);
-
-  setAdvertisingPropertyId(selectedProperty.id);
-  setAdminDetailProperty(selectedProperty);
-  setAdminDetailTab('ad');
-
-  const result = await prepareDaangnPosting(selectedProperty, setStatus);
-  const warnings = [
-    !result.copied ? '클립보드 권한이 차단되어 문구를 자동 복사하지 못했습니다.' : '',
-    !result.popupOpened && !result.connectorConnected ? '팝업이 차단되어 당근 화면을 자동으로 열지 못했습니다.' : '',
-    result.failedPhotoCount ? `사진 ${result.failedPhotoCount}장은 준비하지 못했습니다.` : ''
-  ].filter(Boolean);
-  const message = warnings.length
-    ? `당근 게시자료 준비 완료. ${warnings.join(' ')}`
-    : '당근 게시자료 준비 완료';
-  setDaangnPreparationResult({
-    ...result,
-    status: warnings.length ? 'warning' : 'complete',
-    property: selectedProperty,
-    message,
-    warnings
-  });
-  setStatus(message);
+    const result = await prepareDaangnPosting(selectedProperty, setStatus);
+    const warnings = [
+      !result.copied ? '클립보드 권한이 차단되어 문구를 자동 복사하지 못했습니다.' : '',
+      !result.connectorConnected ? 'kan-ad-connector 확장프로그램을 찾지 못해 자동 사진 첨부를 시작하지 못했습니다.' : ''
+    ].filter(Boolean);
+    const message = warnings.length
+      ? `당근 자동등록 준비 실패. ${warnings.join(' ')}`
+      : `당근 자동등록을 시작했습니다. 원본 사진 URL ${result.photoCount}개와 제목·내용·링크를 전달했습니다.`;
+    setDaangnPreparationResult({
+      ...result,
+      status: warnings.length ? 'warning' : 'complete',
+      property: selectedProperty,
+      message,
+      warnings
+    });
+    setStatus(message);
   } catch (error) {
     console.error('당근 게시자료 준비 실패:', error);
     const reason = error?.message || '알 수 없는 오류';
@@ -5256,28 +4992,6 @@ async function retryDaangnCopy() {
   }));
 }
 
-async function retryDaangnPhotoDownload() {
-  const property = daangnPreparationResult?.property;
-  if (!property) return;
-  try {
-    const photoResult = await prepareDaangnPhotos(property);
-    if (!photoResult.files.length) throw new Error('다운로드할 사진을 준비하지 못했습니다.');
-    const zipFileName = await downloadDaangnPhotoZip(photoResult.files, property);
-    setDaangnPreparationResult((current) => ({
-      ...current,
-      photoCount: photoResult.files.length,
-      totalPhotoCount: photoResult.totalPhotoCount,
-      failedPhotoCount: photoResult.failedPhotoCount,
-      zipFileName,
-      photoRetryMessage: `당근 사진 ZIP 다운로드를 다시 시작했습니다. (${photoResult.files.length}장)`
-    }));
-  } catch (error) {
-    setDaangnPreparationResult((current) => ({
-      ...current,
-      photoRetryMessage: `사진 다운로드 실패: ${error?.message || '알 수 없는 오류'}`
-    }));
-  }
-}
 function compactPublishText(value) {
   return String(value || '').replace(/\s+/g, ' ').trim();
 }
@@ -7060,7 +6774,7 @@ if (isStaffMode && currentStaff?.code) {
       onClick={handleDaangnExcelDownload}
       style={{ backgroundColor: '#FF7E36', color: 'white', padding: '8px 14px', borderRadius: '4px', border: 'none', cursor: 'pointer', fontWeight: 'bold' }}
     >
-      당근
+      당근에 바로 등록하기
     </button>
 
     <button
@@ -7097,7 +6811,7 @@ if (isStaffMode && currentStaff?.code) {
             onClick={handleDaangnExcelDownload}
             style={{ backgroundColor: '#FF7E36', color: 'white', padding: '8px 14px', borderRadius: '4px', border: 'none', cursor: 'pointer', fontWeight: 'bold' }}
           >
-            당근 CSV 다운로드
+            당근에 바로 등록하기
           </button>
         </div>
       )}
@@ -7659,9 +7373,9 @@ if (isStaffMode && currentStaff?.code) {
           <>
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '8px', marginBottom: '10px' }}>
               <div><strong>문구 복사</strong><br />{daangnPreparationResult.copied ? '완료' : '권한 차단 또는 실패'}</div>
-              <div><strong>준비된 사진</strong><br />{daangnPreparationResult.photoCount || 0} / {daangnPreparationResult.totalPhotoCount || 0}장</div>
-              <div><strong>사진 ZIP</strong><br />{daangnPreparationResult.zipFileName || '다운로드 재시도 가능'}</div>
-              <div><strong>확장프로그램</strong><br />{daangnPreparationResult.connectorConnected ? '연결됨' : '미설치·미연결 (수동 방식 사용)'}</div>
+              <div><strong>원본 사진 URL 전달</strong><br />{daangnPreparationResult.photoCount || 0}장</div>
+              <div><strong>파일 저장</strong><br />사용 안 함</div>
+              <div><strong>확장프로그램</strong><br />{daangnPreparationResult.connectorConnected ? '연결됨 · 자동첨부 실행 중' : '미설치·미연결'}</div>
             </div>
             <label style={{ display: 'block', fontWeight: 700, marginBottom: '6px' }} htmlFor="daangn-copy-preview">
               복사된 문구 미리보기
@@ -7681,7 +7395,6 @@ if (isStaffMode && currentStaff?.code) {
             </div>
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', marginTop: '12px' }}>
               <button type="button" onClick={retryDaangnCopy}>문구 다시 복사</button>
-              <button type="button" onClick={retryDaangnPhotoDownload}>사진 ZIP 다시 다운로드</button>
               <button
                 type="button"
                 onClick={() => {
@@ -7691,18 +7404,16 @@ if (isStaffMode && currentStaff?.code) {
               >
                 매물 상세 열기
               </button>
-              <button
-                type="button"
+              <a
                 className="primary-btn"
-                onClick={() => {
-                  const opened = window.open('https://business.daangn.com/', '_blank', 'noopener,noreferrer');
-                  if (!opened) setDaangnPreparationResult((current) => ({ ...current, daangnOpenMessage: '팝업이 차단되었습니다. 이 버튼을 다시 누르거나 브라우저에서 팝업을 허용하세요.' }));
-                }}
+                href="https://ads-lite.business.daangn.com/advertisements/home-feed/business-profile-create/?businessProfileId=2203025"
+                target="_blank"
+                rel="noreferrer"
               >
-                당근 열기
-              </button>
+                당근 광고 작성 화면 열기
+              </a>
             </div>
-            {[daangnPreparationResult.copyRetryMessage, daangnPreparationResult.photoRetryMessage, daangnPreparationResult.linkOpenMessage, daangnPreparationResult.daangnOpenMessage]
+            {[daangnPreparationResult.copyRetryMessage, daangnPreparationResult.linkOpenMessage]
               .filter(Boolean)
               .map((message, index) => <p key={`${message}-${index}`} style={{ margin: '8px 0 0', color: '#b45309' }}>{message}</p>)}
           </>
@@ -8028,7 +7739,7 @@ if (isStaffMode && currentStaff?.code) {
                 type="button"
                 onClick={() => handleDaangnExcelDownload(property)}
               >
-                당근
+                당근에 바로 등록하기
               </button>
 
               <SocialPhotoShareButtons
@@ -8404,7 +8115,7 @@ function getPublicAdvertisingProperty(property) {
   return publicProperty;
 }
 
-function requestDaangnConnector(job, timeout = 500) {
+function requestDaangnConnector(job, timeout = 4000) {
   return new Promise((resolve) => {
     const requestId = `kan-daangn-${Date.now()}-${Math.random().toString(36).slice(2)}`;
     let timer;
@@ -8435,63 +8146,11 @@ function requestDaangnConnector(job, timeout = 500) {
   });
 }
 
-function prepareDaangnPhotoFile(url, index, property, timeout = 12000) {
-  return Promise.race([
-    blogPhotoUrlToJpegBlob(url).then((blob) => new File(
-      [blob],
-      `K${getPublicPropertyNumber(property)}_DAANGN_${String(index + 1).padStart(2, '0')}.jpg`,
-      { type: 'image/jpeg', lastModified: Date.now() }
-    )),
-    new Promise((_, reject) => {
-      window.setTimeout(() => reject(new Error(`사진 ${index + 1} 준비 시간이 초과되었습니다.`)), timeout);
-    })
-  ]);
-}
-
-async function prepareDaangnPhotos(property) {
-  const photoUrls = getCleanPropertyPhotos(property);
-  const photoResults = await Promise.allSettled(
-    photoUrls.map((url, index) => prepareDaangnPhotoFile(url, index, property))
-  );
-  const files = photoResults
-    .filter((result) => result.status === 'fulfilled')
-    .map((result) => result.value);
-  return {
-    files,
-    totalPhotoCount: photoUrls.length,
-    failedPhotoCount: photoResults.length - files.length
-  };
-}
-
-function downloadDaangnPhotoZip(files, property) {
-  const zipEntries = files.map((file) => ({
-    name: file.name,
-    bytes: null,
-    file
-  }));
-  return Promise.all(zipEntries.map(async (entry) => ({
-    name: entry.name,
-    bytes: new Uint8Array(await entry.file.arrayBuffer())
-  }))).then((entries) => {
-    const zipBlob = buildStoredZip(entries);
-    const zipUrl = URL.createObjectURL(zipBlob);
-    const anchor = document.createElement('a');
-    const fileName = `K${getPublicPropertyNumber(property)}_당근사진_${files.length}장.zip`;
-    anchor.href = zipUrl;
-    anchor.download = fileName;
-    anchor.style.display = 'none';
-    document.body.appendChild(anchor);
-    anchor.click();
-    document.body.removeChild(anchor);
-    window.setTimeout(() => URL.revokeObjectURL(zipUrl), 2000);
-    return fileName;
-  });
-}
-
 async function prepareDaangnPosting(property, setStatus) {
   if (!property?.id) throw new Error('선택된 매물 정보가 없습니다.');
 
-  const reservedDaangnTab = window.open('https://business.daangn.com/', '_blank');
+  const daangnCreateUrl = 'https://ads-lite.business.daangn.com/advertisements/home-feed/business-profile-create/?businessProfileId=2203025';
+  const reservedDaangnTab = window.open(daangnCreateUrl, '_blank');
   const publicProperty = getPublicAdvertisingProperty(property);
   const detailUrl = `${window.location.origin}/listing/${encodeURIComponent(property.id)}`;
   const daangnAd = buildDaangnAd({ ...publicProperty, homepage_url: detailUrl });
@@ -8513,7 +8172,7 @@ async function prepareDaangnPosting(property, setStatus) {
 
   window.localStorage.setItem('kanAdConnectorProperty', JSON.stringify(connectorProperty));
   window.localStorage.setItem('kanAdConnectorJob', JSON.stringify(job));
-  setStatus('당근 문구와 원본 압축사진을 준비하고 있습니다.');
+  setStatus(`당근 자동등록을 시작합니다. 원본 사진 URL ${photoUrls.length}개를 확장프로그램에 전달 중입니다.`);
 
   const [copied, connectorConnected] = await Promise.all([
     copyAdvertisementText(text),
@@ -8523,33 +8182,14 @@ async function prepareDaangnPosting(property, setStatus) {
   if (connectorConnected) {
     if (reservedDaangnTab && !reservedDaangnTab.closed) reservedDaangnTab.close();
   } else if (!reservedDaangnTab) {
-    window.open('https://business.daangn.com/', '_blank', 'noopener,noreferrer');
-  }
-
-  const photoResult = await prepareDaangnPhotos(property);
-  const photoFiles = photoResult.files;
-
-  let zipFileName = '';
-  if (photoFiles.length) {
-    if (canSharePhotoFiles(photoFiles) && /Android|iPhone|iPad|iPod/i.test(navigator.userAgent)) {
-      try {
-        await navigator.share({ files: photoFiles, title: daangnAd.title, text });
-      } catch (error) {
-        if (error?.name !== 'AbortError') zipFileName = await downloadDaangnPhotoZip(photoFiles, property);
-      }
-    } else {
-      zipFileName = await downloadDaangnPhotoZip(photoFiles, property);
-    }
+    window.open(daangnCreateUrl, '_blank', 'noopener,noreferrer');
   }
 
   return {
     title: daangnAd.title,
     text,
     copied,
-    photoCount: photoFiles.length,
-    totalPhotoCount: photoResult.totalPhotoCount,
-    failedPhotoCount: photoResult.failedPhotoCount,
-    zipFileName,
+    photoCount: photoUrls.length,
     detailUrl,
     connectorConnected,
     popupOpened: Boolean(reservedDaangnTab)

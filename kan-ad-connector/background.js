@@ -6,9 +6,10 @@ const CHANNEL_CONFIG = {
 daangn: {
 label: "당근",
 queryUrls: [
-"https://*.daangn.com/*"
+"https://ads-lite.business.daangn.com/advertisements/home-feed/business-profile-create/*",
+"https://bizprofile.daangn.com/*/posts/*"
 ],
-openUrl: "https://www.daangn.com/"
+openUrl: "https://ads-lite.business.daangn.com/advertisements/home-feed/business-profile-create/?businessProfileId=2203025"
 },
 
 "naver-blog": {
