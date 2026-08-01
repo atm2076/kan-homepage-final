@@ -4427,6 +4427,7 @@ const [buildingLedgerSearching, setBuildingLedgerSearching] = useState(false);
   const [detailFieldsOpen, setDetailFieldsOpen] = useState(false);
   const [quickTitleKeyword, setQuickTitleKeyword] = useState('');
   const [publishTab, setPublishTab] = useState('');
+  const [daangnPreparationResult, setDaangnPreparationResult] = useState(null);
   const latestFormRef = useRef(form);
   const [advertisingPropertyId, setAdvertisingPropertyId] = useState(null);
   const [blogPhotoProgress, setBlogPhotoProgress] = useState({
@@ -4940,6 +4941,12 @@ async function handleDaangnExcelDownload(selectedOverride = null) {
   }
 
   try {
+  setDaangnPreparationResult({
+    status: 'preparing',
+    property: selectedProperty,
+    title: selectedProperty.title || '선택 매물',
+    message: '당근 게시자료를 준비하고 있습니다.'
+  });
   const payload = selectedProperty;
 
   const clean = (value) => {
@@ -5206,17 +5213,69 @@ async function handleDaangnExcelDownload(selectedOverride = null) {
   setAdminDetailTab('ad');
 
   const result = await prepareDaangnPosting(selectedProperty, setStatus);
-  const message = result.photoCount
-    ? `당근 게시자료가 준비되었습니다. 사진 ${result.photoCount}장을 준비했습니다.`
-    : '당근 게시자료가 준비되었습니다. 등록된 사진이 없어 문구와 매물 링크만 준비했습니다.';
+  const warnings = [
+    !result.copied ? '클립보드 권한이 차단되어 문구를 자동 복사하지 못했습니다.' : '',
+    !result.popupOpened && !result.connectorConnected ? '팝업이 차단되어 당근 화면을 자동으로 열지 못했습니다.' : '',
+    result.failedPhotoCount ? `사진 ${result.failedPhotoCount}장은 준비하지 못했습니다.` : ''
+  ].filter(Boolean);
+  const message = warnings.length
+    ? `당근 게시자료 준비 완료. ${warnings.join(' ')}`
+    : '당근 게시자료 준비 완료';
+  setDaangnPreparationResult({
+    ...result,
+    status: warnings.length ? 'warning' : 'complete',
+    property: selectedProperty,
+    message,
+    warnings
+  });
   setStatus(message);
-  window.alert(message);
   } catch (error) {
     console.error('당근 게시자료 준비 실패:', error);
     const reason = error?.message || '알 수 없는 오류';
     const message = `당근 게시자료 준비에 실패했습니다: ${reason}`;
+    setDaangnPreparationResult({
+      status: 'error',
+      property: selectedProperty,
+      title: selectedProperty.title || '선택 매물',
+      message,
+      error: reason
+    });
     setStatus(message);
-    window.alert(message);
+  }
+}
+
+async function retryDaangnCopy() {
+  if (!daangnPreparationResult?.text) return;
+  const copied = await copyAdvertisementText(daangnPreparationResult.text);
+  setDaangnPreparationResult((current) => ({
+    ...current,
+    copied,
+    copyRetryMessage: copied
+      ? '당근 문구를 클립보드에 복사했습니다.'
+      : '클립보드 권한이 차단되었습니다. 아래 미리보기에서 문구를 직접 복사하세요.'
+  }));
+}
+
+async function retryDaangnPhotoDownload() {
+  const property = daangnPreparationResult?.property;
+  if (!property) return;
+  try {
+    const photoResult = await prepareDaangnPhotos(property);
+    if (!photoResult.files.length) throw new Error('다운로드할 사진을 준비하지 못했습니다.');
+    const zipFileName = await downloadDaangnPhotoZip(photoResult.files, property);
+    setDaangnPreparationResult((current) => ({
+      ...current,
+      photoCount: photoResult.files.length,
+      totalPhotoCount: photoResult.totalPhotoCount,
+      failedPhotoCount: photoResult.failedPhotoCount,
+      zipFileName,
+      photoRetryMessage: `당근 사진 ZIP 다운로드를 다시 시작했습니다. (${photoResult.files.length}장)`
+    }));
+  } catch (error) {
+    setDaangnPreparationResult((current) => ({
+      ...current,
+      photoRetryMessage: `사진 다운로드 실패: ${error?.message || '알 수 없는 오류'}`
+    }));
   }
 }
 function compactPublishText(value) {
@@ -7567,6 +7626,89 @@ if (isStaffMode && currentStaff?.code) {
         ? '직원이 임시저장한 검수대기 매물을 확인하고 공개 또는 보류 처리하세요.'
         : '사진을 보고 매물을 확인한 뒤 수정 또는 광고올리기를 누르세요.'}
     </p>
+    {daangnPreparationResult && (
+      <section
+        aria-live="polite"
+        style={{
+          margin: '14px 0',
+          padding: '16px',
+          border: `2px solid ${daangnPreparationResult.status === 'error' ? '#dc2626' : '#ff7e36'}`,
+          borderRadius: '14px',
+          background: daangnPreparationResult.status === 'error' ? '#fff1f2' : '#fff8f2'
+        }}
+      >
+        <div style={{ display: 'flex', justifyContent: 'space-between', gap: '12px', alignItems: 'start' }}>
+          <div>
+            <strong style={{ display: 'block', fontSize: '18px' }}>
+              {daangnPreparationResult.status === 'preparing'
+                ? '당근 게시자료 준비 중'
+                : daangnPreparationResult.status === 'error'
+                  ? '당근 게시자료 준비 실패'
+                  : '당근 게시자료 준비 완료'}
+            </strong>
+            <span style={{ display: 'block', marginTop: '4px', color: '#475569' }}>
+              매물번호 {getPublicPropertyNumber(daangnPreparationResult.property)} · {daangnPreparationResult.title}
+            </span>
+          </div>
+          <button type="button" onClick={() => setDaangnPreparationResult(null)}>닫기</button>
+        </div>
+
+        <p style={{ margin: '12px 0 8px' }}>{daangnPreparationResult.message}</p>
+
+        {daangnPreparationResult.status !== 'preparing' && daangnPreparationResult.text && (
+          <>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '8px', marginBottom: '10px' }}>
+              <div><strong>문구 복사</strong><br />{daangnPreparationResult.copied ? '완료' : '권한 차단 또는 실패'}</div>
+              <div><strong>준비된 사진</strong><br />{daangnPreparationResult.photoCount || 0} / {daangnPreparationResult.totalPhotoCount || 0}장</div>
+              <div><strong>사진 ZIP</strong><br />{daangnPreparationResult.zipFileName || '다운로드 재시도 가능'}</div>
+              <div><strong>확장프로그램</strong><br />{daangnPreparationResult.connectorConnected ? '연결됨' : '미설치·미연결 (수동 방식 사용)'}</div>
+            </div>
+            <label style={{ display: 'block', fontWeight: 700, marginBottom: '6px' }} htmlFor="daangn-copy-preview">
+              복사된 문구 미리보기
+            </label>
+            <textarea
+              id="daangn-copy-preview"
+              readOnly
+              value={daangnPreparationResult.text}
+              rows={9}
+              style={{ width: '100%', resize: 'vertical' }}
+            />
+            <div style={{ marginTop: '8px', overflowWrap: 'anywhere' }}>
+              <strong>매물 링크:</strong>{' '}
+              <a href={daangnPreparationResult.detailUrl} target="_blank" rel="noreferrer">
+                {daangnPreparationResult.detailUrl}
+              </a>
+            </div>
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', marginTop: '12px' }}>
+              <button type="button" onClick={retryDaangnCopy}>문구 다시 복사</button>
+              <button type="button" onClick={retryDaangnPhotoDownload}>사진 ZIP 다시 다운로드</button>
+              <button
+                type="button"
+                onClick={() => {
+                  const opened = window.open(daangnPreparationResult.detailUrl, '_blank', 'noopener,noreferrer');
+                  if (!opened) setDaangnPreparationResult((current) => ({ ...current, linkOpenMessage: '팝업이 차단되었습니다. 위 매물 링크를 직접 누르세요.' }));
+                }}
+              >
+                매물 상세 열기
+              </button>
+              <button
+                type="button"
+                className="primary-btn"
+                onClick={() => {
+                  const opened = window.open('https://business.daangn.com/', '_blank', 'noopener,noreferrer');
+                  if (!opened) setDaangnPreparationResult((current) => ({ ...current, daangnOpenMessage: '팝업이 차단되었습니다. 이 버튼을 다시 누르거나 브라우저에서 팝업을 허용하세요.' }));
+                }}
+              >
+                당근 열기
+              </button>
+            </div>
+            {[daangnPreparationResult.copyRetryMessage, daangnPreparationResult.photoRetryMessage, daangnPreparationResult.linkOpenMessage, daangnPreparationResult.daangnOpenMessage]
+              .filter(Boolean)
+              .map((message, index) => <p key={`${message}-${index}`} style={{ margin: '8px 0 0', color: '#b45309' }}>{message}</p>)}
+          </>
+        )}
+      </section>
+    )}
     <AdminPropertyTabs property={adminDetailProperty} activeTab={adminDetailTab} setActiveTab={setAdminDetailTab} />
 
 {(adminView === 'review'
@@ -8293,27 +8435,68 @@ function requestDaangnConnector(job, timeout = 500) {
   });
 }
 
-function prepareDaangnPhotoFile(url, index, property, timeout = 8000) {
+function prepareDaangnPhotoFile(url, index, property, timeout = 12000) {
   return Promise.race([
-    photoUrlToShareFile(url, index, property),
+    blogPhotoUrlToJpegBlob(url).then((blob) => new File(
+      [blob],
+      `K${getPublicPropertyNumber(property)}_DAANGN_${String(index + 1).padStart(2, '0')}.jpg`,
+      { type: 'image/jpeg', lastModified: Date.now() }
+    )),
     new Promise((_, reject) => {
       window.setTimeout(() => reject(new Error(`사진 ${index + 1} 준비 시간이 초과되었습니다.`)), timeout);
     })
   ]);
 }
 
+async function prepareDaangnPhotos(property) {
+  const photoUrls = getCleanPropertyPhotos(property);
+  const photoResults = await Promise.allSettled(
+    photoUrls.map((url, index) => prepareDaangnPhotoFile(url, index, property))
+  );
+  const files = photoResults
+    .filter((result) => result.status === 'fulfilled')
+    .map((result) => result.value);
+  return {
+    files,
+    totalPhotoCount: photoUrls.length,
+    failedPhotoCount: photoResults.length - files.length
+  };
+}
+
+function downloadDaangnPhotoZip(files, property) {
+  const zipEntries = files.map((file) => ({
+    name: file.name,
+    bytes: null,
+    file
+  }));
+  return Promise.all(zipEntries.map(async (entry) => ({
+    name: entry.name,
+    bytes: new Uint8Array(await entry.file.arrayBuffer())
+  }))).then((entries) => {
+    const zipBlob = buildStoredZip(entries);
+    const zipUrl = URL.createObjectURL(zipBlob);
+    const anchor = document.createElement('a');
+    const fileName = `K${getPublicPropertyNumber(property)}_당근사진_${files.length}장.zip`;
+    anchor.href = zipUrl;
+    anchor.download = fileName;
+    anchor.style.display = 'none';
+    document.body.appendChild(anchor);
+    anchor.click();
+    document.body.removeChild(anchor);
+    window.setTimeout(() => URL.revokeObjectURL(zipUrl), 2000);
+    return fileName;
+  });
+}
+
 async function prepareDaangnPosting(property, setStatus) {
   if (!property?.id) throw new Error('선택된 매물 정보가 없습니다.');
 
-  const reservedDaangnTab = window.open('https://www.daangn.com/', '_blank');
+  const reservedDaangnTab = window.open('https://business.daangn.com/', '_blank');
   const publicProperty = getPublicAdvertisingProperty(property);
   const detailUrl = `${window.location.origin}/listing/${encodeURIComponent(property.id)}`;
   const daangnAd = buildDaangnAd({ ...publicProperty, homepage_url: detailUrl });
   const text = `${daangnAd.title}\n\n${daangnAd.body}\n\n홈페이지 매물 상세보기: ${detailUrl}`;
-  const photoUrls = toTextList(publicProperty.photos)
-    .map((url) => String(url || '').trim())
-    .filter((url) => /^https?:\/\//i.test(url))
-    .slice(0, MAX_SOCIAL_SHARE_PHOTOS);
+  const photoUrls = getCleanPropertyPhotos(publicProperty);
   const connectorProperty = {
     ...publicProperty,
     homepage_url: detailUrl,
@@ -8337,42 +8520,39 @@ async function prepareDaangnPosting(property, setStatus) {
     requestDaangnConnector(job)
   ]);
 
-  if (!copied) throw new Error('클립보드에 당근 문구를 복사하지 못했습니다. 브라우저의 클립보드 권한을 확인하세요.');
-
   if (connectorConnected) {
     if (reservedDaangnTab && !reservedDaangnTab.closed) reservedDaangnTab.close();
   } else if (!reservedDaangnTab) {
-    window.open('https://www.daangn.com/', '_blank', 'noopener,noreferrer');
+    window.open('https://business.daangn.com/', '_blank', 'noopener,noreferrer');
   }
 
-  const photoResults = await Promise.allSettled(
-    photoUrls.map((url, index) => prepareDaangnPhotoFile(url, index, property))
-  );
-  const photoFiles = photoResults
-    .filter((result) => result.status === 'fulfilled')
-    .map((result) => result.value);
+  const photoResult = await prepareDaangnPhotos(property);
+  const photoFiles = photoResult.files;
 
-  if (photoUrls.length && !photoFiles.length) {
-    throw new Error('등록된 사진을 다운로드하지 못했습니다. 사진 URL 또는 저장소 접근 권한을 확인하세요.');
-  }
-
+  let zipFileName = '';
   if (photoFiles.length) {
     if (canSharePhotoFiles(photoFiles) && /Android|iPhone|iPad|iPod/i.test(navigator.userAgent)) {
       try {
         await navigator.share({ files: photoFiles, title: daangnAd.title, text });
       } catch (error) {
-        if (error?.name !== 'AbortError') downloadShareFiles(photoFiles);
+        if (error?.name !== 'AbortError') zipFileName = await downloadDaangnPhotoZip(photoFiles, property);
       }
     } else {
-      downloadShareFiles(photoFiles);
+      zipFileName = await downloadDaangnPhotoZip(photoFiles, property);
     }
   }
 
   return {
+    title: daangnAd.title,
+    text,
+    copied,
     photoCount: photoFiles.length,
-    failedPhotoCount: photoResults.length - photoFiles.length,
+    totalPhotoCount: photoResult.totalPhotoCount,
+    failedPhotoCount: photoResult.failedPhotoCount,
+    zipFileName,
     detailUrl,
-    connectorConnected
+    connectorConnected,
+    popupOpened: Boolean(reservedDaangnTab)
   };
 }
 
