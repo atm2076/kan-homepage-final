@@ -8833,7 +8833,7 @@ function normalizeBlogProperty(property = {}) {
   const floorSource = clean(property.floor_info || property.floorInfo);
   const floorParts = floorSource.split('/').map(clean).filter(Boolean);
   const narrative = [property.description, property.legal_notice].map(clean).join(' ');
-  const buildingFloorMatch = narrative.match(/(\d+)\s*층\s*건물(?:의|\s+)(\d+)\s*층/u);
+  const buildingFloorMatch = narrative.match(/(\d+)\s*층[^\d\n]{0,16}(\d+)\s*층/u);
   let floor = clean(
     property.current_floor || property.currentFloor ||
     floorParts.find((part) => !/(총|지상|지하)/u.test(part)) ||
