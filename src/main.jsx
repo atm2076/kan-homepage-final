@@ -1499,6 +1499,29 @@ requestAnimationFrame(() => {
     setLoading(false);
   }
 
+  async function refreshAdminPublishedProperties() {
+    if (!canManageAll || !isSupabaseReady) return [];
+
+    const { data, error: fetchError } = await supabase
+      .from('properties')
+      .select(PUBLIC_PROPERTY_COLUMNS)
+      .eq('status', 'published')
+      .order('is_featured', { ascending: false })
+      .order('created_at', { ascending: false });
+
+    if (fetchError) throw fetchError;
+
+    const latestPublished = dedupePublicProperties(toPublicProperties(data || []));
+    const publishedIds = new Set(latestPublished.map((item) => String(item.id)));
+
+    setProperties((current) => [
+      ...latestPublished,
+      ...current.filter((item) => !isPublicMapProperty(item) && !publishedIds.has(String(item.id)))
+    ]);
+
+    return latestPublished;
+  }
+
   useEffect(() => {
     loadProperties();
   }, [canManageAll]);
@@ -1507,9 +1530,13 @@ requestAnimationFrame(() => {
     return CUSTOMER_PROPERTY_TYPES;
   }, []);
 
+  const latestPublicProperties = useMemo(() => {
+    return dedupePublicProperties(toPublicProperties(properties.filter(isPublicMapProperty)));
+  }, [properties]);
+
    const filteredProperties = useMemo(() => {
-    return properties.filter((item) => matchesCustomerFilters(item, keyword, category, filters, dealMode));
-  }, [properties, keyword, category, filters, dealMode]);
+    return latestPublicProperties.filter((item) => matchesCustomerFilters(item, keyword, category, filters, dealMode));
+  }, [latestPublicProperties, keyword, category, filters, dealMode]);
 
   useEffect(() => {
     setSelected((prev) => {
@@ -1754,7 +1781,7 @@ async function handleQuickDeleteProperty(property) {
   onOpenAdmin={() => setAdminOpen(true)}
 />
      <Hero
-       properties={properties}
+       properties={filteredProperties}
   keyword={keyword}
   setKeyword={setKeyword}
   setDealMode={setDealMode}
@@ -1821,6 +1848,7 @@ async function handleQuickDeleteProperty(property) {
          onClose={() => setAdminOpen(false)}
           properties={properties}
           reload={loadProperties}
+          refreshAdminPublishedProperties={refreshAdminPublishedProperties}
         />
       )}
     </div>
@@ -2011,6 +2039,7 @@ function NaverMapBox({
 
   useEffect(() => {
     let isMounted = true;
+    let zoomListener = null;
 
 const clearMarkers = () => {
   const markers = Array.isArray(markersRef.current)
@@ -2228,7 +2257,7 @@ if (stage === 'area' || stage === 'dong') {
 
         const naver = window.naver;
 
-        const map = new naver.maps.Map(mapElementRef.current, {
+        const map = mapRef.current || new naver.maps.Map(mapElementRef.current, {
           center: new naver.maps.LatLng(36.1195, 128.3446),
           zoom: 11,
           minZoom: 9,
@@ -2242,7 +2271,7 @@ if (stage === 'area' || stage === 'dong') {
         mapRef.current = map;
         renderMarkers(map, naver);
 
-        naver.maps.Event.addListener(map, 'zoom_changed', () => {
+        zoomListener = naver.maps.Event.addListener(map, 'zoom_changed', () => {
           renderMarkers(map, naver);
         });
       })
@@ -2252,6 +2281,9 @@ if (stage === 'area' || stage === 'dong') {
 
     return () => {
       isMounted = false;
+      if (zoomListener && window.naver?.maps) {
+        window.naver.maps.Event.removeListener(zoomListener);
+      }
       clearMarkers();
     };
   }, [properties, setKeyword]);
@@ -2555,7 +2587,6 @@ function CustomerMapView({ properties, selected, onSelect, keyword, setKeyword, 
   () =>
     properties
       .filter(isPublicMapProperty)
-      .slice(0, 100)
       .map((property, index) => {
         const point = getPropertyMapPoint(property, index);
 
@@ -2580,7 +2611,13 @@ function CustomerMapView({ properties, selected, onSelect, keyword, setKeyword, 
   const [sheetExpanded, setSheetExpanded] = useState(false);
 
   useEffect(() => {
-    setPanelItems((current) => current.length ? current : dedupeMapItems(markerItems));
+    setPanelItems((current) => {
+      const currentIds = new Set(current.map((item) => String(item.property.id)));
+      const nextItems = dedupeMapItems(markerItems);
+      const hasSameItems = nextItems.length === current.length &&
+        nextItems.every((item) => currentIds.has(String(item.property.id)));
+      return hasSameItems ? current : nextItems;
+    });
   }, [markerItems]);
 
   useEffect(() => {
@@ -2817,7 +2854,7 @@ maps.Event.trigger(map, 'resize');
           if (cacheKey && boundsCache.has(cacheKey)) return boundsCache.get(cacheKey);
           const visibleItems = dedupeMapItems(markerItems.filter((item) =>
             bounds.hasLatLng(new naver.maps.LatLng(item.point.lat, item.point.lng))
-          )).slice(0, 100);
+          ));
           if (cacheKey) boundsCache.set(cacheKey, visibleItems);
           return visibleItems;
         };
@@ -2840,7 +2877,6 @@ maps.Event.trigger(map, 'resize');
             .lte('latitude', northEast.lat())
             .gte('longitude', southWest.lng())
             .lte('longitude', northEast.lng())
-            .limit(100)
             .then(({ data, error: boundsError }) => {
               if (boundsError || !data) return localItems;
               return dedupeMapItems(
@@ -2852,7 +2888,7 @@ maps.Event.trigger(map, 'resize');
                     return point ? { property, point, markerClass: getCustomerMarkerClass(property) } : null;
                   })
                   .filter(Boolean)
-              ).slice(0, 100);
+              );
             });
           serverBoundsCache.set(cacheKey, request);
           const result = await request;
@@ -4416,7 +4452,7 @@ function AddressLedgerSearchSection({
   );
 }
 
-function AdminModal({ mode, setMode, isAdmin, setIsAdmin, onClose, properties, reload }) {
+function AdminModal({ mode, setMode, isAdmin, setIsAdmin, onClose, properties, reload, refreshAdminPublishedProperties }) {
   const [password, setPassword] = useState('');
   const [form, setForm] = useState(emptyForm);
   const [bulkText, setBulkText] = useState('');
@@ -5830,7 +5866,16 @@ const request = editingId && canEditExisting
     }
     setStatus(isStaffMode ? '임시저장 완료되었습니다. 대표 검수 후 홈페이지에 노출됩니다.' : (editingId ? '수정 완료되었습니다.' : '등록 완료되었습니다.'));
    resetForm();
-await reload();
+if (isAdminMode && typeof refreshAdminPublishedProperties === 'function') {
+  try {
+    await refreshAdminPublishedProperties();
+  } catch (refreshError) {
+    console.error('대표 관리자 공개 지도 갱신 실패:', refreshError);
+    await reload();
+  }
+} else {
+  await reload();
+}
 
 if (isStaffMode && currentStaff?.code) {
   await loadStaffProperties(currentStaff.code);
@@ -5851,7 +5896,11 @@ if (isStaffMode && currentStaff?.code) {
       return;
     }
     setStatus(`${STATUS_LABELS[nextStatus]} 상태로 변경했습니다.`);
-    await reload();
+    if (isAdminMode && typeof refreshAdminPublishedProperties === 'function') {
+      await refreshAdminPublishedProperties();
+    } else {
+      await reload();
+    }
   }
 
   async function deleteProperty(id) {
