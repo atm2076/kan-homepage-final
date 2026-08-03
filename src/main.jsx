@@ -7650,21 +7650,17 @@ if (isStaffMode && currentStaff?.code) {
       .filter((line) => line !== null && line !== undefined)
       .join('\n');
 
-  const facebookText = [
-    property.title || '구미 부동산 매물 안내',
-    `매물번호 ${getPublicPropertyNumber(property)}`,
-    '',
-    `위치: ${property.address || '구미시'}`,
-    isSale
-      ? `매매가: ${formatAmount(property.sale_price)} / 인수가: ${formatAmount(property.acquisition_price)} / 월세수입: ${formatAmount(property.total_monthly_rent)} / 월순수익: ${formatAmount(property.net_profit)}`
-      : `보증금: ${formatAmount(property.deposit)} / 월세: ${formatAmount(property.rent)} / 관리비: ${property.maintenance_fee || '확인 필요'}`,
-    '',
-    property.summary || property.description || '',
-    '',
-    '문의: 010-5323-3883 / 054-474-0367',
-    '홈페이지: https://kan-homepage-final.vercel.app',
-    '플레이스토어에서 ‘칸공인중개사’를 검색하세요.'
-  ].filter(Boolean).join('\n');
+const facebookAd = buildNaverBlogAd(property);
+
+const facebookText =
+  typeof facebookAd === 'string'
+    ? facebookAd
+    : [
+        facebookAd?.title,
+        facebookAd?.body
+      ]
+        .filter(Boolean)
+        .join('\n\n');
 
   return (
     <div className="admin-list-item" key={property.id}>
