@@ -7651,7 +7651,30 @@ if (isStaffMode && currentStaff?.code) {
       .join('\n');
 
 const facebookAd = buildNaverBlogAd(property);
+const managementFeeRaw = String(
+  property.management_fee ??
+  property.maintenance_fee ??
+  ''
+).trim();
 
+const managementFeeNumber = Number(
+  managementFeeRaw.replace(/[^\d.]/g, '')
+);
+
+const managementFeeManwon =
+  managementFeeNumber >= 1000
+    ? managementFeeNumber / 10000
+    : managementFeeNumber;
+
+const managementFeeText =
+  managementFeeManwon === 10
+    ? [
+        '관리비: 월 10만원',
+        '관리비 세부내역: 공용전기 1만원 / 유선방송 2만원 / 인터넷 2만원 / 수도요금 2만원 / 관리용역비 3만원'
+      ].join('\n')
+    : managementFeeManwon > 0
+      ? `관리비: 월 ${managementFeeManwon}만원`
+      : '관리비: 없음';
 const facebookText =
   typeof facebookAd === 'string'
     ? facebookAd
