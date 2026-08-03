@@ -712,6 +712,51 @@ function parseBulkText(text) {
   return next;
 }
 
+const ADMIN_BULK_FORM_FIELDS = new Set([
+  'title',
+  'deposit',
+  'rent',
+  'maintenance_fee',
+  'summary',
+  'area',
+  'floor_info',
+  'direction',
+  'room_bath',
+  'move_in',
+  'investment_point',
+  'description',
+  'maintenance_includes',
+  'location_description',
+  'recommended_for',
+  'legal_notice'
+]);
+
+function parseAdminBulkText(text) {
+  const parsed = parseBulkText(text);
+  const formPatch = Object.fromEntries(
+    Object.entries(parsed).filter(([field]) => ADMIN_BULK_FORM_FIELDS.has(field))
+  );
+  const adminValues = {};
+  const summaryValues = [];
+
+  for (const rawLine of String(text || '').split(/\r?\n/)) {
+    const match = rawLine.trim().match(/^([^:=：]{1,30})\s*[:=：]\s*(.*)$/);
+    if (!match) continue;
+
+    const key = normalizeBulkKey(match[1]);
+    const value = cleanBulkValue(match[2]);
+
+    if (['해당층수', '해당층'].includes(key)) formPatch.floor_info = value;
+    if (['방개수', '방수', '방'].includes(key)) adminValues.roomCount = value.match(/\d+(?:\.\d+)?/)?.[0] || value;
+    if (['욕실개수', '욕실수', '욕실', '화장실개수', '화장실수'].includes(key)) adminValues.bathCount = value.match(/\d+(?:\.\d+)?/)?.[0] || value;
+    if (['짧은설명', '한줄설명', '한줄요약'].includes(key) && value) summaryValues.push(value);
+  }
+
+  if (summaryValues.length) formPatch.summary = [...new Set(summaryValues)].join('\n');
+
+  return { formPatch, adminValues, summaryValueCount: summaryValues.length };
+}
+
 function propertyToForm(property) {
   return {
     ...emptyForm,
@@ -4915,16 +4960,46 @@ setStaffProperties(data || []);
       setBuildingLedgerSearching(false);
     }
   }
-  function applyBulkInput() {
-    const parsed = parseBulkText(bulkText);
+  function handleAdminBulkFill() {
+    if (!isAdminMode) return;
 
-    if (!Object.keys(parsed).length) {
+    const { formPatch, adminValues, summaryValueCount } = parseAdminBulkText(bulkText);
+    const parsedCount = Object.keys(formPatch).length + Object.keys(adminValues).length + Math.max(0, summaryValueCount - 1);
+
+    if (!parsedCount) {
       setStatus('일괄입력 자료를 읽지 못했습니다. 예: 매매가: 91000 형식으로 넣어주세요.');
       return;
     }
 
-    setLatestForm((prev) => ({ ...prev, ...parsed }));
-    setStatus(`일괄입력 ${Object.keys(parsed).length}개 항목을 자동 채웠습니다. 사진 확인 후 저장을 누르세요.`);
+    setLatestForm((prev) => {
+      const roomCount = adminValues.roomCount || String(formPatch.room_bath || prev.room_bath || '').match(/방\s*(\d+(?:\.\d+)?)/)?.[1] || '';
+      const bathCount = adminValues.bathCount || String(formPatch.room_bath || prev.room_bath || '').match(/욕실\s*(\d+(?:\.\d+)?)/)?.[1] || '';
+      const roomBath = adminValues.roomCount || adminValues.bathCount
+        ? `방 ${roomCount || 0} / 욕실 ${bathCount || 0}`
+        : formPatch.room_bath;
+
+      return {
+        ...prev,
+        ...formPatch,
+        ...(roomBath ? { room_bath: roomBath } : {})
+      };
+    });
+
+    if (formPatch.floor_info) {
+      const floorMatch = String(formPatch.floor_info).match(/(?:해당\s*)?(\d+)\s*층?/);
+      if (floorMatch?.[1]) setQuickFloor(floorMatch[1]);
+    }
+    if (formPatch.direction) setDirectionChoice(formPatch.direction);
+    if (adminValues.roomCount) setQuickRoomCount(adminValues.roomCount);
+    if (adminValues.bathCount) setQuickBathCount(adminValues.bathCount);
+    if (formPatch.move_in) {
+      const hasDate = /\d{4}[-./년]\s*\d{1,2}/.test(formPatch.move_in);
+      setMoveInChoice(hasDate ? '날짜 직접입력' : formPatch.move_in);
+      setMoveInDate(hasDate ? formPatch.move_in : '');
+    }
+    if (formPatch.maintenance_includes) setMaintenanceItemsText(formPatch.maintenance_includes);
+
+    setStatus(`대표 관리자 일괄입력 ${parsedCount}개 항목을 자동 채웠습니다. 사진 확인 후 저장을 누르세요.`);
   }
 async function handleDaangnExcelDownload(selectedOverride = null) {
   const selectedProperty = selectedOverride?.id
@@ -6063,7 +6138,7 @@ if (isStaffMode && currentStaff?.code) {
 월순수익: 327
 수익률: 50.3`}
                 />
-                <button type="button" className="primary-btn" onClick={applyBulkInput}>일괄입력 자동 채우기</button>
+                <button type="button" className="primary-btn" onClick={handleAdminBulkFill}>일괄입력 자동 채우기</button>
                 <p className="muted">사진은 위/아래 사진등록에서 올리고, 매물자료는 이 칸에 통째로 붙여넣은 뒤 자동 채우기를 누르면 됩니다.</p>
               </section>
               )}
