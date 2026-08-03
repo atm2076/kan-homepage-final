@@ -7666,16 +7666,12 @@ const managementFeeManwon =
     ? managementFeeNumber / 10000
     : managementFeeNumber;
 
-const managementFeeText =
+const managementFeeDetailText =
   managementFeeManwon === 10
-    ? [
-        '관리비: 월 10만원',
-        '관리비 세부내역: 공용전기 1만원 / 유선방송 2만원 / 인터넷 2만원 / 수도요금 2만원 / 관리용역비 3만원'
-      ].join('\n')
-    : managementFeeManwon > 0
-      ? `관리비: 월 ${managementFeeManwon}만원`
-      : '관리비: 없음';
-const facebookText =
+    ? '관리비 세부내역: 공용전기 1만원 / 유선방송 2만원 / 인터넷 2만원 / 수도요금 2만원 / 관리용역비 3만원'
+    : '';
+
+const baseFacebookText =
   typeof facebookAd === 'string'
     ? facebookAd
     : [
@@ -7684,6 +7680,23 @@ const facebookText =
       ]
         .filter(Boolean)
         .join('\n\n');
+
+const facebookText =
+  managementFeeDetailText &&
+  !baseFacebookText.includes('관리비 세부내역:')
+    ? /관리비\s*:[^\n]*/.test(baseFacebookText)
+      ? baseFacebookText.replace(
+          /관리비\s*:[^\n]*/,
+          (managementFeeLine) =>
+            `${managementFeeLine}\n${managementFeeDetailText}`
+        )
+      : [
+          baseFacebookText,
+          '',
+          '관리비: 월 10만원',
+          managementFeeDetailText
+        ].join('\n')
+    : baseFacebookText;
 
   return (
     <div className="admin-list-item" key={property.id}>
@@ -10883,7 +10896,7 @@ async function handleShare(text, platformName) {
   }
 
   // 휴대폰이나 공유 기능을 지원하는 기기
-if (files.length > 0 && typeof navigator.share === 'function') {
+if (canSharePhotoFiles(files)) {
     try {
       setStatus(
         `${platformName} 공유창을 여는 중입니다. 공유할 앱을 선택해 주세요.`
