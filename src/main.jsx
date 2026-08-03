@@ -10943,13 +10943,34 @@ await navigator.share({ files });
   window.alert(message);
 }
 async function handleFacebookShare() {
+  // 사용자 클릭 직후 문구 복사를 가장 먼저 실행
+  let copied = copyAdvertisementTextSync(facebookText);
+
+  const clipboardPromise = copied
+    ? Promise.resolve(true)
+    : copyAdvertisementText(facebookText)
+        .then(() => true)
+        .catch((error) => {
+          console.warn('페이스북 문구 복사 실패:', error);
+          return false;
+        });
+
+  // 팝업 차단 방지를 위해 클릭 직후 창 생성
   const facebookTab = window.open('', '_blank');
+
   let files = [];
 
   try {
-    files = await buildSocialShareFiles(property, photoUrls, 'facebook');
+    files = await buildSocialShareFiles(
+      property,
+      photoUrls,
+      'facebook'
+    );
   } catch (error) {
-    console.warn('페이스북용 광고사진 생성 실패, 원본 사진으로 진행합니다.', error);
+    console.warn(
+      '페이스북용 광고사진 생성 실패, 원본 사진으로 진행합니다.',
+      error
+    );
   }
 
   files = files.slice(0, 8);
@@ -10958,10 +10979,8 @@ async function handleFacebookShare() {
     downloadShareFiles(files);
   }
 
-  let copied = copyAdvertisementTextSync(facebookText);
-
   if (!copied) {
-    copied = await copyAdvertisementText(facebookText);
+    copied = await clipboardPromise;
   }
 
   if (facebookTab) {
@@ -10971,16 +10990,21 @@ async function handleFacebookShare() {
   const photoMessage = files.length
     ? `페이스북용 사진 ${files.length}장 다운로드를 시작했습니다.`
     : '다운로드할 페이스북용 사진이 없습니다.';
+
   const copyMessage = copied
-    ? '전체 문구를 복사했습니다. 페이스북에서 Ctrl + V를 눌러 붙여넣으세요.'
+    ? '전체 문구를 복사했습니다. 페이스북 글쓰기에서 Ctrl + V를 눌러 붙여넣으세요.'
     : '문구 복사에 실패했습니다. 문구를 직접 복사해 주세요.';
+
   const tabMessage = facebookTab
     ? '페이스북 홈페이지를 열었습니다.'
     : '팝업이 차단되어 페이스북 홈페이지를 열지 못했습니다.';
+
   const failedMessage = photoState.failedCount
     ? ` 불러오지 못한 사진 ${photoState.failedCount}장은 제외되었습니다.`
     : '';
-  const message = `${photoMessage} ${copyMessage} ${tabMessage}${failedMessage}`;
+
+  const message =
+    `${photoMessage} ${copyMessage} ${tabMessage}${failedMessage}`;
 
   setStatus(message);
   window.alert(message);
