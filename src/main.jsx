@@ -81,6 +81,10 @@ const emptyForm = {
   category: '원룸 월세',
   trade_type: '월세',
   address: '',
+  latitude: null,
+  longitude: null,
+  geocode_status: '',
+  geocoded_at: null,
 badgesText: '',
   // 임대용
   deposit: '',
@@ -829,12 +833,23 @@ function hasPrivateAdminInfo(property = {}) {
   ].some((value) => String(value || '').trim());
 }
 
+function normalizeCoordinate(value) {
+  const text = String(value ?? '').trim();
+  if (!text) return null;
+  const number = Number(text);
+  return Number.isFinite(number) ? number : null;
+}
+
 function formToPayload(form) {
   return {
     title: form.title.trim(),
     category: form.category.trim(),
     trade_type: form.trade_type.trim(),
     address: form.address.trim(),
+    latitude: normalizeCoordinate(form.latitude),
+    longitude: normalizeCoordinate(form.longitude),
+    geocode_status: (form.geocode_status || '').trim() || null,
+    geocoded_at: form.geocoded_at || null,
 badges: linesToArray(form.badgesText),
     deposit: (form.deposit || '').trim(),
     rent: (form.rent || '').trim(),
@@ -2003,8 +2018,13 @@ const KAN_MAP_AREAS = [
 
 function loadNaverMapScript() {
   return new Promise((resolve, reject) => {
-    if (window.naver?.maps) {
+    if (window.naver?.maps?.Service?.geocode) {
       resolve();
+      return;
+    }
+
+    if (window.naver?.maps && !window.naver?.maps?.Service?.geocode) {
+      reject(new Error('네이버 지도 Geocoder 모듈이 없습니다. 배포 후 Ctrl+F5로 새로고침해주세요.'));
       return;
     }
 
@@ -2017,11 +2037,55 @@ function loadNaverMapScript() {
 
     const script = document.createElement('script');
     script.id = 'naver-map-script';
-    script.src = `https://oapi.map.naver.com/openapi/v3/maps.js?ncpKeyId=${NAVER_MAP_CLIENT_ID}`;
+    script.src = `https://oapi.map.naver.com/openapi/v3/maps.js?ncpKeyId=${NAVER_MAP_CLIENT_ID}&submodules=geocoder`;
     script.async = true;
     script.onload = resolve;
     script.onerror = reject;
     document.head.appendChild(script);
+  });
+}
+
+async function geocodeAddressToCoordinates(address) {
+  const query = String(address || '').trim();
+  if (!query) throw new Error('좌표를 변환할 주소가 없습니다.');
+
+  await loadNaverMapScript();
+
+  const naver = window.naver;
+  const geocode = naver?.maps?.Service?.geocode;
+  if (typeof geocode !== 'function') {
+    throw new Error('네이버 지도 좌표 변환 기능을 불러오지 못했습니다.');
+  }
+
+  return new Promise((resolve, reject) => {
+    const timeoutId = window.setTimeout(() => {
+      reject(new Error('주소 좌표 확인 시간이 초과되었습니다. 다시 시도해주세요.'));
+    }, 10000);
+
+    geocode({ query }, (status, response) => {
+      window.clearTimeout(timeoutId);
+
+      if (status !== naver.maps.Service.Status.OK) {
+        reject(new Error('주소 좌표 변환에 실패했습니다.'));
+        return;
+      }
+
+      const result = response?.v2?.addresses?.[0];
+      const longitude = Number(result?.x);
+      const latitude = Number(result?.y);
+
+      if (!Number.isFinite(latitude) || !Number.isFinite(longitude)) {
+        reject(new Error('검색된 주소에서 유효한 위도·경도를 찾지 못했습니다.'));
+        return;
+      }
+
+      resolve({
+        latitude,
+        longitude,
+        geocode_status: 'success',
+        geocoded_at: new Date().toISOString()
+      });
+    });
   });
 }
 
@@ -4387,6 +4451,10 @@ function AddressLedgerSearchSection({
             value={form.address}
             onChange={(value) => {
               updateField('address', value);
+              updateField('latitude', null);
+              updateField('longitude', null);
+              updateField('geocode_status', '');
+              updateField('geocoded_at', null);
               setSelectedAddressItem(null);
               setAddressResults([]);
             }}
@@ -4406,11 +4474,32 @@ function AddressLedgerSearchSection({
                 key={`${item.bdMgtSn || item.roadAddr || item.jibunAddr}-${index}`}
                 type="button"
                 className="address-result-item"
-                onClick={() => {
-                  updateField('address', item.roadAddr || item.jibunAddr || '');
+                onClick={async () => {
+                  const selectedAddress = item.roadAddr || item.jibunAddr || '';
+
+                  updateField('address', selectedAddress);
+                  updateField('latitude', null);
+                  updateField('longitude', null);
+                  updateField('geocode_status', 'pending');
+                  updateField('geocoded_at', null);
                   setSelectedAddressItem(item);
                   setAddressResults([]);
-                  setStatus('주소를 선택했습니다. 건축물대장 조회를 진행할 수 있습니다.');
+                  setStatus('주소를 선택했습니다. 지도 좌표를 확인하고 있습니다...');
+
+                  try {
+                    const coordinates = await geocodeAddressToCoordinates(selectedAddress);
+                    updateField('latitude', coordinates.latitude);
+                    updateField('longitude', coordinates.longitude);
+                    updateField('geocode_status', coordinates.geocode_status);
+                    updateField('geocoded_at', coordinates.geocoded_at);
+                    setStatus('주소와 지도 좌표를 저장할 준비가 완료됐습니다.');
+                  } catch (coordinateError) {
+                    updateField('latitude', null);
+                    updateField('longitude', null);
+                    updateField('geocode_status', 'failed');
+                    updateField('geocoded_at', null);
+                    setStatus(`주소는 선택됐지만 지도 좌표를 찾지 못했습니다: ${coordinateError?.message || '알 수 없는 오류'}`);
+                  }
                 }}
               >
                 <strong>{item.roadAddr || '도로명주소 없음'}</strong>
@@ -5768,15 +5857,38 @@ async function deleteDuplicateProperty(property) {
       return;
     }
 
+    let formForSave = saveForm;
+    const savedLatitude = normalizeCoordinate(saveForm.latitude);
+    const savedLongitude = normalizeCoordinate(saveForm.longitude);
+
+    if (saveForm.address?.trim() && (savedLatitude === null || savedLongitude === null)) {
+      try {
+        setStatus('저장 전 지도 좌표를 확인하고 있습니다...');
+        const coordinates = await geocodeAddressToCoordinates(saveForm.address);
+        formForSave = { ...saveForm, ...coordinates };
+        setLatestForm((prev) => ({ ...prev, ...coordinates }));
+      } catch (coordinateError) {
+        setLatestForm((prev) => ({
+          ...prev,
+          latitude: null,
+          longitude: null,
+          geocode_status: 'failed',
+          geocoded_at: null
+        }));
+        setStatus(`저장을 중단했습니다. 지도 좌표를 만들지 못했습니다: ${coordinateError?.message || '알 수 없는 오류'}`);
+        return;
+      }
+    }
+
     const payload = {
-  ...formToPayload(saveForm),
-  status: isStaffMode ? staffStatusValue : (saveForm.status || 'published'),
-  staff_name: isStaffMode ? (currentStaff?.name || saveForm.staff_name || '직원') : (saveForm.staff_name || ''),
-staff_code: isStaffMode ? (currentStaff?.code || saveForm.staff_code || 'staff') : (saveForm.staff_code || ''),
+  ...formToPayload(formForSave),
+  status: isStaffMode ? staffStatusValue : (formForSave.status || 'published'),
+  staff_name: isStaffMode ? (currentStaff?.name || formForSave.staff_name || '직원') : (formForSave.staff_name || ''),
+staff_code: isStaffMode ? (currentStaff?.code || formForSave.staff_code || 'staff') : (formForSave.staff_code || ''),
 created_by: editingId
-  ? saveForm.created_by
-  : (isStaffMode ? (currentStaff?.name || saveForm.staff_name || '직원') : '대표'),
-updated_by: isStaffMode ? (currentStaff?.name || saveForm.staff_name || '직원') : '대표',
+  ? formForSave.created_by
+  : (isStaffMode ? (currentStaff?.name || formForSave.staff_name || '직원') : '대표'),
+updated_by: isStaffMode ? (currentStaff?.name || formForSave.staff_name || '직원') : '대표',
   updated_at: new Date().toISOString()
 };
 
