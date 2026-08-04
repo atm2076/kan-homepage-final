@@ -2052,8 +2052,8 @@ async function geocodeAddressToCoordinates(address) {
   await loadNaverMapScript();
 
   const naver = window.naver;
-  const geocode = naver?.maps?.Service?.geocode;
-  if (typeof geocode !== 'function') {
+  const geocodeService = naver?.maps?.Service;
+if (typeof geocodeService?.geocode !== 'function') {
     throw new Error('네이버 지도 좌표 변환 기능을 불러오지 못했습니다.');
   }
 
@@ -2062,7 +2062,7 @@ async function geocodeAddressToCoordinates(address) {
       reject(new Error('주소 좌표 확인 시간이 초과되었습니다. 다시 시도해주세요.'));
     }, 10000);
 
-    geocode({ query }, (status, response) => {
+    geocodeService.geocode({ query }, (status, response) => {
       window.clearTimeout(timeoutId);
 
       if (status !== naver.maps.Service.Status.OK) {
