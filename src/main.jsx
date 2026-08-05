@@ -11234,6 +11234,10 @@ function SocialPhotoShareButtons({ property, instagramText, facebookText, setSta
   }
 }
 async function handleShare(text, platformName) {
+  if (!canSharePhotoFiles(photoState.files)) {
+    window.open('https://www.instagram.com/', '_blank');
+  }
+
   let files = [];
 
   try {
@@ -11397,7 +11401,7 @@ async function handleFacebookShare() {
   disabled={photoState.loading}
   onClick={() => handleShare(instagramText, '인스타그램')}
 >
-  {preparingLabel || '인스타 사진'}
+  {preparingLabel || '인스타 사진·문구'}
 </button>
 
 <button
