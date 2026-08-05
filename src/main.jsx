@@ -753,7 +753,16 @@ function parseAdminBulkText(text) {
     if (['해당층수', '해당층'].includes(key)) formPatch.floor_info = value;
     if (['방개수', '방수', '방'].includes(key)) adminValues.roomCount = value.match(/\d+(?:\.\d+)?/)?.[0] || value;
     if (['욕실개수', '욕실수', '욕실', '화장실개수', '화장실수'].includes(key)) adminValues.bathCount = value.match(/\d+(?:\.\d+)?/)?.[0] || value;
+    if (['방향기준', '방향기준점', '방기준'].includes(key)) adminValues.directionBasis = value;
     if (['짧은설명', '한줄설명', '한줄요약'].includes(key) && value) summaryValues.push(value);
+  }
+
+  if (adminValues.directionBasis && formPatch.direction) {
+    const baseDirection = String(formPatch.direction)
+      .replace(/\s*[(/]?\s*.*?기준\s*[)]?\s*$/u, '')
+      .trim();
+
+    formPatch.direction = `${baseDirection} (${adminValues.directionBasis})`;
   }
 
   if (summaryValues.length) formPatch.summary = [...new Set(summaryValues)].join('\n');
@@ -1835,6 +1844,7 @@ async function handleQuickDeleteProperty(property) {
   onHoldProperty={handleQuickHoldProperty}
   onDeleteProperty={handleQuickDeleteProperty}
             />
+            {!isAdminRoute && (
             <CustomerMapView
               properties={filteredProperties}
               selected={selected}
@@ -1848,6 +1858,7 @@ async function handleQuickDeleteProperty(property) {
               filters={filters}
               setFilters={setFilters}
             />
+            )}
           </>
       )}
         <CustomRequestSection />
@@ -5114,7 +5125,13 @@ setStaffProperties(data || []);
       const floorMatch = String(formPatch.floor_info).match(/(?:해당\s*)?(\d+)\s*층?/);
       if (floorMatch?.[1]) setQuickFloor(floorMatch[1]);
     }
-    if (formPatch.direction) setDirectionChoice(formPatch.direction);
+    if (formPatch.direction) {
+      const directionOnly = String(formPatch.direction).match(
+        /^(동향|서향|남향|북향|남동향|남서향|북동향|북서향)/u
+      )?.[1] || formPatch.direction;
+
+      setDirectionChoice(directionOnly);
+    }
     if (adminValues.roomCount) setQuickRoomCount(adminValues.roomCount);
     if (adminValues.bathCount) setQuickBathCount(adminValues.bathCount);
     if (formPatch.move_in) {
@@ -5469,7 +5486,10 @@ setStaffStep(0);
     const roomBathMatch = String(property.room_bath || '').match(/방\s*(\d+).*욕실\s*(\d+)|(\d+)\s*\/\s*(\d+)/);
     setQuickRoomCount(roomBathMatch?.[1] || roomBathMatch?.[3] || '');
     setQuickBathCount(roomBathMatch?.[2] || roomBathMatch?.[4] || '');
-    setDirectionChoice(String(property.direction || '').replace(' / 주출입구 기준', '') || '확인필요');
+    const savedDirection = String(property.direction || '').match(
+      /^(남동향|남서향|북동향|북서향|동향|서향|남향|북향)/u
+    )?.[1] || '확인필요';
+    setDirectionChoice(savedDirection);
     setMoveInChoice(property.move_in?.match(/\d{4}/) ? '날짜 직접입력' : (property.move_in || '즉시입주'));
     setMoveInDate(property.move_in?.match(/\d{4}/) ? property.move_in : '');
     setParkingChoice(property.parking || '주차 확인 필요');
@@ -7934,9 +7954,13 @@ const facebookText =
                   try {
                     setAdvertisingPropertyId(property?.id || '');
                     const blogAd = buildNaverBlogAd(property);
-                    const warningMessage = blogAd.warnings.length
-                      ? `블로그 검증 경고: ${blogAd.warnings.join(' / ')}`
-                      : '';
+                    if (blogAd.warnings.length) {
+                      const warningMessage =
+                        `블로그 자동작성 중단: ${blogAd.warnings.join(' / ')}`;
+                      setStatus(warningMessage);
+                      window.alert(warningMessage);
+                      return;
+                    }
                     let popupWarning = '';
                     try {
                       window.open(
@@ -7953,7 +7977,7 @@ const facebookText =
                     const message = copied
                       ? '네이버 블로그 문구가 복사되었습니다. 네이버 블로그 글쓰기 화면에 붙여넣으세요.'
                       : '네이버 블로그 문구를 복사하지 못했습니다. 다시 시도해 주세요.';
-                    const statusMessage = [message, popupWarning, warningMessage].filter(Boolean).join(' ');
+                    const statusMessage = [message, popupWarning].filter(Boolean).join(' ');
                     setStatus(statusMessage);
                     window.alert(statusMessage);
                   } catch (error) {
@@ -9210,27 +9234,152 @@ function normalizeBlogProperty(property = {}) {
   };
 }
 
+function parseBlogMaintenanceAmountManwon(value) {
+  const text = normalizeBlogText(value).replaceAll(',', '');
+  if (!text) return 0;
+
+  const manwonMatch = text.match(/(\d+(?:\.\d+)?)\s*만\s*원/u);
+  if (manwonMatch) return Number(manwonMatch[1]);
+
+  const wonMatch = text.match(/(\d+(?:\.\d+)?)\s*원/u);
+  if (wonMatch) return Number(wonMatch[1]) / 10000;
+
+  const number = Number(text.replace(/[^\d.]/gu, ''));
+  return Number.isFinite(number) ? number : 0;
+}
+
+function formatBlogMaintenanceAmount(manwon) {
+  if (!Number.isFinite(manwon) || manwon <= 0) return '';
+  if (Number.isInteger(manwon)) return `${manwon}만원`;
+  return `${Math.round(manwon * 10000).toLocaleString()}원`;
+}
+
+function getBlogMaintenanceBreakdown(normalized) {
+  if (normalized.is_sale) return [];
+
+  const totalAmount = parseBlogMaintenanceAmountManwon(normalized.maintenance_fee);
+  const items = normalized.maintenance_includes
+    .map(normalizeBlogText)
+    .filter(Boolean);
+
+  if (!totalAmount || !items.length) return [];
+
+  const standardTenManwon = new Map([
+    ['공용전기', 1],
+    ['공용전기료', 1],
+    ['유선방송', 2],
+    ['인터넷', 2],
+    ['수도요금', 2],
+    ['수도료', 2],
+    ['관리용역비', 3]
+  ]);
+
+  const details = items.map((item) => {
+    const explicitAmount = parseBlogMaintenanceAmountManwon(item);
+
+    if (explicitAmount > 0) {
+      const label = item
+        .replace(/\d+(?:\.\d+)?\s*만\s*원/gu, '')
+        .replace(/\d+(?:\.\d+)?\s*원/gu, '')
+        .replace(/^[\s:·,\-–—()]+|[\s:·,\-–—()]+$/gu, '')
+        .trim();
+
+      return {
+        label: label || item,
+        amountManwon: explicitAmount
+      };
+    }
+
+    const normalizedItem = item.replace(/\s+/gu, '');
+    const standardAmount =
+      totalAmount === 10 ? standardTenManwon.get(normalizedItem) : 0;
+
+    if (!standardAmount) return null;
+
+    return {
+      label: item,
+      amountManwon: standardAmount
+    };
+  });
+
+  if (details.some((item) => !item)) return [];
+
+  const detailTotal = details.reduce(
+    (sum, item) => sum + item.amountManwon,
+    0
+  );
+
+  if (Math.abs(detailTotal - totalAmount) > 0.0001) return [];
+
+  return details;
+}
+
 function validateNaverBlogAd({ body, normalized }) {
   const warnings = [];
   const sectionTitles = [...body.matchAll(/^([^\n]+)$/gmu)]
     .map((match) => match[1])
     .filter((line) => /^(?:🏠|📍|🛋️|💳|📷|🙋|📋|📈|🏢|💹)/u.test(line));
-  const duplicateSections = sectionTitles.filter((title, index) => sectionTitles.indexOf(title) !== index);
-  if (duplicateSections.length) warnings.push(`중복 섹션: ${[...new Set(duplicateSections)].join(', ')}`);
+
+  const duplicateSections = sectionTitles.filter(
+    (title, index) => sectionTitles.indexOf(title) !== index
+  );
+
+  if (duplicateSections.length) {
+    warnings.push(
+      `중복 섹션: ${[...new Set(duplicateSections)].join(', ')}`
+    );
+  }
+
   if ((body.match(/📋 중개대상물 표시·광고 사항/gu) || []).length !== 1) {
     warnings.push('표시·광고 사항 섹션은 한 번만 있어야 합니다.');
   }
-  if (normalized.maintenance_includes.length !== new Set(normalized.maintenance_includes).size) {
+
+  if (
+    normalized.maintenance_includes.length !==
+    new Set(normalized.maintenance_includes).size
+  ) {
     warnings.push('관리비 포함 항목에 중복이 있습니다.');
   }
-  const floorValues = [...body.matchAll(/(?:해당\s*층|해당층)(?:\/총층수)?\s*:\s*([^\n/]+)/gu)]
-    .map((match) => normalizeBlogText(match[1]));
-  if (new Set(floorValues.filter(Boolean)).size > 1) warnings.push('해당 층 값이 서로 충돌합니다.');
-  const photoNumbers = [...body.matchAll(/📷\s*(\d+)번\s*사진/gu)].map((match) => match[1]);
-  if (photoNumbers.length !== new Set(photoNumbers).size) warnings.push('사진 번호가 중복됐습니다.');
+
+  const expectedFloor = normalizeBlogText(normalized.floor).replace(/\s+/gu, '');
+  const floorValues = [
+    ...body.matchAll(
+      /(?:해당\s*층|해당층)(?:\/총층수)?\s*:\s*([^\n/]+)/gu
+    ),
+    ...body.matchAll(
+      /((?:지하\s*)?\d+(?:\.\d+)?\s*층)(?=\s*에\s*(?:위치|있는))/gu
+    )
+  ]
+    .map((match) => normalizeBlogText(match[1]).replace(/\s+/gu, ''))
+    .filter(Boolean);
+
+  const conflictingFloors = floorValues.filter(
+    (value) => expectedFloor && value !== expectedFloor
+  );
+
+  if (conflictingFloors.length) {
+    warnings.push(
+      `층수 충돌: 등록값 ${normalized.floor}, 본문 ${[
+        ...new Set(conflictingFloors)
+      ].join(', ')}`
+    );
+  }
+
+  const photoNumbers = [...body.matchAll(/📷\s*(\d+)번\s*사진/gu)]
+    .map((match) => match[1]);
+
+  if (photoNumbers.length !== new Set(photoNumbers).size) {
+    warnings.push('사진 번호가 중복됐습니다.');
+  }
+
   const requiredValues = [
     ['중개대상물 종류', normalized.legal_property_type],
-    ['거래가격', normalized.is_sale ? normalized.sale_price : (normalized.deposit && normalized.monthly_rent)],
+    [
+      '거래가격',
+      normalized.is_sale
+        ? normalized.sale_price
+        : normalized.deposit && normalized.monthly_rent
+    ],
     ['소재지', normalized.address],
     ['면적', normalized.exclusive_area],
     ['해당 층', normalized.floor],
@@ -9240,13 +9389,45 @@ function validateNaverBlogAd({ body, normalized }) {
     ['방향', normalized.direction],
     ['방향 기준', normalized.direction_basis],
     ['사용승인일', normalized.approval_date],
-    ...(!normalized.is_sale ? [
-      ['관리비', normalized.maintenance_fee],
-      ['입주가능일', normalized.move_in_date]
-    ] : [])
+    ...(!normalized.is_sale
+      ? [
+          ['관리비', normalized.maintenance_fee],
+          ['입주가능일', normalized.move_in_date]
+        ]
+      : [])
   ];
-  const missingFields = requiredValues.filter(([, value]) => !value).map(([label]) => label);
-  if (missingFields.length) warnings.push(`게시 전 확인 필요: ${missingFields.join(', ')}`);
+
+  const missingFields = requiredValues
+    .filter(([, value]) => !value)
+    .map(([label]) => label);
+
+  if (missingFields.length) {
+    warnings.push(`게시 전 확인 필요: ${missingFields.join(', ')}`);
+  }
+
+  const maintenanceAmount = parseBlogMaintenanceAmountManwon(
+    normalized.maintenance_fee
+  );
+  const maintenanceBreakdown = getBlogMaintenanceBreakdown(normalized);
+
+  if (
+    !normalized.is_sale &&
+    maintenanceAmount >= 10 &&
+    maintenanceBreakdown.length === 0
+  ) {
+    warnings.push(
+      '관리비가 월 10만원 이상이면 항목별 금액과 합계 확인이 필요합니다.'
+    );
+  }
+
+  if (/월세을|전세을|반전세을|매매을/u.test(body)) {
+    warnings.push('조사 오류가 발견됐습니다.');
+  }
+
+  if (/kan-homepage-final\.vercel\.app/u.test(body)) {
+    warnings.push('이전 홈페이지 주소가 남아 있습니다.');
+  }
+
   return warnings;
 }
 
@@ -9276,9 +9457,18 @@ function buildNaverBlogAd(property) {
     data.raw.badges,
     data.remodeling
   ).join(' ');
-  const locationFeature = data.representative_location.includes('국가3산단')
-    ? `국가3산단 ${data.representative_location.includes('인근') ? '인근' : '출퇴근'}`
-    : data.representative_location.split(/[,.]/u)[0].slice(0, 24);
+  const representativeLocation = normalizeBlogText(
+    data.representative_location
+  );
+  const locationFeature = representativeLocation.includes('국가3산단')
+    ? `국가3산단 ${representativeLocation.includes('인근') ? '인근' : '출퇴근'}`
+    : representativeLocation &&
+      representativeLocation.length <= 16 &&
+      !/(?:위치|있으며|주거지역|생활권|출퇴근|편리)/u.test(
+        representativeLocation
+      )
+      ? representativeLocation
+      : '';
   const storedFeatures = normalizeBlogList(
     locationFeature,
     /리모델링/u.test(featureCorpus) ? '리모델링' : '',
@@ -9326,11 +9516,25 @@ function buildNaverBlogAd(property) {
   const introduction = data.is_sale
     ? [`${locationTitle}에 위치한 ${data.property_type} 매매 매물입니다.`, `${priceText} 조건입니다.`]
     : [
-        `${locationTitle} ${data.property_type} ${data.trade_type}을 찾는 분께 추천하는 매물입니다.`,
+        `${locationTitle}에 위치한 ${data.property_type} ${data.trade_type} 매물입니다.`,
         [automaticFeature, `${priceText}${data.maintenance_fee ? ` / 관리비 ${data.maintenance_fee}` : ''}`, data.move_in_date].filter(Boolean).join('\n')
       ];
+  const detailedDescription = data.floor
+    ? data.detailed_description.replace(
+        /(?:지하\s*)?\d+(?:\.\d+)?\s*층(?=\s*에\s*(?:위치|있는))/gu,
+        data.floor
+      )
+    : data.detailed_description;
+  const maintenanceBreakdown = getBlogMaintenanceBreakdown(data);
+  const maintenanceBreakdownText = maintenanceBreakdown
+    .map(
+      (item) =>
+        `${item.label} 월 ${formatBlogMaintenanceAmount(item.amountManwon)}`
+    )
+    .join(', ');
+
   const structureLines = [
-    data.detailed_description,
+    detailedDescription,
     data.remodeling ? `리모델링: ${data.remodeling}` : '',
     data.options.length ? `옵션: ${data.options.join(', ')}` : '',
     data.building_structure ? `건물 구조: ${data.building_structure}` : '',
@@ -9345,7 +9549,15 @@ function buildNaverBlogAd(property) {
       ]
     : [
         data.maintenance_fee ? `관리비: ${data.maintenance_fee}` : '',
-        data.maintenance_includes.length ? `관리비 포함 항목: ${data.maintenance_includes.join(', ')}` : '',
+        data.maintenance_includes.length
+          ? `관리비 포함 항목: ${data.maintenance_includes.join(', ')}`
+          : '',
+        ...maintenanceBreakdown.map(
+          (item) =>
+            `- ${item.label}: 월 ${formatBlogMaintenanceAmount(
+              item.amountManwon
+            )}`
+        ),
         data.parking_total ? `총주차대수: ${data.parking_total}` : '',
         data.move_in_date ? `입주가능일: ${data.move_in_date}` : ''
       ];
@@ -9356,14 +9568,19 @@ function buildNaverBlogAd(property) {
       )
     : ['등록된 사진이 없습니다.'];
   const recommendedLines = [
-    data.recommended_for || `${locationTitle} ${data.property_type} ${data.trade_type}을 찾는 분께 추천드립니다.`
+    data.recommended_for || `${locationTitle}에서 ${data.property_type} 매물을 찾는 분께 추천드립니다.`
   ];
   const legalNoticeExtra = data.legal_notice
     .split(/\n|(?<=[.!?])\s+/u)
     .map(normalizeBlogText)
     .filter(Boolean)
     .filter((line) => !/^\[?중개대상물\s*표시[·\s-]*광고\s*사항\]?$/u.test(line))
-    .filter((line) => !/^(?:-\s*)?(?:중개대상물 종류|거래형태|소재지|거래가격|가격|관리비|면적|전용면적|해당\s*층|총층수|방\/욕실|총주차대수|주차|방향|입주가능일|사용승인일)\s*:/u.test(line))
+    .filter(
+      (line) =>
+        !/(?:중개대상물 종류|거래형태|소재지|거래가격|가격|관리비(?:\s*포함\s*항목|\s*세부내역)?|면적|전용면적|해당\s*층|총층수|방\/욕실|총주차대수|주차|방향|입주가능일|사용승인일|주용도|건물구조)\s*:/u.test(
+          line
+        )
+    )
     .join(' ');
   const legalLines = data.is_sale
     ? [
@@ -9377,7 +9594,9 @@ function buildNaverBlogAd(property) {
         legalLine('방/욕실', data.room_bath),
         legalLine('총주차대수', data.parking_total),
         legalLine('방향', directionText),
-        legalLine('사용승인일', data.approval_date)
+        legalLine('사용승인일', data.approval_date),
+        legalLine('주용도', data.main_use),
+        legalLine('건물구조', data.building_structure)
       ]
     : [
         legalLine('중개대상물 종류', data.legal_property_type),
@@ -9385,6 +9604,13 @@ function buildNaverBlogAd(property) {
         legalLine('소재지', data.address),
         legalLine('거래가격', priceText),
         legalLine('관리비', data.maintenance_fee),
+        legalLine(
+          '관리비 포함 항목',
+          data.maintenance_includes.length
+            ? data.maintenance_includes.join(', ')
+            : ''
+        ),
+        legalLine('관리비 세부내역', maintenanceBreakdownText),
         legalLine('면적', data.exclusive_area),
         legalLine('해당 층', data.floor),
         legalLine('총층수', data.total_floors),
@@ -9392,7 +9618,9 @@ function buildNaverBlogAd(property) {
         legalLine('총주차대수', data.parking_total),
         legalLine('방향', directionText),
         legalLine('입주가능일', data.move_in_date),
-        legalLine('사용승인일', data.approval_date)
+        legalLine('사용승인일', data.approval_date),
+        legalLine('주용도', data.main_use),
+        legalLine('건물구조', data.building_structure)
       ];
 
   const bodyLines = [
@@ -9450,7 +9678,11 @@ function buildNaverBlogAd(property) {
     '칸공인중개사',
     '부동산매물',
     data.is_sale ? '수익형부동산' : '원룸월세정보'
-  ].map(makeTag).filter(Boolean))].slice(0, 18).map((tag) => `#${tag}`).join(' ');
+  ].map(makeTag).filter(Boolean))]
+    .filter((tag) => tag.length <= 20)
+    .slice(0, 15)
+    .map((tag) => `#${tag}`)
+    .join(' ');
   const warnings = validateNaverBlogAd({ body, normalized: data });
   const missingFields = warnings
     .filter((warning) => warning.startsWith('게시 전 확인 필요:'))
