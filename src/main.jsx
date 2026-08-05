@@ -7752,7 +7752,7 @@ if (isStaffMode && currentStaff?.code) {
       `연락처: ${OFFICE.phone} / ${OFFICE.tel}`,
             '',
       '🌐 더 많은 구미 임대·매매 매물은 칸공인중개사 홈페이지에서 확인하세요.',
-      '홈페이지: https://kan-homepage-final.vercel.app',
+      '홈페이지: https://www.khanhouse.co.kr',
       '',
       '📱 휴대폰에서 더 편리하게 매물을 확인하려면',
       '플레이스토어에서 ‘칸공인중개사’를 검색하세요.',
@@ -9408,7 +9408,7 @@ function buildNaverBlogAd(property) {
  ...section('🌐 칸공인중개사 홈페이지·앱 안내', [
   '이 매물 외에도 구미 원룸·미니투룸·투룸 임대와 상가·다가구·원룸건물 매매가 계속 등록되고 있습니다.',
   '사진·가격·지도·상세정보는 칸공인중개사 홈페이지에서 편리하게 확인하실 수 있습니다.',
-  '홈페이지: https://kan-homepage-final.vercel.app',
+  '홈페이지: https://www.khanhouse.co.kr',
   '',
   '휴대폰에서 더 편리하게 매물을 확인하려면',
   '플레이스토어에서 ‘칸공인중개사’를 검색하세요.'
@@ -10371,7 +10371,7 @@ if (index === 0) {
 
         drawShareText(
           ctx,
-          '홈페이지: kan-homepage-final.vercel.app',
+          '홈페이지: www.khanhouse.co.kr',
           540,
           1188,
           {
@@ -10704,7 +10704,7 @@ drawRoundedRect(
 
         drawShareText(
           ctx,
-          '홈페이지: kan-homepage-final.vercel.app',
+          '홈페이지: www.khanhouse.co.kr',
           540,
           1188,
           {
@@ -10850,7 +10850,7 @@ async function buildInstagramShareFiles(property, photoUrls) {
           drawChannelLine(ctx, `✓ ${line}`, 70, 935 + lineIndex * 48, { font: '800 31px sans-serif' });
         });
         drawChannelLine(ctx, '더 많은 구미 매물은 홈페이지·앱에서 확인', 70, 1090, { font: '700 25px sans-serif' });
-        drawChannelLine(ctx, '홈페이지: kan-homepage-final.vercel.app', 70, 1128, { font: '700 25px sans-serif' });
+        drawChannelLine(ctx, '홈페이지: www.khanhouse.co.kr', 70, 1128, { font: '700 25px sans-serif' });
         drawChannelLine(ctx, "플레이스토어에서 '칸공인중개사' 검색하세요", 70, 1166, { font: '700 25px sans-serif' });
       } else {
         drawChannelLine(ctx, pageTitles[index], 70, 960, { font: '900 34px sans-serif', color: '#ffd54f' });
