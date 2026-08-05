@@ -5865,7 +5865,10 @@ async function deleteDuplicateProperty(property) {
           private_memo: form.private_memo,
           status: staffStatusValue,
         }
-      : form;
+            : {
+          ...form,
+          floor_info: storedFloorInfo || form.floor_info
+        };
 
     if (!saveForm.title.trim()) {
       setStatus('제목은 필수입니다.');
