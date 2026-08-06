@@ -2542,8 +2542,8 @@ const MapPropertyPanel = React.memo(function MapPropertyPanel({
   const loadMoreRef = useRef(null);
   const touchStartY = useRef(0);
   const [visibleCount, setVisibleCount] = useState(20);
-  const [isMobilePanel, setIsMobilePanel] = useState(() => window.matchMedia('(max-width: 1024px)').matches);
-  const renderCount = isMobilePanel && !sheetExpanded ? Math.min(1, items.length) : Math.min(visibleCount, items.length);
+  const [isMobilePanel, setIsMobilePanel] = useState(() => window.matchMedia('(max-width: 768px)').matches);
+  const renderCount = isMobilePanel && !sheetExpanded ? 0 : Math.min(visibleCount, items.length);
   const renderedItems = useMemo(() => items.slice(0, renderCount), [items, renderCount]);
   const registerCard = React.useCallback((propertyId, node) => {
     if (node) cardRefs.current.set(String(propertyId), node);
@@ -2551,7 +2551,7 @@ const MapPropertyPanel = React.memo(function MapPropertyPanel({
   }, []);
 
   useEffect(() => {
-    const query = window.matchMedia('(max-width: 1024px)');
+    const query = window.matchMedia('(max-width: 768px)');
     const update = () => setIsMobilePanel(query.matches);
     update();
     query.addEventListener('change', update);
