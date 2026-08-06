@@ -8232,20 +8232,224 @@ if (isStaffMode && currentStaff?.code) {
     property.status ||
     '임시저장';
 
-      const instagramPriceText = isSale
-      ? `💰 매매가 ${formatAmount(property.sale_price)} / 인수가 ${formatAmount(property.acquisition_price)}`
-      : `💰 보증금 ${formatAmount(property.deposit)} / 월세 ${formatAmount(property.rent)}`;
+    // KHAN_INSTAGRAM_SEO_AUTO_V1
+    const cleanInstagramText = (value) =>
+      String(value ?? '')
+        .replace(/\r?\n+/gu, ' ')
+        .replace(/\s+/gu, ' ')
+        .trim();
+
+    const instagramAddress =
+      cleanInstagramText(property.address) || '구미시';
+
+    const instagramCategorySource = [
+      property.legal_property_type,
+      property.category,
+      property.title
+    ]
+      .map(cleanInstagramText)
+      .filter(Boolean)
+      .join(' ');
+
+    const instagramPropertyTypeRules = [
+      ['원룸건물', '원룸건물'],
+      ['미니투룸', '미니투룸'],
+      ['다가구주택', '다가구'],
+      ['다가구', '다가구'],
+      ['쓰리룸', '쓰리룸'],
+      ['투룸', '투룸'],
+      ['원룸', '원룸'],
+      ['오피스텔', '오피스텔'],
+      ['아파트', '아파트'],
+      ['상가', '상가'],
+      ['사무실', '사무실'],
+      ['토지', '토지']
+    ];
+
+    const instagramPropertyType =
+      instagramPropertyTypeRules.find(([keyword]) =>
+        instagramCategorySource.includes(keyword)
+      )?.[1] ||
+      cleanInstagramText(property.category) ||
+      '부동산';
+
+    const instagramTradeType =
+      cleanInstagramText(property.trade_type) ||
+      (isSale ? '매매' : '월세');
+
+    const instagramAdminArea =
+      instagramAddress.match(/([가-힣]+(?:시|군))(?=\s|$)/u)?.[1] || '';
+
+    const instagramTown =
+      instagramAddress.match(/([가-힣0-9]+(?:읍|면))(?=\s|$)/u)?.[1] || '';
+
+    const instagramNeighborhood =
+      instagramAddress.match(
+        /([가-힣0-9]+(?:동|리))(?=\s|\d|길|로|$)/u
+      )?.[1] || '';
+
+    const instagramLocalArea = [
+      instagramTown,
+      instagramNeighborhood
+    ]
+      .filter(Boolean)
+      .join(' ');
+
+    const instagramSeoArea =
+      instagramLocalArea ||
+      instagramAdminArea ||
+      instagramAddress;
+
+    const instagramSearchKeyword = [
+      instagramAdminArea,
+      instagramTown,
+      instagramNeighborhood,
+      instagramPropertyType,
+      instagramTradeType
+    ]
+      .filter(Boolean)
+      .filter((value, index, list) => list.indexOf(value) === index)
+      .join(' ');
+
+    const instagramPriceText = isSale
+      ? `💰 매매가 ${formatAmount(property.sale_price)} / 인수가 ${formatAmount(
+          property.acquisition_price
+        )}`
+      : `💰 보증금 ${formatAmount(property.deposit)} / 월세 ${formatAmount(
+          property.rent
+        )}`;
 
     const instagramLegalPrice = isSale
       ? `매매가 ${formatAmount(property.sale_price)}`
-      : `보증금 ${formatAmount(property.deposit)} / 월세 ${formatAmount(property.rent)}`;
+      : `보증금 ${formatAmount(property.deposit)} / 월세 ${formatAmount(
+          property.rent
+        )}`;
+
+    const instagramTitlePrice = isSale
+      ? property.sale_price
+        ? `매매가 ${formatAmount(property.sale_price)}`
+        : ''
+      : [formatAmount(property.deposit), formatAmount(property.rent)]
+          .filter(Boolean)
+          .join('/');
+
+    const instagramFeatureSource = [
+      property.summary,
+      property.description,
+      property.detailed_description,
+      property.location_description,
+      property.remodeling,
+      ...(Array.isArray(property.badges) ? property.badges : [])
+    ]
+      .map(cleanInstagramText)
+      .filter(Boolean)
+      .join(' ');
+
+    const instagramFeatures = [
+      /리모델링/u.test(instagramFeatureSource) ? '리모델링' : '',
+      /풀옵션/u.test(instagramFeatureSource) ? '풀옵션' : '',
+      /즉시\s*입주/u.test(instagramFeatureSource) ? '즉시입주' : '',
+      /엘리베이터|승강기/u.test(instagramFeatureSource)
+        ? '엘리베이터'
+        : '',
+      /산단|산업단지/u.test(instagramFeatureSource)
+        ? '산업단지 인근'
+        : ''
+    ]
+      .filter(Boolean)
+      .slice(0, 3);
+
+    const instagramSeoTitle = [
+      instagramSearchKeyword ||
+        cleanInstagramText(property.title) ||
+        '구미 부동산 매물',
+      instagramTitlePrice,
+      instagramFeatures.slice(0, 2).join('·')
+    ]
+      .filter(Boolean)
+      .join('｜');
+
+    const instagramIntro =
+      `${instagramSeoArea}에서 ${instagramPropertyType} ` +
+      `${instagramTradeType} 매물을 찾는 분께 추천드립니다.` +
+      (instagramFeatures.length
+        ? ` ${instagramFeatures.join('·')} 조건을 확인해 보세요.`
+        : '');
+
+    const instagramSummary =
+      cleanInstagramText(property.summary || property.description);
+
+    const makeInstagramTag = (value) =>
+      cleanInstagramText(value)
+        .replace(/^#+/u, '')
+        .replace(/\s+/gu, '')
+        .replace(/[^0-9A-Za-z가-힣_]/gu, '');
+
+    const instagramTagCandidates = [
+      instagramNeighborhood &&
+        `${instagramNeighborhood}${instagramPropertyType}`,
+      instagramNeighborhood &&
+        `${instagramNeighborhood}${instagramTradeType}`,
+      instagramTown && `${instagramTown}${instagramPropertyType}`,
+      instagramTown && `${instagramTown}${instagramTradeType}`,
+      instagramAdminArea &&
+        `${instagramAdminArea}${instagramPropertyType}`,
+      instagramAdminArea &&
+        `${instagramAdminArea}${instagramTradeType}`,
+      instagramAdminArea && `${instagramAdminArea}부동산`,
+      isSale && instagramPropertyType === '원룸건물'
+        ? `${instagramAdminArea || '구미'}원룸건물매매`
+        : '',
+      isSale && /다가구|원룸건물/u.test(instagramPropertyType)
+        ? `${instagramAdminArea || '구미'}수익형부동산`
+        : '',
+      '칸공인중개사'
+    ];
+
+    const instagramTags = [
+      ...new Set(
+        instagramTagCandidates
+          .map(makeInstagramTag)
+          .filter(Boolean)
+      )
+    ]
+      .filter((tag) => tag.length <= 20)
+      .slice(0, 10)
+      .map((tag) => `#${tag}`)
+      .join(' ');
+
+    const instagramDirectionBasis = cleanInstagramText(
+      property.direction_basis ||
+        property.direction_base ||
+        property.direction_standard
+    );
+
+    const instagramDirection = [
+      cleanInstagramText(property.direction),
+      instagramDirectionBasis
+        ? `(${instagramDirectionBasis})`
+        : ''
+    ]
+      .filter(Boolean)
+      .join(' ');
+
+    const instagramMaintenanceIncludes = cleanInstagramText(
+      Array.isArray(property.maintenance_includes)
+        ? property.maintenance_includes.join(', ')
+        : property.maintenance_includes ||
+            property.management_includes
+    );
 
     const instagramText = [
-      `🏠 ${property.title || '구미 부동산 매물'}`,
-      `매물번호 ${getPublicPropertyNumber(property)}`,
-      `📍 ${property.address || '구미시'}`,
+      `🏠 ${instagramSeoTitle}`,
+      instagramIntro,
       instagramPriceText,
-      property.summary || '',
+      instagramSummary &&
+      !instagramIntro.includes(instagramSummary)
+        ? instagramSummary
+        : '',
+      `🔢 매물번호 ${getPublicPropertyNumber(property)}`,
+      `📍 ${instagramAddress}`,
       '',
       '【중개대상물 표시·광고 사항】',
       `중개대상물 종류: ${
@@ -8253,12 +8457,26 @@ if (isStaffMode && currentStaff?.code) {
         property.category ||
         '확인 필요'
       }`,
-      `거래형태: ${property.trade_type || (isSale ? '매매' : '월세')}`,
-      `소재지: ${property.address || '확인 필요'}`,
+      `거래형태: ${instagramTradeType}`,
+      `소재지: ${instagramAddress || '확인 필요'}`,
       `거래가격: ${instagramLegalPrice}`,
-      `관리비: ${property.maintenance_fee || '확인 필요'}`,
-      `면적: ${property.exclusive_area || property.area || '확인 필요'}`,
-      `해당 층: ${property.floor_info || property.current_floor || property.floor || '확인 필요'}`,
+      !isSale
+        ? `관리비: ${property.maintenance_fee || '확인 필요'}`
+        : '',
+      !isSale && instagramMaintenanceIncludes
+        ? `관리비 포함 항목: ${instagramMaintenanceIncludes}`
+        : '',
+      `면적: ${
+        property.exclusive_area ||
+        property.area ||
+        '확인 필요'
+      }`,
+      `해당 층: ${
+        property.floor_info ||
+        property.current_floor ||
+        property.floor ||
+        '확인 필요'
+      }`,
       `총층수: ${
         property.total_floors ||
         property.total_floor ||
@@ -8273,17 +8491,21 @@ if (isStaffMode && currentStaff?.code) {
           property.bathrooms ||
           property.bathroom_count
             ? `${property.rooms || property.room_count || '-'} / ${
-                property.bathrooms || property.bathroom_count || '-'
+                property.bathrooms ||
+                property.bathroom_count ||
+                '-'
               }`
             : '확인 필요'
         )
       }`,
-      `방향: ${property.direction || '확인 필요'}`,
-      `입주가능일: ${
-        property.move_in_date ||
-        property.move_in ||
-        '확인 필요'
-      }`,
+      `방향: ${instagramDirection || '확인 필요'}`,
+      !isSale
+        ? `입주가능일: ${
+            property.move_in_date ||
+            property.move_in ||
+            '확인 필요'
+          }`
+        : '',
       `총주차대수: ${
         property.parking_total ||
         property.total_parking ||
@@ -8295,22 +8517,31 @@ if (isStaffMode && currentStaff?.code) {
         property.use_approval_date ||
         '확인 필요'
       }`,
+      `주용도: ${
+        property.main_use ||
+        property.legal_main_use ||
+        '확인 필요'
+      }`,
+      `건물구조: ${
+        property.building_structure ||
+        property.structure ||
+        '확인 필요'
+      }`,
       '',
       `상호명: ${OFFICE.name}`,
       `소재지: ${OFFICE.address}`,
       `대표공인중개사: ${OFFICE.broker}`,
       `등록번호: ${OFFICE.regNo}`,
       `연락처: ${OFFICE.phone} / ${OFFICE.tel}`,
-            '',
-      '🌐 더 많은 구미 임대·매매 매물은 칸공인중개사 홈페이지에서 확인하세요.',
+      '',
+      '🌐 더 많은 구미·칠곡 임대·매매 매물은 칸공인중개사 홈페이지에서 확인하세요.',
       '홈페이지: https://www.khanhouse.co.kr',
       '',
-      '📱 휴대폰에서 더 편리하게 매물을 확인하려면',
-      '플레이스토어에서 ‘칸공인중개사’를 검색하세요.',
+      '📱 플레이스토어에서 ‘칸공인중개사’를 검색하세요.',
       '',
-      '#구미부동산 #구미원룸 #구미투룸 #구미다가구매매 #칸공인중개사'
+      instagramTags
     ]
-      .filter((line) => line !== null && line !== undefined)
+      .filter(Boolean)
       .join('\n');
 
 const facebookAd = buildNaverBlogAd(property);
