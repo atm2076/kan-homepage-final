@@ -5548,64 +5548,592 @@ setStaffStep(0);
     setDetailFieldsOpen(false);
     setStatus('새 매물 등록 상태입니다.');
   }
-function autoEditPhoto(file, options = {}) {
-  const { enhanceLevel = 'bright' } = options;
-  const enhanceConfig = PHOTO_ENHANCE_LEVELS.find((level) => level.value === enhanceLevel) || PHOTO_ENHANCE_LEVELS[2];
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    const img = new Image();
+  function autoEditPhoto(file, { enhanceLevel = 'none' } = {}) {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      const img = new Image();
 
-    reader.onload = (event) => {
-      img.onload = () => {
-        const maxWidth = 1600;
-        const maxHeight = 1200;
+      const resolveEnhanceLevel = (value) => {
+        const level = String(value || 'none').toLowerCase();
 
-        let width = img.width;
-        let height = img.height;
+        if (/strong|high|level3|stage3|3단|^3$/u.test(level)) {
+          return 'strong';
+        }
 
-        const ratio = Math.min(maxWidth / width, maxHeight / height, 1);
-        width = Math.round(width * ratio);
-        height = Math.round(height * ratio);
+        if (/bright|medium|level2|stage2|2단|^2$/u.test(level)) {
+          return 'bright';
+        }
 
-        const canvas = document.createElement('canvas');
-        const ctx = canvas.getContext('2d');
+        if (/natural|low|level1|stage1|1단|^1$/u.test(level)) {
+          return 'natural';
+        }
 
-        canvas.width = width;
-        canvas.height = height;
+        return 'none';
+      };
 
-        // 선택된 강도로 밝기 / 대비 / 채도 보정
-        ctx.filter = enhanceConfig.filter;
-        ctx.drawImage(img, 0, 0, width, height);
-        ctx.filter = 'none';
-        canvas.toBlob(
-          (blob) => {
-            if (!blob) {
-              reject(new Error('사진 자동편집 실패'));
+      const levelKey = resolveEnhanceLevel(enhanceLevel);
+
+      const enhanceConfigs = {
+        none: {
+          filter: 'none',
+          gamma: 1,
+          shadowLift: 0,
+          exposure: 1,
+          maxCorrection: 0,
+        },
+        natural: {
+          filter: 'contrast(1.03) saturate(1.05)',
+          gamma: 0.92,
+          shadowLift: 0.04,
+          exposure: 1.05,
+          maxCorrection: 3,
+        },
+        bright: {
+          filter: 'contrast(1.05) saturate(1.08)',
+          gamma: 0.82,
+          shadowLift: 0.09,
+          exposure: 1.12,
+          maxCorrection: 5,
+        },
+        strong: {
+          filter: 'contrast(1.07) saturate(1.12)',
+          gamma: 0.72,
+          shadowLift: 0.15,
+          exposure: 1.22,
+          maxCorrection: 7,
+        },
+      };
+
+      const config = enhanceConfigs[levelKey];
+
+      const clamp = (value, min, max) =>
+        Math.max(min, Math.min(max, value));
+
+      /*
+       * 문틀·창틀·천장선·바닥선의 방향을 분석해
+       * 신뢰도가 높은 경우에만 사진 기울기를 교정합니다.
+       */
+      const detectStraightenAngle = (source, maxCorrection) => {
+        if (!maxCorrection) return 0;
+
+        try {
+          const sourceWidth =
+            source.naturalWidth || source.width;
+
+          const sourceHeight =
+            source.naturalHeight || source.height;
+
+          if (!sourceWidth || !sourceHeight) return 0;
+
+          const analysisMaxSide = 360;
+
+          const analysisScale = Math.min(
+            analysisMaxSide / sourceWidth,
+            analysisMaxSide / sourceHeight,
+            1
+          );
+
+          const analysisWidth = Math.max(
+            80,
+            Math.round(sourceWidth * analysisScale)
+          );
+
+          const analysisHeight = Math.max(
+            80,
+            Math.round(sourceHeight * analysisScale)
+          );
+
+          const analysisCanvas =
+            document.createElement('canvas');
+
+          analysisCanvas.width = analysisWidth;
+          analysisCanvas.height = analysisHeight;
+
+          const analysisContext =
+            analysisCanvas.getContext('2d', {
+              willReadFrequently: true,
+            });
+
+          if (!analysisContext) return 0;
+
+          analysisContext.drawImage(
+            source,
+            0,
+            0,
+            analysisWidth,
+            analysisHeight
+          );
+
+          const imageData = analysisContext.getImageData(
+            0,
+            0,
+            analysisWidth,
+            analysisHeight
+          );
+
+          const pixels = imageData.data;
+
+          const gray = new Float32Array(
+            analysisWidth * analysisHeight
+          );
+
+          for (
+            let pixelIndex = 0, grayIndex = 0;
+            pixelIndex < pixels.length;
+            pixelIndex += 4, grayIndex += 1
+          ) {
+            gray[grayIndex] =
+              pixels[pixelIndex] * 0.299 +
+              pixels[pixelIndex + 1] * 0.587 +
+              pixels[pixelIndex + 2] * 0.114;
+          }
+
+          const detectLimit = Math.min(
+            10,
+            maxCorrection + 3
+          );
+
+          const binSize = 0.25;
+
+          const histogram = new Float64Array(
+            Math.ceil((detectLimit * 2) / binSize) + 1
+          );
+
+          let totalWeight = 0;
+          let edgeCount = 0;
+
+          for (
+            let y = 1;
+            y < analysisHeight - 1;
+            y += 1
+          ) {
+            for (
+              let x = 1;
+              x < analysisWidth - 1;
+              x += 1
+            ) {
+              const topLeft =
+                gray[(y - 1) * analysisWidth + x - 1];
+
+              const top =
+                gray[(y - 1) * analysisWidth + x];
+
+              const topRight =
+                gray[(y - 1) * analysisWidth + x + 1];
+
+              const left =
+                gray[y * analysisWidth + x - 1];
+
+              const right =
+                gray[y * analysisWidth + x + 1];
+
+              const bottomLeft =
+                gray[(y + 1) * analysisWidth + x - 1];
+
+              const bottom =
+                gray[(y + 1) * analysisWidth + x];
+
+              const bottomRight =
+                gray[(y + 1) * analysisWidth + x + 1];
+
+              const gradientX =
+                -topLeft -
+                2 * left -
+                bottomLeft +
+                topRight +
+                2 * right +
+                bottomRight;
+
+              const gradientY =
+                -topLeft -
+                2 * top -
+                topRight +
+                bottomLeft +
+                2 * bottom +
+                bottomRight;
+
+              const magnitude = Math.hypot(
+                gradientX,
+                gradientY
+              );
+
+              if (magnitude < 90) continue;
+
+              let lineAngle =
+                (Math.atan2(gradientY, gradientX) *
+                  180) /
+                  Math.PI +
+                90;
+
+              while (lineAngle >= 90) {
+                lineAngle -= 180;
+              }
+
+              while (lineAngle < -90) {
+                lineAngle += 180;
+              }
+
+              let tilt = null;
+
+              // 수평에 가까운 선
+              if (Math.abs(lineAngle) <= 14) {
+                tilt = lineAngle;
+              }
+              // 수직에 가까운 선
+              else if (
+                Math.abs(Math.abs(lineAngle) - 90) <= 14
+              ) {
+                tilt =
+                  lineAngle < 0
+                    ? lineAngle + 90
+                    : lineAngle - 90;
+              }
+
+              if (
+                tilt === null ||
+                Math.abs(tilt) > detectLimit
+              ) {
+                continue;
+              }
+
+              const binIndex = Math.round(
+                (tilt + detectLimit) / binSize
+              );
+
+              const weight = Math.min(magnitude, 900);
+
+              histogram[binIndex] += weight;
+              totalWeight += weight;
+              edgeCount += 1;
+            }
+          }
+
+          if (
+            edgeCount < 100 ||
+            totalWeight <= 0
+          ) {
+            return 0;
+          }
+
+          let peakIndex = 0;
+
+          for (
+            let index = 1;
+            index < histogram.length;
+            index += 1
+          ) {
+            if (
+              histogram[index] >
+              histogram[peakIndex]
+            ) {
+              peakIndex = index;
+            }
+          }
+
+          const confidenceWindow =
+            Math.max(2, Math.round(1 / binSize));
+
+          let neighborhoodWeight = 0;
+
+          for (
+            let index = Math.max(
+              0,
+              peakIndex - confidenceWindow
+            );
+            index <=
+            Math.min(
+              histogram.length - 1,
+              peakIndex + confidenceWindow
+            );
+            index += 1
+          ) {
+            neighborhoodWeight += histogram[index];
+          }
+
+          const confidence =
+            neighborhoodWeight / totalWeight;
+
+          /*
+           * 직선 분석 신뢰도가 낮으면
+           * 정상 사진을 잘못 돌리지 않습니다.
+           */
+          if (confidence < 0.12) {
+            return 0;
+          }
+
+          let weightedAngle = 0;
+          let weightedTotal = 0;
+
+          for (
+            let index = Math.max(
+              0,
+              peakIndex - confidenceWindow
+            );
+            index <=
+            Math.min(
+              histogram.length - 1,
+              peakIndex + confidenceWindow
+            );
+            index += 1
+          ) {
+            const angle =
+              index * binSize - detectLimit;
+
+            weightedAngle +=
+              angle * histogram[index];
+
+            weightedTotal += histogram[index];
+          }
+
+          if (!weightedTotal) return 0;
+
+          const detectedTilt =
+            weightedAngle / weightedTotal;
+
+          if (Math.abs(detectedTilt) < 0.35) {
+            return 0;
+          }
+
+          return clamp(
+            -detectedTilt,
+            -maxCorrection,
+            maxCorrection
+          );
+        } catch (error) {
+          console.warn(
+            '사진 수평 자동분석 생략:',
+            error
+          );
+
+          return 0;
+        }
+      };
+
+      const applyToneCorrection = (
+        context,
+        width,
+        height,
+        toneConfig
+      ) => {
+        if (levelKey === 'none') return;
+
+        const imageData = context.getImageData(
+          0,
+          0,
+          width,
+          height
+        );
+
+        const pixels = imageData.data;
+
+        for (
+          let index = 0;
+          index < pixels.length;
+          index += 4
+        ) {
+          for (
+            let channel = 0;
+            channel < 3;
+            channel += 1
+          ) {
+            let value =
+              pixels[index + channel] / 255;
+
+            /*
+             * 감마 보정으로 중간 밝기를 올리고,
+             * shadowLift로 어두운 부분을 더 밝게 합니다.
+             */
+            value = Math.pow(
+              value,
+              toneConfig.gamma
+            );
+
+            value +=
+              toneConfig.shadowLift *
+              Math.pow(1 - value, 2);
+
+            /*
+             * 하이라이트가 하얗게 날아가지 않도록
+             * 1을 넘지 않는 방식으로 노출을 높입니다.
+             */
+            value =
+              1 -
+              Math.pow(
+                Math.max(0, 1 - value),
+                toneConfig.exposure
+              );
+
+            pixels[index + channel] = Math.round(
+              clamp(value * 255, 0, 255)
+            );
+          }
+        }
+
+        context.putImageData(imageData, 0, 0);
+      };
+
+      reader.onload = (event) => {
+        img.onload = () => {
+          try {
+            const maxWidth = 1600;
+            const maxHeight = 1200;
+
+            let width =
+              img.naturalWidth || img.width;
+
+            let height =
+              img.naturalHeight || img.height;
+
+            const ratio = Math.min(
+              maxWidth / width,
+              maxHeight / height,
+              1
+            );
+
+            width = Math.round(width * ratio);
+            height = Math.round(height * ratio);
+
+            const canvas =
+              document.createElement('canvas');
+
+            const ctx = canvas.getContext('2d', {
+              willReadFrequently: true,
+            });
+
+            if (!ctx) {
+              reject(
+                new Error(
+                  '사진 보정 화면을 만들 수 없습니다.'
+                )
+              );
               return;
             }
 
-            const newName = file.name.replace(/\.[^/.]+$/, '') + '.jpg';
+            canvas.width = width;
+            canvas.height = height;
 
-            const editedFile = new File([blob], newName, {
-              type: 'image/jpeg',
-              lastModified: Date.now(),
-            });
+            const correctionAngle =
+              detectStraightenAngle(
+                img,
+                config.maxCorrection
+              );
 
-            resolve(editedFile);
-          },
-          'image/jpeg',
-          0.82
-        );
+            const radians =
+              (correctionAngle * Math.PI) / 180;
+
+            const cosine = Math.abs(
+              Math.cos(radians)
+            );
+
+            const sine = Math.abs(
+              Math.sin(radians)
+            );
+
+            /*
+             * 회전 후 모서리에 빈 공간이 생기지 않도록
+             * 필요한 만큼 자동 확대하고 바깥 부분을 자릅니다.
+             */
+            const coverScale = correctionAngle
+              ? Math.max(
+                  (width * cosine +
+                    height * sine) /
+                    width,
+                  (width * sine +
+                    height * cosine) /
+                    height
+                )
+              : 1;
+
+            ctx.save();
+
+            ctx.translate(
+              width / 2,
+              height / 2
+            );
+
+            ctx.rotate(radians);
+
+            ctx.scale(
+              coverScale,
+              coverScale
+            );
+
+            ctx.filter = config.filter;
+
+            ctx.drawImage(
+              img,
+              -width / 2,
+              -height / 2,
+              width,
+              height
+            );
+
+            ctx.restore();
+            ctx.filter = 'none';
+
+            applyToneCorrection(
+              ctx,
+              width,
+              height,
+              config
+            );
+
+            canvas.toBlob(
+              (blob) => {
+                if (!blob) {
+                  reject(
+                    new Error(
+                      '사진 자동편집에 실패했습니다.'
+                    )
+                  );
+                  return;
+                }
+
+                const newName =
+                  file.name.replace(
+                    /\.[^/.]+$/u,
+                    ''
+                  ) + '.jpg';
+
+                const editedFile = new File(
+                  [blob],
+                  newName,
+                  {
+                    type: 'image/jpeg',
+                    lastModified: Date.now(),
+                  }
+                );
+
+                resolve(editedFile);
+              },
+              'image/jpeg',
+              0.9
+            );
+          } catch (error) {
+            reject(error);
+          }
+        };
+
+        img.onerror = () =>
+          reject(
+            new Error(
+              '사진 파일을 불러오지 못했습니다.'
+            )
+          );
+
+        img.src = event.target.result;
       };
 
-      img.onerror = reject;
-      img.src = event.target.result;
-    };
+      reader.onerror = () =>
+        reject(
+          new Error(
+            '사진 파일 읽기에 실패했습니다.'
+          )
+        );
 
-    reader.onerror = reject;
-    reader.readAsDataURL(file);
-  });
-}
+      reader.readAsDataURL(file);
+    });
+  }
   async function uploadPhotoFiles(fileList) {
    const originalFiles = Array.from(fileList || []).filter((file) => file.type.startsWith('image/'));
 const files = await Promise.all(
