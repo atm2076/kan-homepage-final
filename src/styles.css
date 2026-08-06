@@ -13673,3 +13673,44 @@ main :is(div, figure, a, button):has(> picture > img) {
     padding-top: 0 !important;
   }
 }
+
+/* 2026-08-06 모바일 지도 불필요한 내부 공백 제거 */
+@media (max-width: 768px) {
+  .customer-map-view {
+    gap: 0 !important;
+    row-gap: 0 !important;
+  }
+
+  .customer-map-canvas {
+    position: relative !important;
+    width: 100% !important;
+    height: 300px !important;
+    min-height: 300px !important;
+    max-height: 300px !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    overflow: hidden !important;
+  }
+
+  .customer-real-map,
+  .customer-real-map.map-area {
+    position: absolute !important;
+    inset: 0 !important;
+    width: 100% !important;
+    height: 100% !important;
+    min-height: 100% !important;
+    margin: 0 !important;
+  }
+
+  .customer-real-map > div,
+  .customer-real-map.map-area > div {
+    width: 100% !important;
+    height: 100% !important;
+    min-height: 100% !important;
+  }
+
+  .customer-map-view > .map-property-panel.map-linked-panel {
+    margin-top: 0 !important;
+    border-top: 0 !important;
+  }
+}
