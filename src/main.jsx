@@ -7959,10 +7959,10 @@ const facebookText =
                     const blogAd = buildNaverBlogAd(property);
                     if (blogAd.warnings.length) {
                       const warningMessage =
-                        `블로그 자동작성 중단: ${blogAd.warnings.join(' / ')}`;
+                        `블로그 자동작성 주의: ${blogAd.warnings.join(' / ')}`;
                       setStatus(warningMessage);
                       window.alert(warningMessage);
-                      return;
+                      
                     }
                     let popupWarning = '';
                     try {
