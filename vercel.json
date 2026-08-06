@@ -5,6 +5,10 @@
       "destination": "/api/sitemap"
     },
     {
+      "source": "/listing/:id",
+      "destination": "/api/listing-seo?id=:id"
+    },
+    {
       "source": "/(.*)",
       "destination": "/"
     }
