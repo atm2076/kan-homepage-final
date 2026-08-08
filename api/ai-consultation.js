@@ -90,7 +90,12 @@ async function saveAssistant(service, conversationId, reply, context, extra = {}
 export default async function handler(req, res) {
   if (req.method !== 'POST') return send(res, 405, { ok: false, error: 'POST만 허용됩니다.' });
   const service = serviceClient();
-  if (!service) return send(res, 503, { ok: false, error: '상담 서버 구성이 완료되지 않았습니다.' });
+  if (!service) return send(res, 503, {
+    ok: false,
+    error: process.env.SUPABASE_SERVICE_ROLE_KEY
+      ? '상담 서버 구성이 완료되지 않았습니다.'
+      : '상담 서버의 Supabase 서버 키가 설정되지 않았습니다.'
+  });
   const body = req.body && typeof req.body === 'object' ? req.body : {};
   const action = String(body.action || '');
 
