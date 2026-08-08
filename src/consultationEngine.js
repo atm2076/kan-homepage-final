@@ -22,6 +22,23 @@ export function assertNoPrivatePropertyFields(property = {}) {
   return Object.keys(property).every((key) => !PRIVATE_KEYS.has(key));
 }
 
+function priceRange(text, label, fallbackLabel = false) {
+  const labelled = text.match(new RegExp(`(?:최대\\s*)?${label}\\s*(?:은|는|이|가)?\\s*(\\d[\\d,]*)\\s*(만원)?\\s*(이하|까지|정도)?`, 'u'))
+    || text.match(new RegExp(`최대\\s*${label}\\s*(\\d[\\d,]*)`, 'u'));
+  const bare = fallbackLabel
+    ? text.match(/^\s*(?:최대\s*)?(\d[\d,]*)\s*(?:만원)?\s*(이하|까지|정도)?\s*$/u)
+    : null;
+  const match = labelled || bare;
+  if (!match) return null;
+  const amount = Number(match[1].replaceAll(',', ''));
+  const modifier = match[3] || match[2] || '';
+  const isMaximum = /최대/u.test(match[0]) || modifier === '이하' || modifier === '까지';
+  const margin = label === '보증금' ? 300 : 10;
+  return isMaximum
+    ? { min: 0, max: amount }
+    : { min: Math.max(0, amount - margin), max: amount + margin };
+}
+
 function numberNear(text, label) {
   const match = text.match(new RegExp(`${label}\\s*(?:은|는|이|가|까지|이하|약|정도)?\\s*(\\d[\\d,]*)`, 'u'));
   return match ? Number(match[1].replaceAll(',', '')) : null;
@@ -34,12 +51,16 @@ export function extractConsultationConditions(message, previous = {}) {
     : /미니?투룸|미투/u.test(text) ? '미니투룸'
       : /투룸/u.test(text) ? '투룸'
         : /원룸/u.test(text) ? '원룸' : previous.propertyType || null;
+  const depositRange = priceRange(text, '보증금', previous.maxDeposit == null);
+  const rentRange = priceRange(text, '월세', previous.maxDeposit != null && previous.maxRent == null);
   return {
     ...previous,
     region,
     propertyType,
-    maxDeposit: numberNear(text, '보증금') ?? previous.maxDeposit ?? null,
-    maxRent: numberNear(text, '월세') ?? previous.maxRent ?? null,
+    minDeposit: depositRange?.min ?? previous.minDeposit ?? null,
+    maxDeposit: depositRange?.max ?? previous.maxDeposit ?? null,
+    minRent: rentRange?.min ?? previous.minRent ?? null,
+    maxRent: rentRange?.max ?? previous.maxRent ?? null,
     maxManagementFee: numberNear(text, '관리비') ?? previous.maxManagementFee ?? null
   };
 }
@@ -69,7 +90,9 @@ export function filterAndRankProperties(properties, conditions, limit = 5) {
       && item.review_state === 'approved')
     .filter((item) => !conditions.region || String(item.address || '').includes(conditions.region))
     .filter((item) => !conditions.propertyType || String(item.property_type || item.category || '').includes(conditions.propertyType))
+    .filter((item) => conditions.minDeposit == null || (numeric(item.deposit) != null && numeric(item.deposit) >= conditions.minDeposit))
     .filter((item) => conditions.maxDeposit == null || (numeric(item.deposit) != null && numeric(item.deposit) <= conditions.maxDeposit))
+    .filter((item) => conditions.minRent == null || (numeric(item.rent) != null && numeric(item.rent) >= conditions.minRent))
     .filter((item) => conditions.maxRent == null || (numeric(item.rent) != null && numeric(item.rent) <= conditions.maxRent))
     .filter((item) => conditions.maxManagementFee == null || (numeric(item.maintenance_fee) != null && numeric(item.maintenance_fee) <= conditions.maxManagementFee))
     .filter((item) => !conditions.parkingRequired || (!/불가능/u.test(String(item.parking || '')) && /가능|주차\s*[1-9]/u.test(String(item.parking || ''))))
