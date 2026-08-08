@@ -21,7 +21,7 @@ function send(res, status, payload) {
 }
 
 function serviceClient() {
-  const url = process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL;
+  const url = process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL || 'https://ipjppmhyxfrbocfquwos.supabase.co';
   const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
   if (!url || !key) return null;
   return createClient(url, key, { auth: { persistSession: false, autoRefreshToken: false } });
