@@ -4616,6 +4616,7 @@ const [buildingLedgerSearching, setBuildingLedgerSearching] = useState(false);
   // AI 광고작성 자동이동 V6
   // AI 광고 문구 품질개선 V7
   // AI 광고 자동수정 V8
+  // AI 광고 정밀수정 V9
   const [aiAdPropertyId, setAiAdPropertyId] = useState(null);
   const [aiAdChannel, setAiAdChannel] = useState('blog');
   const [aiAdCopyStatus, setAiAdCopyStatus] = useState('');
@@ -4805,6 +4806,7 @@ function cleanAiAdDirection(value) {
   return aiAdText(value)
     .replace(/\(\s*,\s*주된\s*창\s*기준\s*\)/gu, '(주된 창 기준)')
     .replace(/\(\s*주된\s*창\s*기준\s*\)/gu, '(주된 창 기준)')
+    .replace(/^(.+?)\s*,\s*주된\s*창\s*기준$/u, '$1(주된 창 기준)')
     .replace(/,\s*,/gu, ',')
     .trim();
 }
@@ -4812,6 +4814,7 @@ function cleanAiAdText(value) {
   return normalizeAiAdRegionText(value)
     .replace(/\(\s*,\s*주된\s*창\s*기준\s*\)/gu, '(주된 창 기준)')
     .replace(/\(\s*주된\s*창\s*기준\s*\)/gu, '(주된 창 기준)')
+    .replace(/^(.+?)\s*,\s*주된\s*창\s*기준$/u, '$1(주된 창 기준)')
     .replace(/\s+,/gu, ',')
     .trim();
 }
@@ -4831,11 +4834,34 @@ const aiAdPrice = aiAdProperty
   : '';
 const aiAdMoveIn = aiAdProperty ? cleanAiAdText(aiAdProperty.move_in || aiAdProperty.move_in_date) : '';
 const aiAdMaintenance = aiAdProperty ? cleanAiAdText(aiAdProperty.maintenance_fee) : '';
+const aiAdMaintenanceDisplay = (() => {
+  const text = aiAdMaintenance;
+  if (!text) return '';
+  if (/^월\s*/u.test(text) || /없음|포함|별도|실비|확인/u.test(text)) return text;
+  return /(?:만원|원)$/u.test(text) ? `월 ${text}` : text;
+})();
 const aiAdMaintenanceIncludes = aiAdProperty ? aiAdListText(aiAdProperty.maintenance_includes) : '';
 const aiAdDirection = aiAdProperty ? cleanAiAdDirection(aiAdProperty.direction) : '';
-const aiAdSummary = aiAdProperty ? cleanAiAdText(aiAdProperty.summary) : '';
+const aiAdSummary = aiAdProperty ? cleanAiAdText(aiAdProperty.summary).replace(/\s+/gu, ' ').trim() : '';
+const aiAdSummarySearch = aiAdSummary.replace(/[\s·,()]/gu, '');
+const aiAdDirectionCore = aiAdDirection.split(/[,(]/u)[0].trim();
+const aiAdDirectionSearch = aiAdDirectionCore.replace(/\s+/gu, '');
+const aiAdMoveInSearch = aiAdMoveIn.replace(/\s+/gu, '');
 const aiAdFeatureLine = aiAdProperty ? aiAdUnique([
   aiAdSummary,
+  aiAdDirection &&
+    !aiAdDirection.includes('확인필요') &&
+    aiAdDirectionSearch &&
+    !aiAdSummarySearch.includes(aiAdDirectionSearch)
+      ? aiAdDirection
+      : '',
+  aiAdMoveIn &&
+    aiAdMoveInSearch &&
+    !aiAdSummarySearch.includes(aiAdMoveInSearch)
+      ? aiAdMoveIn
+      : ''
+]).join(' · ') : '';
+const aiAdQuickHighlights = aiAdProperty ? aiAdUnique([
   aiAdDirection && !aiAdDirection.includes('확인필요') ? aiAdDirection : '',
   aiAdMoveIn
 ]).join(' · ') : '';
@@ -4857,8 +4883,16 @@ const aiAdParkingTotal = aiAdProperty ? aiAdFormatUnit(
   aiAdProperty.parking_total || aiAdProperty.total_parking || aiAdProperty.parking,
   '대'
 ) : '';
+const aiAdParkingTotalDisplay = aiAdParkingTotal.replace(/^총\s*/u, '').trim();
 const aiAdApprovalDate = aiAdProperty ? cleanAiAdText(aiAdProperty.approval_date || aiAdProperty.use_approval_date) : '';
 const aiAdRoomBath = aiAdProperty ? cleanAiAdText(aiAdProperty.room_bath) : '';
+const aiAdRoomBathDisplay = (() => {
+  const raw = aiAdRoomBath.replace(/\s*확인\s*후\s*입력\s*$/u, '').trim();
+  if (!raw) return '';
+  const match = raw.match(/(?:방\s*)?(\d+)\s*(?:개)?\s*\/\s*(?:욕실\s*)?(\d+)\s*(?:개)?/u);
+  if (match) return `방 ${match[1]}개 / 욕실 ${match[2]}개`;
+  return raw;
+})();
 const aiAdStructure = aiAdProperty ? cleanAiAdText(aiAdProperty.structure) : '';
 const aiAdMainUse = aiAdProperty ? cleanAiAdText(aiAdProperty.main_use) : '';
 const aiAdRegionBase = aiAdRegion.cityCounty || (aiAdText(aiAdProperty?.address).includes('칠곡') ? '칠곡' : '구미');
@@ -4882,7 +4916,8 @@ function polishAiBlogBody(body) {
     .replace(/원룸[.\s]+미니투룸[.\s]+투룸/gu, '원룸·미니투룸·투룸')
     .replace(/상가[.\s]+다가구[.\s]+원룸건물/gu, '상가·다가구·원룸건물')
     .replace(/https:\/\/kan-homepage-final\.vercel\.app/giu, window.location.origin)
-    .replace(/([^\n])\s*※\s*/gu, '$1\n※ ');
+    .replace(/([^\n])\s*※\s*/gu, '$1\n※ ')
+    .replace(/^[ \t]+※/gmu, '※');
   normalized = normalizeAiAdRegionText(normalized)
     .replace(/\(\s*,\s*주된\s*창\s*기준\s*\)/gu, '(주된 창 기준)');
   const lines = normalized.split('\n');
@@ -4914,14 +4949,14 @@ const aiAdLegalMissing = aiAdProperty ? [
   !aiAdTradeType && '거래형태',
   !aiAdText(aiAdProperty.address) && '소재지',
   !aiAdPrice && '거래가격',
-  !aiAdIsSale && !aiAdMaintenance && '관리비',
+  !aiAdIsSale && !aiAdMaintenanceDisplay && '관리비',
   !aiAdArea && '면적',
   !aiAdCurrentFloor && '해당 층',
   !aiAdTotalFloor && '총층수',
-  !aiAdRoomBath && '방/욕실',
+  !aiAdRoomBathDisplay && '방/욕실',
   !aiAdDirection && '방향',
   !aiAdMoveIn && '입주가능일',
-  !aiAdParkingTotal && '총주차대수',
+  !aiAdParkingTotalDisplay && '총주차대수',
   !aiAdApprovalDate && '사용승인일'
 ].filter(Boolean) : [];
 const aiAdLegalWarning = aiAdLegalMissing.length
@@ -4932,13 +4967,13 @@ const aiAdLegalLines = aiAdProperty ? [
   `거래형태: ${aiAdTradeType || '확인 필요'}`,
   `소재지: ${cleanAiAdText(aiAdProperty.address) || '확인 필요'}`,
   `거래가격: ${aiAdPrice || '확인 필요'}`,
-  !aiAdIsSale ? `관리비: ${aiAdMaintenance || '확인 필요'}` : '',
+  !aiAdIsSale ? `관리비: ${aiAdMaintenanceDisplay || '확인 필요'}` : '',
   !aiAdIsSale && aiAdMaintenanceIncludes ? `관리비 포함항목: ${aiAdMaintenanceIncludes}` : '',
   `면적: ${aiAdArea || '확인 필요'}`,
   `해당 층: ${aiAdCurrentFloor || '확인 필요'}`,
   `총층수: ${aiAdTotalFloor || '확인 필요'}`,
-  `방/욕실: ${aiAdRoomBath || '확인 필요'}`,
-  `총주차대수: ${aiAdParkingTotal || '확인 필요'}`,
+  `방/욕실: ${aiAdRoomBathDisplay || '확인 필요'}`,
+  `총주차대수: ${aiAdParkingTotalDisplay || '확인 필요'}`,
   `방향: ${aiAdDirection || '확인 필요'}`,
   `입주가능일: ${aiAdMoveIn || '확인 필요'}`,
   `사용승인일: ${aiAdApprovalDate || '확인 필요'}`,
@@ -4982,7 +5017,7 @@ const aiAdFacebook = aiAdProperty ? [
   `먼저 조건부터 확인하세요. ${aiAdPrice}`,
   aiAdFeatureLine || '',
   '',
-  `${aiAdRegion.display || '구미·칠곡'}에서 ${aiAdHeadlineType || '매물'}을 찾는 분께 안내드립니다.`,
+  `${aiAdRegion.display || '구미·칠곡'}에서 ${aiAdHeadlineType || '원하는'} 매물을 찾는 분께 안내드립니다.`,
   '사진과 지도, 상세조건은 아래 매물 페이지에서 확인할 수 있습니다.',
   aiAdDetailUrl,
   '',
@@ -4995,7 +5030,7 @@ const aiAdFacebook = aiAdProperty ? [
 
 const aiAdHomepage = aiAdProperty ? [
   `아직 ${aiAdHeadlineType || '원하는 매물'} 매물을 찾고 계신가요?`,
-  `${aiAdPrice}${aiAdFeatureLine ? ` · ${aiAdFeatureLine}` : ''}`,
+  `${aiAdPrice}${aiAdQuickHighlights ? ` · ${aiAdQuickHighlights}` : ''}`,
   '사진·지도·상세조건을 지금 확인해보세요.',
   aiAdDetailUrl
 ].join('\n') : '';
@@ -8477,7 +8512,7 @@ if (isStaffMode && currentStaff?.code) {
                     <div className="ai-v5-ad-head">
                       <div>
                         <span className="ai-v3-kicker">AI AD WRITER</span>
-                        <span className="ai-v7-quality">광고 자동수정 V8</span>
+                        <span className="ai-v7-quality">광고 정밀수정 V9</span>
                         <h4>광고 자동작성 · #{getPublicPropertyNumber(aiAdProperty) || '-'} {aiAdProperty.title || '제목 없는 매물'}</h4>
                       </div>
                       <button type="button" className="small-btn" onClick={() => setAiAdPropertyId(null)}>닫기</button>
