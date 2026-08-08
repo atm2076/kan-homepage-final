@@ -13764,3 +13764,20 @@ main :is(div, figure, a, button):has(> picture > img) {
 @media (max-width: 900px) { .ai-v3-summary { grid-template-columns: repeat(2,minmax(0,1fr)); } }
 @media (max-width: 720px) { .ai-v3-row { grid-template-columns: 50px minmax(0,1fr); } .ai-v3-row > button { grid-column: 1 / -1; } .ai-v3-head { align-items: stretch; flex-direction: column; } }
 
+
+/* AI 광고 자동작성 2단계 V5 */
+.ai-v5-actions { display:flex; gap:7px; flex-wrap:wrap; }
+.ai-v5-ad-btn { background:#173b67 !important; color:#fff !important; border-color:#173b67 !important; }
+.ai-v5-ad-panel { display:grid; gap:14px; padding:18px; border:2px solid #173b67; border-radius:18px; background:#f8fbff; }
+.ai-v5-ad-head { display:flex; align-items:flex-start; justify-content:space-between; gap:12px; }
+.ai-v5-ad-head h4 { margin:4px 0 0; font-size:18px; }
+.ai-v5-warning { display:grid; gap:5px; padding:12px 14px; border:1px solid #f2c66d; border-radius:12px; background:#fff8df; color:#7a4b00; }
+.ai-v5-warning span { font-size:13px; }
+.ai-v5-tabs { display:flex; flex-wrap:wrap; gap:7px; }
+.ai-v5-tabs button { min-height:38px; padding:7px 11px; border:1px solid #cbd5e1; border-radius:10px; background:#fff; font-weight:900; cursor:pointer; }
+.ai-v5-tabs button.active { background:#173b67; border-color:#173b67; color:#fff; }
+.ai-v5-textarea { width:100%; min-height:360px; resize:vertical; padding:14px; border:1px solid #cbd5e1; border-radius:12px; background:#fff; color:#111827; line-height:1.55; font:inherit; }
+.ai-v5-copy-row { display:flex; align-items:center; flex-wrap:wrap; gap:10px; }
+.ai-v5-copy-row strong { color:#166534; font-size:13px; }
+.ai-v5-preview-link { display:inline-flex; align-items:center; text-decoration:none; }
+@media (max-width:720px) { .ai-v5-ad-head { flex-direction:column; } .ai-v5-textarea { min-height:300px; } .ai-v5-actions { grid-column:1 / -1; } }

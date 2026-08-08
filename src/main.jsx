@@ -4612,6 +4612,10 @@ const [buildingLedgerSearching, setBuildingLedgerSearching] = useState(false);
   const [daangnPreparationResult, setDaangnPreparationResult] = useState(null);
   const latestFormRef = useRef(form);
   const [advertisingPropertyId, setAdvertisingPropertyId] = useState(null);
+  // AI 광고 자동작성 2단계 V5
+  const [aiAdPropertyId, setAiAdPropertyId] = useState(null);
+  const [aiAdChannel, setAiAdChannel] = useState('blog');
+  const [aiAdCopyStatus, setAiAdCopyStatus] = useState('');
   const [blogPhotoProgress, setBlogPhotoProgress] = useState({
     propertyId: '',
     current: 0,
@@ -4751,6 +4755,28 @@ const aiCriticalCount = aiAuditRows.filter((row) => row.level === 'critical').le
 const aiWarningCount = aiAuditRows.filter((row) => row.level === 'warning').length;
 const aiOkCount = aiAuditRows.filter((row) => row.level === 'ok').length;
 const aiPublishedCount = (properties || []).filter((property) => property.status === 'published').length;
+
+const aiAdProperty = (properties || []).find((property) => String(property.id) === String(aiAdPropertyId)) || null;
+const aiAdAudit = aiAdProperty ? aiAuditRows.find((row) => String(row.property.id) === String(aiAdProperty.id)) : null;
+const aiAdBlog = aiAdProperty ? buildNaverBlogAd(aiAdProperty) : null;
+const aiAdDetailUrl = aiAdProperty ? `${window.location.origin}/listing/${encodeURIComponent(aiAdProperty.id)}` : '';
+const aiAdIsSale = Boolean(aiAdProperty && (aiAdProperty.trade_type === '매매' || String(aiAdProperty.category || '').includes('매매')));
+const aiAdPrice = aiAdProperty ? (aiAdIsSale ? `매매가 ${formatAmount(aiAdProperty.sale_price)}` : `보증금 ${formatAmount(aiAdProperty.deposit)} / 월세 ${formatAmount(aiAdProperty.rent)}`) : '';
+const aiAdInstagram = aiAdProperty ? [`🏠 ${aiAdProperty.title || '구미 부동산 매물'}`, `매물번호 ${getPublicPropertyNumber(aiAdProperty) || '-'}`, `📍 ${aiAdProperty.address || '구미시'}`, `💰 ${aiAdPrice}`, aiAdProperty.summary || '', '', '사진·가격·지도·상세정보는 홈페이지에서 확인하세요.', aiAdDetailUrl, '', '#칸공인중개사 #구미부동산'].filter(Boolean).join('\n') : '';
+const aiAdFacebook = aiAdProperty ? [`${aiAdProperty.title || '구미 부동산 매물'}`, '', `${aiAdPrice}`, aiAdProperty.address || '구미시', aiAdProperty.summary || '', '', '자세한 사진과 위치는 칸공인중개사 홈페이지에서 확인하세요.', aiAdDetailUrl].filter(Boolean).join('\n') : '';
+const aiAdHomepage = aiAdProperty ? [`아직 ${aiAdProperty.category || '매물'}을 찾고 계신가요?`, `${aiAdPrice} 조건의 매물을 확인해보세요.`, '사진·지도·상세정보 보기', aiAdDetailUrl].join('\n') : '';
+const aiAdChannels = aiAdProperty ? {
+  blog: { label: '네이버 블로그', text: aiAdBlog ? `${aiAdBlog.title}\n\n${aiAdBlog.body}\n\n${aiAdBlog.tags}` : '' },
+  instagram: { label: '인스타그램', text: aiAdInstagram },
+  facebook: { label: '페이스북', text: aiAdFacebook },
+  homepage: { label: '홈페이지 유입', text: aiAdHomepage }
+} : {};
+const aiAdCurrent = aiAdChannels[aiAdChannel] || null;
+async function copyAiAdText(text, label) {
+  const copied = await copyAdvertisementText(text || '');
+  setAiAdCopyStatus(copied ? `${label} 복사 완료` : `${label} 복사 실패`);
+}
+
 
 const quickMissingItems = [
   !isStaffMode && !form.title && '제목',
@@ -8174,10 +8200,49 @@ if (isStaffMode && currentStaff?.code) {
                           {!critical.length && !warning.length && <span className="ok">점검 통과</span>}
                         </div>
                       </div>
-                      <button type="button" className="small-btn" onClick={() => startEdit(property)}>수정</button>
+                      <div className="ai-v5-actions">
+                        <button type="button" className="small-btn ai-v5-ad-btn" onClick={() => { setAiAdPropertyId(property.id); setAiAdChannel('blog'); setAiAdCopyStatus(''); }}>광고작성</button>
+                        <button type="button" className="small-btn" onClick={() => startEdit(property)}>수정</button>
+                      </div>
                     </article>
                   )) : <div className="empty-box">점검할 매물이 없습니다.</div>}
                 </div>
+
+                {aiAdProperty && (
+                  <section className="ai-v5-ad-panel">
+                    <div className="ai-v5-ad-head">
+                      <div>
+                        <span className="ai-v3-kicker">AI AD WRITER</span>
+                        <h4>광고 자동작성 · #{getPublicPropertyNumber(aiAdProperty) || '-'} {aiAdProperty.title || '제목 없는 매물'}</h4>
+                      </div>
+                      <button type="button" className="small-btn" onClick={() => setAiAdPropertyId(null)}>닫기</button>
+                    </div>
+
+                    {(aiAdAudit?.critical?.length > 0 || aiAdAudit?.warning?.length > 0 || aiAdBlog?.warnings?.length > 0) && (
+                      <div className="ai-v5-warning">
+                        <strong>게시 전 확인</strong>
+                        <span>{[...(aiAdAudit?.critical || []), ...(aiAdAudit?.warning || []), ...(aiAdBlog?.missingFields || [])].filter((v, i, a) => a.indexOf(v) === i).join(' · ') || '표시광고 정보를 확인하세요.'}</span>
+                      </div>
+                    )}
+
+                    <div className="ai-v5-tabs">
+                      {Object.entries(aiAdChannels).map(([key, item]) => (
+                        <button type="button" key={key} className={aiAdChannel === key ? 'active' : ''} onClick={() => { setAiAdChannel(key); setAiAdCopyStatus(''); }}>{item.label}</button>
+                      ))}
+                    </div>
+
+                    {aiAdCurrent && (
+                      <>
+                        <textarea className="ai-v5-textarea" readOnly value={aiAdCurrent.text} />
+                        <div className="ai-v5-copy-row">
+                          <button type="button" className="primary-btn" onClick={() => copyAiAdText(aiAdCurrent.text, aiAdCurrent.label)}>전체 복사</button>
+                          <a className="small-btn ai-v5-preview-link" href={aiAdDetailUrl} target="_blank" rel="noreferrer">매물 페이지 보기</a>
+                          {aiAdCopyStatus && <strong>{aiAdCopyStatus}</strong>}
+                        </div>
+                      </>
+                    )}
+                  </section>
+                )}
 
                 <div className="ai-v3-next">
                   <strong>다음 단계</strong>
