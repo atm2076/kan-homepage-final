@@ -4614,6 +4614,7 @@ const [buildingLedgerSearching, setBuildingLedgerSearching] = useState(false);
   const [advertisingPropertyId, setAdvertisingPropertyId] = useState(null);
   // AI 광고 자동작성 2단계 V5
   // AI 광고작성 자동이동 V6
+  // AI 광고 문구 품질개선 V7
   const [aiAdPropertyId, setAiAdPropertyId] = useState(null);
   const [aiAdChannel, setAiAdChannel] = useState('blog');
   const [aiAdCopyStatus, setAiAdCopyStatus] = useState('');
@@ -4759,18 +4760,130 @@ const aiPublishedCount = (properties || []).filter((property) => property.status
 
 const aiAdProperty = (properties || []).find((property) => String(property.id) === String(aiAdPropertyId)) || null;
 const aiAdAudit = aiAdProperty ? aiAuditRows.find((row) => String(row.property.id) === String(aiAdProperty.id)) : null;
-const aiAdBlog = aiAdProperty ? buildNaverBlogAd(aiAdProperty) : null;
+const aiAdBlogSource = aiAdProperty ? buildNaverBlogAd(aiAdProperty) : null;
 const aiAdDetailUrl = aiAdProperty ? `${window.location.origin}/listing/${encodeURIComponent(aiAdProperty.id)}` : '';
 const aiAdIsSale = Boolean(aiAdProperty && (aiAdProperty.trade_type === '매매' || String(aiAdProperty.category || '').includes('매매')));
 const aiAdPrice = aiAdProperty ? (aiAdIsSale ? `매매가 ${formatAmount(aiAdProperty.sale_price)}` : `보증금 ${formatAmount(aiAdProperty.deposit)} / 월세 ${formatAmount(aiAdProperty.rent)}`) : '';
-const aiAdInstagram = aiAdProperty ? [`🏠 ${aiAdProperty.title || '구미 부동산 매물'}`, `매물번호 ${getPublicPropertyNumber(aiAdProperty) || '-'}`, `📍 ${aiAdProperty.address || '구미시'}`, `💰 ${aiAdPrice}`, aiAdProperty.summary || '', '', '사진·가격·지도·상세정보는 홈페이지에서 확인하세요.', aiAdDetailUrl, '', '#칸공인중개사 #구미부동산'].filter(Boolean).join('\n') : '';
-const aiAdFacebook = aiAdProperty ? [`${aiAdProperty.title || '구미 부동산 매물'}`, '', `${aiAdPrice}`, aiAdProperty.address || '구미시', aiAdProperty.summary || '', '', '자세한 사진과 위치는 칸공인중개사 홈페이지에서 확인하세요.', aiAdDetailUrl].filter(Boolean).join('\n') : '';
-const aiAdHomepage = aiAdProperty ? [`아직 ${aiAdProperty.category || '매물'}을 찾고 계신가요?`, `${aiAdPrice} 조건의 매물을 확인해보세요.`, '사진·지도·상세정보 보기', aiAdDetailUrl].join('\n') : '';
+const aiAdText = (value) => String(value ?? '').trim();
+const aiAdUnique = (values) => Array.from(new Set(values.map(aiAdText).filter(Boolean)));
+const aiAdPropertyType = aiAdProperty ? aiAdText(aiAdProperty.category || (aiAdIsSale ? '매매' : '임대')) : '';
+const aiAdMoveIn = aiAdProperty ? aiAdText(aiAdProperty.move_in || aiAdProperty.move_in_date) : '';
+const aiAdMaintenance = aiAdProperty ? aiAdText(aiAdProperty.maintenance_fee) : '';
+const aiAdFeatureLine = aiAdProperty ? aiAdUnique([
+  aiAdProperty.summary,
+  aiAdProperty.direction && !String(aiAdProperty.direction).includes('확인필요') ? aiAdProperty.direction : '',
+  aiAdMoveIn
+]).join(' · ') : '';
+const aiAdRegionTag = aiAdProperty && aiAdText(aiAdProperty.address).includes('칠곡') ? '#칠곡부동산' : '#구미부동산';
+const aiAdTypeTag = aiAdPropertyType ? `#${aiAdPropertyType.replace(/[^0-9A-Za-z가-힣]/gu, '')}` : '';
+const aiAdHashtags = aiAdUnique([aiAdRegionTag, aiAdTypeTag, '#칸공인중개사']).join(' ');
+
+function polishAiBlogBody(body) {
+  const normalized = String(body || '')
+    .replace(/원룸[.\s]+미니투룸[.\s]+투룸/gu, '원룸·미니투룸·투룸')
+    .replace(/상가[.\s]+다가구[.\s]+원룸건물/gu, '상가·다가구·원룸건물')
+    .replace(/https:\/\/kan-homepage-final\.vercel\.app/giu, window.location.origin);
+  const lines = normalized.split('\n');
+  const infoStart = lines.findIndex((line) => /기본정보|중개대상물 표시·광고/u.test(line));
+  const introEnd = infoStart >= 0 ? infoStart : Math.min(lines.length, 20);
+  let moveInSeen = false;
+  const cleaned = lines.filter((line, index) => {
+    if (index >= introEnd) return true;
+    const compact = line.replace(/\s+/gu, '');
+    if (compact === '즉시입주' || compact === '즉시입주가능') {
+      if (moveInSeen) return false;
+      moveInSeen = true;
+    }
+    return true;
+  });
+  return cleaned.join('\n').replace(/\n{3,}/gu, '\n\n').trim();
+}
+
+const aiAdLegalLines = aiAdProperty ? [
+  `중개대상물 종류: ${aiAdPropertyType || '확인 필요'}`,
+  `거래형태: ${aiAdText(aiAdProperty.trade_type) || (aiAdIsSale ? '매매' : '임대')}`,
+  `소재지: ${aiAdText(aiAdProperty.address) || '확인 필요'}`,
+  `거래가격: ${aiAdPrice}`,
+  !aiAdIsSale ? `관리비: ${aiAdMaintenance || '확인 필요'}` : '',
+  aiAdText(aiAdProperty.area) ? `면적: ${aiAdText(aiAdProperty.area)}` : '',
+  aiAdText(aiAdProperty.floor_info) ? `층수: ${aiAdText(aiAdProperty.floor_info)}` : '',
+  aiAdText(aiAdProperty.room_bath) ? `방/욕실: ${aiAdText(aiAdProperty.room_bath)}` : '',
+  aiAdText(aiAdProperty.direction) ? `방향: ${aiAdText(aiAdProperty.direction)}` : '',
+  aiAdMoveIn ? `입주가능일: ${aiAdMoveIn}` : '',
+  aiAdText(aiAdProperty.parking) ? `주차: ${aiAdText(aiAdProperty.parking)}` : '',
+  aiAdText(aiAdProperty.approval_date) ? `사용승인일: ${aiAdText(aiAdProperty.approval_date)}` : '',
+  `중개사무소: ${OFFICE.name}`,
+  `대표공인중개사: ${OFFICE.broker}`,
+  `등록번호: ${OFFICE.regNo}`,
+  `중개사무소 소재지: ${OFFICE.address}`,
+  `문의: ${OFFICE.phone}${OFFICE.tel ? ` / ${OFFICE.tel}` : ''}`
+].filter(Boolean) : [];
+
+const aiAdBlog = aiAdBlogSource ? {
+  ...aiAdBlogSource,
+  title: String(aiAdBlogSource.title || '').replace(/\s+/gu, ' ').trim(),
+  body: polishAiBlogBody(aiAdBlogSource.body)
+} : null;
+
+const aiAdInstagram = aiAdProperty ? [
+  `🏠 ${aiAdProperty.title || '구미·칠곡 부동산 매물'}`,
+  `💰 ${aiAdPrice}`,
+  `📍 ${aiAdProperty.address || '위치 확인 필요'}`,
+  aiAdFeatureLine ? `✨ ${aiAdFeatureLine}` : '',
+  '',
+  '사진만 보고 결정하지 마세요.',
+  '가격·지도·상세조건을 홈페이지에서 한 번에 확인하세요.',
+  `👉 ${aiAdDetailUrl}`,
+  '',
+  '【중개대상물 표시·광고 정보】',
+  ...aiAdLegalLines,
+  '',
+  aiAdHashtags
+].filter(Boolean).join('\n') : '';
+
+const aiAdFacebook = aiAdProperty ? [
+  `${aiAdProperty.title || '구미·칠곡 부동산 매물'}`,
+  '',
+  `먼저 조건부터 확인하세요. ${aiAdPrice}`,
+  aiAdFeatureLine || '',
+  '',
+  '사진과 지도, 상세조건은 아래 매물 페이지에서 확인할 수 있습니다.',
+  aiAdDetailUrl,
+  '',
+  '【중개대상물 표시·광고 정보】',
+  ...aiAdLegalLines,
+  '',
+  '상담 시 매물번호를 말씀해 주시면 빠르게 확인해드립니다.'
+].filter(Boolean).join('\n') : '';
+
+const aiAdHomepage = aiAdProperty ? [
+  `아직 원하는 ${aiAdPropertyType || '매물'}을 못 찾으셨나요?`,
+  `${aiAdPrice}${aiAdFeatureLine ? ` · ${aiAdFeatureLine}` : ''}`,
+  '사진·지도·상세조건을 지금 확인해보세요.',
+  aiAdDetailUrl
+].join('\n') : '';
+
 const aiAdChannels = aiAdProperty ? {
-  blog: { label: '네이버 블로그', text: aiAdBlog ? `${aiAdBlog.title}\n\n${aiAdBlog.body}\n\n${aiAdBlog.tags}` : '' },
-  instagram: { label: '인스타그램', text: aiAdInstagram },
-  facebook: { label: '페이스북', text: aiAdFacebook },
-  homepage: { label: '홈페이지 유입', text: aiAdHomepage }
+  blog: {
+    label: '네이버 블로그',
+    guide: 'SEO 장문 · 반복문구 정리 · 상세정보 중심',
+    text: aiAdBlog ? `${aiAdBlog.title}\n\n${aiAdBlog.body}\n\n${aiAdBlog.tags}` : ''
+  },
+  instagram: {
+    label: '인스타그램',
+    guide: '첫 화면 조건 강조 · 홈페이지 클릭유도 · 표시정보 포함',
+    text: aiAdInstagram
+  },
+  facebook: {
+    label: '페이스북',
+    guide: '조건 확인 → 상세페이지 → 상담 순서로 구성',
+    text: aiAdFacebook
+  },
+  homepage: {
+    label: '홈페이지 유입',
+    guide: '짧은 클릭유도용 CTA',
+    text: aiAdHomepage
+  }
 } : {};
 const aiAdCurrent = aiAdChannels[aiAdChannel] || null;
 async function copyAiAdText(text, label) {
@@ -8227,6 +8340,7 @@ if (isStaffMode && currentStaff?.code) {
                     <div className="ai-v5-ad-head">
                       <div>
                         <span className="ai-v3-kicker">AI AD WRITER</span>
+                        <span className="ai-v7-quality">플랫폼별 문구 최적화 V7</span>
                         <h4>광고 자동작성 · #{getPublicPropertyNumber(aiAdProperty) || '-'} {aiAdProperty.title || '제목 없는 매물'}</h4>
                       </div>
                       <button type="button" className="small-btn" onClick={() => setAiAdPropertyId(null)}>닫기</button>
@@ -8247,6 +8361,10 @@ if (isStaffMode && currentStaff?.code) {
 
                     {aiAdCurrent && (
                       <>
+                        <div className="ai-v7-meta">
+                          <span>{aiAdCurrent.guide}</span>
+                          <strong>{aiAdCurrent.text.length.toLocaleString()}자</strong>
+                        </div>
                         <textarea className="ai-v5-textarea" readOnly value={aiAdCurrent.text} />
                         <div className="ai-v5-copy-row">
                           <button type="button" className="primary-btn" onClick={() => copyAiAdText(aiAdCurrent.text, aiAdCurrent.label)}>전체 복사</button>

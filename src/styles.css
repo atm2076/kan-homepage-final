@@ -13785,3 +13785,9 @@ main :is(div, figure, a, button):has(> picture > img) {
 /* AI 광고작성 자동이동 V6 */
 #ai-v5-ad-panel { scroll-margin-top: 18px; box-shadow: 0 12px 30px rgba(23,59,103,.18); }
 .ai-v5-ad-btn.active { background:#0b2f59 !important; color:#fff !important; outline:3px solid rgba(23,59,103,.18); }
+
+/* AI 광고 문구 품질개선 V7 */
+.ai-v7-meta { display:flex; align-items:center; justify-content:space-between; gap:12px; padding:10px 12px; border:1px solid #dbe4ef; border-radius:11px; background:#fff; color:#526071; font-size:12px; }
+.ai-v7-meta strong { flex:0 0 auto; color:#173b67; font-size:12px; }
+.ai-v7-quality { display:inline-flex; align-items:center; min-height:26px; padding:4px 8px; border-radius:999px; background:#e8f1fb; color:#173b67; font-size:11px; font-weight:900; }
+@media (max-width:720px) { .ai-v7-meta { align-items:flex-start; flex-direction:column; } }
