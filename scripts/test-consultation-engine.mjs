@@ -35,6 +35,7 @@ assert.equal(formatRecommendations([]), '현재 등록된 매물에서는 조건
 assert.equal(parsePhone('010-1234-5678'), '01012345678');
 assert.equal(parseDesiredDate('오늘 6시', new Date('2026-08-08T03:00:00Z')), '2026-08-08');
 assert.equal(parseDesiredTime('오후 6시'), '18:00');
+assert.equal(parseDesiredTime('오늘 6시에 볼래요'), '18:00');
 assert.deepEqual(Object.keys(toAiPublicProperty(rows[0])).includes('owner_phone'), false);
 
 const parkingResults = filterAndRankProperties([{ ...base, id: 'no-parking', listing_type: 'quick', photos: [], parking: '불가능' }, { ...base, id: 'parking', listing_type: 'quick', photos: [], parking: '가능' }], { ...conditions, parkingRequired: true });

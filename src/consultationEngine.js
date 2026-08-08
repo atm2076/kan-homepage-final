@@ -129,5 +129,6 @@ export function parseDesiredTime(message) {
   let hour = Number(match[2]);
   if (match[1] === '오후' && hour < 12) hour += 12;
   if (match[1] === '오전' && hour === 12) hour = 0;
+  if (!match[1] && hour >= 1 && hour <= 7) hour += 12;
   return `${String(hour).padStart(2, '0')}:${String(Number(match[3] || 0)).padStart(2, '0')}`;
 }
