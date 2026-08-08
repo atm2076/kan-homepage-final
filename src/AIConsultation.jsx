@@ -96,9 +96,21 @@ export default function AIConsultation() {
         {!messages.length && <p className="ai-message assistant">상담을 시작하고 있습니다.</p>}
         {messages.map((message, index) => message.recommendations?.length
           ? <div key={`${message.role}-${index}`} className={`ai-message ${message.role}`}>
-            {message.recommendations.map((recommendation) => <a key={recommendation.propertyId} href={recommendation.detailUrl}>
-              {recommendation.recommendationNumber}. {recommendation.address} · 보증금 {recommendation.deposit || '-'} / 월세 {recommendation.rent || '-'}{recommendation.photoStatus === 'preparing' ? ' · 사진 준비중' : ''}
-            </a>)}
+            <p>{message.content}</p>
+            <div style={{ display: 'grid', gap: 10, marginTop: 10 }}>
+              {message.recommendations.map((recommendation) => <a key={recommendation.propertyId} href={recommendation.detailUrl} style={{ display: 'grid', gridTemplateColumns: '88px 1fr', gap: 10, padding: 10, border: '1px solid #ddd', borderRadius: 10, color: 'inherit', textDecoration: 'none' }}>
+                {recommendation.photoUrls?.[0]
+                  ? <img src={recommendation.photoUrls[0]} alt={recommendation.title || `매물번호 ${recommendation.listingNumber}`} style={{ width: 88, height: 88, objectFit: 'cover', borderRadius: 8 }} />
+                  : <span style={{ width: 88, height: 88, display: 'grid', placeItems: 'center', borderRadius: 8, background: '#f1f1f1' }}>사진 준비중</span>}
+                <span>
+                  <strong>매물번호 {recommendation.listingNumber}</strong><br />
+                  {recommendation.title || '-'}<br />
+                  {recommendation.address || '-'}<br />
+                  보증금 {recommendation.deposit || '-'} / 월세 {recommendation.rent || '-'}<br />
+                  관리비 {recommendation.maintenanceFee || '-'}
+                </span>
+              </a>)}
+            </div>
           </div>
           : <p key={`${message.role}-${index}`} className={`ai-message ${message.role}`}>{message.content}</p>)}
         {busy && <p className="ai-message assistant">확인 중입니다…</p>}
