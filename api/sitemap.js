@@ -36,6 +36,9 @@ export default async function handler(req, res) {
         .from('properties')
         .select('id')
         .eq('status', 'published')
+        .eq('availability_status', 'active')
+        .eq('review_state', 'approved')
+        .eq('ad_visibility', '공개')
         .order('id', { ascending: true })
         .range(from, from + PAGE_SIZE - 1);
 

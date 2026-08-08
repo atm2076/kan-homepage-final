@@ -325,9 +325,12 @@ export default async function handler(req, res) {
     const { data: property, error } =
       await supabase
         .from('properties')
-        .select('*')
+        .select('id,listing_number,listing_type,title,category,trade_type,address,badges,deposit,rent,maintenance_fee,sale_price,area,land_area,building_area,building_name,floor_info,direction,parking,move_in,approval_date,main_use,room_bath,structure,elevator,summary,description,maintenance_includes,location_description,recommended_for,legal_notice,photos,map_image,map_link,convenience,safety,education,is_featured,status,availability_status,review_state,updated_at,created_at')
         .eq('id', id)
         .eq('status', 'published')
+        .eq('availability_status', 'active')
+        .eq('review_state', 'approved')
+        .eq('ad_visibility', '공개')
         .maybeSingle();
 
     if (error) {

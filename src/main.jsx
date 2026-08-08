@@ -1,6 +1,8 @@
 import React, { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { createRoot } from 'react-dom/client';
 import { supabase, isSupabaseReady } from './supabaseClient';
+import GumiVacancyImport from './GumiVacancyImport';
+import AIConsultation, { AIConsultationCallout, ViewingRequestsAdmin, openAiConsultation } from './AIConsultation';
 import './styles.css';
 
 const OFFICE = {
@@ -222,6 +224,9 @@ const PRIVATE_PROPERTY_KEYS = [
 const PUBLIC_PROPERTY_COLUMNS = [
   'id',
   'listing_number',
+  'listing_type',
+  'availability_status',
+  'review_state',
   'title',
   'category',
   'trade_type',
@@ -823,6 +828,16 @@ function BadgeList({ property }) {
           {badge}
         </span>
       ))}
+    </div>
+  );
+}
+
+function PhotoPreparingPlaceholder({ compact = false }) {
+  return (
+    <div className={`photo-preparing-placeholder ${compact ? 'compact' : ''}`} role="img" aria-label="사진 준비중">
+      <span>KHAN</span>
+      <strong>사진 준비중</strong>
+      <small>확인 후 실사진을 등록합니다</small>
     </div>
   );
 }
@@ -1501,7 +1516,11 @@ requestAnimationFrame(() => {
       .order('created_at', { ascending: false });
 
     if (!canManageAll) {
-      query = query.eq('status', 'published');
+      query = query
+        .eq('status', 'published')
+        .eq('availability_status', 'active')
+        .eq('review_state', 'approved')
+        .eq('ad_visibility', '공개');
     }
 
     const { data, error: fetchError } = await query;
@@ -1530,6 +1549,9 @@ requestAnimationFrame(() => {
       .from('properties')
       .select(PUBLIC_PROPERTY_COLUMNS)
       .eq('status', 'published')
+      .eq('availability_status', 'active')
+      .eq('review_state', 'approved')
+      .eq('ad_visibility', '공개')
       .order('is_featured', { ascending: false })
       .order('created_at', { ascending: false });
 
@@ -1649,6 +1671,9 @@ setListingId(String(property.id));
           .select(PUBLIC_PROPERTY_COLUMNS)
           .eq('id', listingId)
           .eq('status', 'published')
+          .eq('availability_status', 'active')
+          .eq('review_state', 'approved')
+          .eq('ad_visibility', '공개')
           .maybeSingle();
 
         if (cancelled) return;
@@ -1793,6 +1818,7 @@ async function handleQuickDeleteProperty(property) {
           )}
         </main>
         <Footer />
+        <AIConsultation />
       </div>
     );
   }
@@ -1862,9 +1888,11 @@ async function handleQuickDeleteProperty(property) {
           </>
       )}
         <CustomRequestSection />
+        {!isAdminRoute && <AIConsultationCallout />}
 
     </main>
       <Footer />
+      {!isAdminRoute && <AIConsultation />}
       {adminOpen && (
         <AdminModal
           mode={portalMode}
@@ -2451,10 +2479,14 @@ function escapeHtml(value) {
 
 function isPublicMapProperty(property = {}) {
   const status = String(property.status || 'published').toLowerCase();
+  const availability = String(property.availability_status || 'active').toLowerCase();
+  const reviewState = String(property.review_state || 'approved').toLowerCase();
   const visibility = String(property.ad_visibility || '공개');
   const contractStatus = String(property.contract_status || property.deal_status || '');
   return (
     status === 'published' &&
+    availability === 'active' &&
+    reviewState === 'approved' &&
     !['비공개', '광고중지', '숨김'].includes(visibility) &&
     !/계약완료|삭제|숨김|비공개/u.test(contractStatus)
   );
@@ -2948,6 +2980,9 @@ maps.Event.trigger(map, 'resize');
             .from('properties')
             .select(PUBLIC_PROPERTY_COLUMNS)
             .eq('status', 'published')
+            .eq('availability_status', 'active')
+            .eq('review_state', 'approved')
+            .eq('ad_visibility', '공개')
             .gte('latitude', southWest.lat())
             .lte('latitude', northEast.lat())
             .gte('longitude', southWest.lng())
@@ -3638,6 +3673,7 @@ function ErrorNotice({ message }) {
 }
 function PropertyListItem({ property, index = 0, active, onClick, isManagementMode = false, isOwnerAdmin = false, onEdit, onHold, onDelete }) {
   const photos = getCleanPropertyPhotos(property);
+  const isQuickWithoutPhoto = property.listing_type === 'quick' && photos.length === 0;
   const cover =
    photos.find(Boolean) ||
     'https://images.unsplash.com/photo-1564013799919-ab600027ffc6?auto=format&fit=crop&w=1200&q=80';
@@ -3718,12 +3754,12 @@ const cleanCategoryText = categoryText.endsWith(tradeText)
 >
       <button type="button" className="property-card-main" onClick={onClick}>
         <div className="list-thumb">
-         <img
+         {isQuickWithoutPhoto ? <PhotoPreparingPlaceholder compact /> : <img
   src={cover}
   alt={property.title}
   loading={index < 6 ? 'eager' : 'lazy'}
   decoding="async"
-/>
+/>}
           <BadgeList property={property} />
         </div>
    <div className="list-info mobile-card-text">
@@ -3812,6 +3848,7 @@ function PropertyDetail({ property: inputProperty, allProperties = [], onSelect 
   }
 
   const photos = getCleanPropertyPhotos(inputProperty);
+  const isQuickWithoutPhoto = inputProperty.listing_type === 'quick' && photos.length === 0;
   const convenience = toTextList(inputProperty.convenience);
   const safety = toTextList(inputProperty.safety);
   const education = toTextList(inputProperty.education);
@@ -3962,7 +3999,7 @@ const infoRows = isSaleProperty
               onTouchStart={handleGalleryTouchStart}
               onTouchEnd={handleGalleryTouchEnd}
             >
-              <img src={mainPhoto} alt={`${property.title} 대표사진`} />
+              {isQuickWithoutPhoto ? <PhotoPreparingPlaceholder /> : <img src={mainPhoto} alt={`${property.title} 대표사진`} />}
               <div className="gallery-photo-watermark">
                 <span>매물번호 {getPublicPropertyNumber(property)} · {OFFICE.name}</span>
                 <span>☎ {OFFICE.phone}</span>
@@ -4156,6 +4193,7 @@ const infoRows = isSaleProperty
             <div className="side-actions">
               <a className="primary-btn" href={`tel:${OFFICE.phone}`}>전화상담</a>
               <a className="secondary-btn" href={`sms:${OFFICE.phone}?body=${inquiryBody}`}>문자문의</a>
+              <button className="secondary-btn" type="button" onClick={() => openAiConsultation(property.id)}>이 매물 AI에게 문의</button>
             </div>
           </section>
           
@@ -4562,12 +4600,15 @@ function AdminModal({ mode, setMode, isAdmin, setIsAdmin, onClose, properties, r
   const [staffProperties, setStaffProperties] = useState([]);
   const [duplicateWarning, setDuplicateWarning] = useState(null);
   const [duplicateManagerOpen, setDuplicateManagerOpen] = useState(false);
+  const [viewingRequestCount, setViewingRequestCount] = useState(0);
   const [adminView, setAdminView] = useState(() => {
     const hash = window.location.hash;
     if (hash.includes('/admin/lookup')) return 'lookup';
     if (hash.includes('/admin/manage')) return 'manage';
     if (hash.includes('/admin/review')) return 'review';
     if (hash.includes('/admin/duplicates')) return 'duplicates';
+    if (hash.includes('/admin/gumi-import')) return 'gumi-import';
+    if (hash.includes('/admin/viewings')) return 'viewings';
     if (hash.includes('/admin/ai')) return 'ai';
     if (hash.includes('/admin/staff')) return 'staff';
     return 'register';
@@ -5136,6 +5177,25 @@ const ledgerPreviewItems = [
   }, [isAdmin, isAdminMode, adminView]);
 
   useEffect(() => {
+    if (!isAdmin || !isAdminMode) return;
+    let cancelled = false;
+    supabase.auth.getSession().then(async ({ data }) => {
+      const token = data?.session?.access_token;
+      if (!token) return;
+      const response = await fetch('/api/ai-consultation', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ action: 'admin_list_viewing_requests' })
+      });
+      if (!cancelled && response.ok) {
+        const result = await response.json();
+        setViewingRequestCount(result.newCount || 0);
+      }
+    }).catch(() => {});
+    return () => { cancelled = true; };
+  }, [isAdmin, isAdminMode, adminView]);
+
+  useEffect(() => {
     if (isStaffMode) {
       setEntryMode('simple');
     } else if (isAdminMode) {
@@ -5195,6 +5255,8 @@ function selectAdminView(nextView) {
     manage: '/admin/manage',
     review: '/admin/review',
     duplicates: '/admin/duplicates',
+    'gumi-import': '/admin/gumi-import',
+    viewings: '/admin/viewings',
     ai: '/admin/ai',
     staff: '/admin/staff',
   };
@@ -6802,7 +6864,7 @@ updated_by: isStaffMode ? (currentStaff?.name || formForSave.staff_name || '직�
     if (!forceDuplicateSave) {
       const { data: duplicateSource, error: duplicateError } = await supabase
         .from('properties')
-        .select(canEditExisting ? '*' : 'id,title,address,category,trade_type,floor_info,real_unit,status,created_at')
+        .select(canEditExisting ? '*' : 'id,title,address,category,trade_type,floor_info,real_unit,status,listing_type,created_at')
         .order('created_at', { ascending: false });
       const duplicateList = duplicateError ? properties : (duplicateSource || []);
       const duplicate = findDuplicateProperty(payload, duplicateList, editingId);
@@ -6810,6 +6872,41 @@ updated_by: isStaffMode ? (currentStaff?.name || formForSave.staff_name || '직�
         const targetParts = getPropertyDuplicateParts(payload);
         const duplicateParts = getPropertyDuplicateParts(duplicate);
         const hasUnit = Boolean(targetParts.unit && duplicateParts.unit);
+        if (duplicate.listing_type === 'quick' && hasUnit) {
+          if (!canEditExisting) {
+            setDuplicateWarning({ duplicate, message: '같은 주소와 호실의 간편매물이 있습니다. 대표 관리자가 정식매물로 승격해야 합니다.', hasUnit });
+            setStatus('간편매물 승격은 Supabase Auth 관리자만 처리할 수 있습니다.');
+            return;
+          }
+          const { data: authData } = await supabase.auth.getSession();
+          const accessToken = authData?.session?.access_token;
+          if (!accessToken) {
+            setDuplicateWarning({ duplicate, message: '기존 quick 매물을 발견했습니다. 구미공실 가져오기 메뉴에서 안전한 관리자 로그인 후 다시 저장하세요.', hasUnit });
+            setStatus('인증되지 않은 상태에서는 quick 매물을 덮어쓰거나 새 중복 매물을 만들 수 없습니다.');
+            return;
+          }
+          const approved = window.confirm(`기존 간편매물 ${duplicate.listing_number || duplicate.id}에 사진과 확인된 상세정보를 보충하시겠습니까?\n기존 URL과 매물번호는 유지되며, 충분한 정보가 갖춰지면 정식매물로 승격됩니다.`);
+          if (!approved) {
+            setStatus('정식매물 승격을 취소했습니다. 새 중복 매물은 생성하지 않았습니다.');
+            return;
+          }
+          const response = await fetch('/api/gumi-vacancy-import', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${accessToken}` },
+            body: JSON.stringify({ action: 'enrich_quick', propertyId: duplicate.id, property: payload })
+          });
+          const promotion = await response.json();
+          if (!response.ok || promotion?.ok === false) {
+            setStatus(`정식매물 승격 실패: ${promotion?.error || '서버 검증 실패'}`);
+            return;
+          }
+          setStatus(promotion.property?.listing_type === 'normal'
+            ? '기존 quick 매물에 정보를 보충하고 정식매물로 승격했습니다. URL과 매물번호를 유지했습니다.'
+            : '기존 quick 매물에 확인된 사진·상세정보를 보충했습니다. URL과 매물번호를 유지했습니다.');
+          resetForm();
+          await reload();
+          return;
+        }
         if (isStaffMode && hasUnit) {
   const message =
     '이미 같은 주소와 같은 호수의 매물이 등록되어 있습니다.\n' +
@@ -7098,6 +7195,21 @@ if (isStaffMode && currentStaff?.code) {
 </button>
 <button
   type="button"
+  className={isAdminMode && adminView === 'gumi-import' ? 'active' : ''}
+  onClick={() => selectAdminView('gumi-import')}
+>
+  구미공실 가져오기
+</button>
+<button
+  type="button"
+  className={isAdminMode && adminView === 'viewings' ? 'active' : ''}
+  onClick={() => selectAdminView('viewings')}
+>
+  방보기 요청
+  {viewingRequestCount > 0 ? ` ${viewingRequestCount}` : ''}
+</button>
+<button
+  type="button"
   className={isAdminMode && adminView === 'ai' ? 'active' : ''}
   onClick={() => selectAdminView('ai')}
 >
@@ -7165,6 +7277,11 @@ if (isStaffMode && currentStaff?.code) {
           </form>
         ) : (
           <div className={`admin-grid simple-admin-grid admin-view-${isAdminMode ? adminView : 'staff-mode'}`}>
+            {isAdminMode && adminView === 'gumi-import' ? (
+              <GumiVacancyImport supabase={supabase} onReload={reload} />
+            ) : isAdminMode && adminView === 'viewings' ? (
+              <ViewingRequestsAdmin supabase={supabase} onCount={setViewingRequestCount} />
+            ) : (
             <form className="property-form" onSubmit={saveProperty}>
               <div className="form-topline">
                 <h3>{editingId ? '매물 수정' : isStaffMode ? '직원 간단등록' : '간단 매물 등록'}</h3>
@@ -8327,6 +8444,7 @@ if (isStaffMode && currentStaff?.code) {
 )}
               <p className="status-text">{status}</p>
             </form>
+            )}
 
             {canEditExisting && adminView === 'lookup' && (
               <section className="admin-property-lookup" aria-labelledby="property-lookup-title">
