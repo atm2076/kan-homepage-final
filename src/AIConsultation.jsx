@@ -75,7 +75,7 @@ export default function AIConsultation() {
     setBusy(true);
     try {
       const result = await post({ action: 'message', ...active, message });
-      setMessages((items) => [...items, { role: 'assistant', content: result.reply }]);
+      setMessages((items) => [...items, { role: 'assistant', content: result.reply, recommendations: result.recommendations || [] }]);
     } catch (error) {
       setMessages((items) => [...items, { role: 'assistant', content: error.message }]);
     } finally { setBusy(false); }
@@ -94,7 +94,13 @@ export default function AIConsultation() {
       <header><div><strong>칸 AI 매물상담</strong><small>현재 공개 공실만 검색합니다</small></div><button type="button" onClick={() => setOpen(false)}>×</button></header>
       <div className="ai-consultation-messages">
         {!messages.length && <p className="ai-message assistant">상담을 시작하고 있습니다.</p>}
-        {messages.map((message, index) => <p key={`${message.role}-${index}`} className={`ai-message ${message.role}`}>{message.content}</p>)}
+        {messages.map((message, index) => message.recommendations?.length
+          ? <div key={`${message.role}-${index}`} className={`ai-message ${message.role}`}>
+            {message.recommendations.map((recommendation) => <a key={recommendation.propertyId} href={recommendation.detailUrl}>
+              {recommendation.recommendationNumber}. {recommendation.address} · 보증금 {recommendation.deposit || '-'} / 월세 {recommendation.rent || '-'}{recommendation.photoStatus === 'preparing' ? ' · 사진 준비중' : ''}
+            </a>)}
+          </div>
+          : <p key={`${message.role}-${index}`} className={`ai-message ${message.role}`}>{message.content}</p>)}
         {busy && <p className="ai-message assistant">확인 중입니다…</p>}
         <div ref={endRef} />
       </div>
