@@ -4568,6 +4568,7 @@ function AdminModal({ mode, setMode, isAdmin, setIsAdmin, onClose, properties, r
     if (hash.includes('/admin/manage')) return 'manage';
     if (hash.includes('/admin/review')) return 'review';
     if (hash.includes('/admin/duplicates')) return 'duplicates';
+    if (hash.includes('/admin/ai')) return 'ai';
     if (hash.includes('/admin/staff')) return 'staff';
     return 'register';
   });
@@ -4709,6 +4710,48 @@ const duplicatePropertyGroups = (() => {
       )
   );
 })();
+
+// AI 관리센터 1단계 V3
+const aiAuditRows = (properties || []).map((property) => {
+  const critical = [];
+  const warning = [];
+  const clean = (value) => String(value ?? '').trim();
+  const isSale = property.trade_type === '매매' || clean(property.category).includes('매매');
+  const photoCount = getCleanPropertyPhotos(property).length;
+  const lat = Number(property.latitude);
+  const lng = Number(property.longitude);
+  const hasCoordinates = Number.isFinite(lat) && Number.isFinite(lng) && Math.abs(lat) > 0.0001 && Math.abs(lng) > 0.0001;
+
+  if (!clean(property.title)) critical.push('제목');
+  if (!clean(property.address)) critical.push('주소');
+  if (isSale) {
+    if (!clean(property.sale_price)) critical.push('매매가');
+  } else {
+    if (!clean(property.deposit)) critical.push('보증금');
+    if (!clean(property.rent)) critical.push('월세');
+    if (!clean(property.maintenance_fee)) warning.push('관리비');
+  }
+  if (!hasCoordinates) critical.push('지도좌표');
+  if (photoCount === 0) critical.push('사진');
+  else if (photoCount < 3) warning.push('사진 3장 미만');
+  if (!clean(property.area)) warning.push('면적');
+  if (!clean(property.floor_info)) warning.push('층수');
+  if (!clean(property.direction) || clean(property.direction).includes('확인필요')) warning.push('방향');
+  if (!isSale && !clean(property.move_in)) warning.push('입주일');
+  if (!clean(property.summary)) warning.push('한줄요약');
+
+  const score = Math.max(0, 100 - critical.length * 18 - warning.length * 5);
+  const level = critical.length ? 'critical' : warning.length ? 'warning' : 'ok';
+  return { property, critical, warning, score, level, photoCount };
+}).sort((a, b) => {
+  const rank = { critical: 0, warning: 1, ok: 2 };
+  return (rank[a.level] - rank[b.level]) || (a.score - b.score);
+});
+const aiCriticalCount = aiAuditRows.filter((row) => row.level === 'critical').length;
+const aiWarningCount = aiAuditRows.filter((row) => row.level === 'warning').length;
+const aiOkCount = aiAuditRows.filter((row) => row.level === 'ok').length;
+const aiPublishedCount = (properties || []).filter((property) => property.status === 'published').length;
+
 const quickMissingItems = [
   !isStaffMode && !form.title && '제목',
   !form.address && '주소',
@@ -4840,6 +4883,7 @@ function selectAdminView(nextView) {
     manage: '/admin/manage',
     review: '/admin/review',
     duplicates: '/admin/duplicates',
+    ai: '/admin/ai',
     staff: '/admin/staff',
   };
 
@@ -6742,6 +6786,13 @@ if (isStaffMode && currentStaff?.code) {
 </button>
 <button
   type="button"
+  className={isAdminMode && adminView === 'ai' ? 'active' : ''}
+  onClick={() => selectAdminView('ai')}
+>
+  🤖 AI 관리센터
+</button>
+<button
+  type="button"
   className={isAdminMode && adminView === 'staff' ? 'active' : ''}
   onClick={() => selectAdminView('staff')}
 >
@@ -8080,7 +8131,62 @@ if (isStaffMode && currentStaff?.code) {
               </section>
             )}
 
-            {isAdminMode && adminView === 'staff' && (
+            
+            {isAdminMode && adminView === 'ai' && (
+              <section className="admin-list ai-admin-center-v3">
+                <div className="ai-v3-head">
+                  <div>
+                    <span className="ai-v3-kicker">KHAN AI CONTROL</span>
+                    <h3>🤖 AI 관리센터</h3>
+                    <p className="muted">등록된 매물을 자동 점검해 수정이 필요한 순서대로 보여줍니다.</p>
+                  </div>
+                  <button type="button" className="small-btn" onClick={() => reload()}>새로고침</button>
+                </div>
+
+                <div className="ai-v3-summary">
+                  <div><span>전체 매물</span><strong>{aiAuditRows.length}</strong></div>
+                  <div className="danger"><span>🔴 수정 필요</span><strong>{aiCriticalCount}</strong></div>
+                  <div className="warning"><span>🟡 확인 필요</span><strong>{aiWarningCount}</strong></div>
+                  <div className="success"><span>🟢 정상</span><strong>{aiOkCount}</strong></div>
+                  <div><span>공개중</span><strong>{aiPublishedCount}</strong></div>
+                </div>
+
+                <div className="ai-v3-list-head">
+                  <div>
+                    <h4>AI 매물 자동점검</h4>
+                    <p className="muted">제목·주소·가격·지도좌표·사진·면적·층수·방향·입주일·요약을 검사합니다.</p>
+                  </div>
+                </div>
+
+                <div className="ai-v3-list">
+                  {aiAuditRows.length ? aiAuditRows.map(({ property, critical, warning, score, level, photoCount }) => (
+                    <article className={`ai-v3-row ${level}`} key={`ai-v3-${property.id}`}>
+                      <div className="ai-v3-score"><strong>{score}</strong><span>점</span></div>
+                      <div className="ai-v3-main">
+                        <div className="ai-v3-title">
+                          <strong>#{getPublicPropertyNumber(property) || '-'} {property.title || '제목 없는 매물'}</strong>
+                          <em>{level === 'critical' ? '수정 필요' : level === 'warning' ? '확인 필요' : '정상'}</em>
+                        </div>
+                        <p>{property.address || '주소 미입력'} · 사진 {photoCount}장</p>
+                        <div className="ai-v3-chips">
+                          {critical.map((item, index) => <span className="critical" key={`c-${property.id}-${index}`}>{item}</span>)}
+                          {warning.map((item, index) => <span className="warning" key={`w-${property.id}-${index}`}>{item}</span>)}
+                          {!critical.length && !warning.length && <span className="ok">점검 통과</span>}
+                        </div>
+                      </div>
+                      <button type="button" className="small-btn" onClick={() => startEdit(property)}>수정</button>
+                    </article>
+                  )) : <div className="empty-box">점검할 매물이 없습니다.</div>}
+                </div>
+
+                <div className="ai-v3-next">
+                  <strong>다음 단계</strong>
+                  <span>이 화면 배포가 확인되면 광고 자동작성 · 고객문의 · 일일리포트를 순서대로 연결합니다.</span>
+                </div>
+              </section>
+            )}
+
+{isAdminMode && adminView === 'staff' && (
               <section className="admin-list admin-staff-manager">
                 <h3>직원관리</h3>
                 <p className="muted">직원이 등록한 매물의 담당자 정보를 확인합니다.</p>
