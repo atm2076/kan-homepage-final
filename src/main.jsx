@@ -4615,6 +4615,7 @@ const [buildingLedgerSearching, setBuildingLedgerSearching] = useState(false);
   // AI 광고 자동작성 2단계 V5
   // AI 광고작성 자동이동 V6
   // AI 광고 문구 품질개선 V7
+  // AI 광고 자동수정 V8
   const [aiAdPropertyId, setAiAdPropertyId] = useState(null);
   const [aiAdChannel, setAiAdChannel] = useState('blog');
   const [aiAdCopyStatus, setAiAdCopyStatus] = useState('');
@@ -4763,55 +4764,186 @@ const aiAdAudit = aiAdProperty ? aiAuditRows.find((row) => String(row.property.i
 const aiAdBlogSource = aiAdProperty ? buildNaverBlogAd(aiAdProperty) : null;
 const aiAdDetailUrl = aiAdProperty ? `${window.location.origin}/listing/${encodeURIComponent(aiAdProperty.id)}` : '';
 const aiAdIsSale = Boolean(aiAdProperty && (aiAdProperty.trade_type === '매매' || String(aiAdProperty.category || '').includes('매매')));
-const aiAdPrice = aiAdProperty ? (aiAdIsSale ? `매매가 ${formatAmount(aiAdProperty.sale_price)}` : `보증금 ${formatAmount(aiAdProperty.deposit)} / 월세 ${formatAmount(aiAdProperty.rent)}`) : '';
 const aiAdText = (value) => String(value ?? '').trim();
 const aiAdUnique = (values) => Array.from(new Set(values.map(aiAdText).filter(Boolean)));
-const aiAdPropertyType = aiAdProperty ? aiAdText(aiAdProperty.category || (aiAdIsSale ? '매매' : '임대')) : '';
-const aiAdMoveIn = aiAdProperty ? aiAdText(aiAdProperty.move_in || aiAdProperty.move_in_date) : '';
-const aiAdMaintenance = aiAdProperty ? aiAdText(aiAdProperty.maintenance_fee) : '';
+const aiAdListText = (value) => {
+  if (Array.isArray(value)) return aiAdUnique(value).join(', ');
+  return aiAdText(value).split(/\n|,/u).map((item) => item.trim()).filter(Boolean).join(', ');
+};
+const aiAdFormatUnit = (value, unit) => {
+  const text = aiAdText(value);
+  if (!text) return '';
+  if (text.includes(unit)) return text;
+  return /^\d+(?:\.\d+)?$/u.test(text.replaceAll(',', '')) ? `${text}${unit}` : text;
+};
+function getAiAdRegionParts(addressValue) {
+  const address = aiAdText(addressValue);
+  const cityCountyMatches = address.match(/[가-힣]+(?:시|군|구)(?=\s|$)/gu) || [];
+  const cityCountyRaw = cityCountyMatches.length ? cityCountyMatches[cityCountyMatches.length - 1] : '';
+  const town = address.match(/([가-힣]+(?:읍|면))(?=\s|$)/u)?.[1] || '';
+  const dongRi = address.match(/([가-힣]+(?:동|리))(?=\d|로|길|\s|$)/u)?.[1] || '';
+  const cityCounty = cityCountyRaw.replace(/(?:시|군)$/u, '');
+  return {
+    cityCounty,
+    cityCountyRaw,
+    town,
+    dongRi,
+    display: [cityCounty, town, dongRi].filter(Boolean).join(' ')
+  };
+}
+const aiAdRegion = aiAdProperty ? getAiAdRegionParts(aiAdProperty.address) : { cityCounty:'', cityCountyRaw:'', town:'', dongRi:'', display:'' };
+function normalizeAiAdRegionText(value) {
+  let text = aiAdText(value);
+  if (!text) return '';
+  const { town, dongRi } = aiAdRegion;
+  if (town && dongRi && dongRi !== '중리' && dongRi.endsWith('중리')) {
+    text = text.split(`${town} 중리`).join(`${town} ${dongRi}`);
+  }
+  return text;
+}
+function cleanAiAdDirection(value) {
+  return aiAdText(value)
+    .replace(/\(\s*,\s*주된\s*창\s*기준\s*\)/gu, '(주된 창 기준)')
+    .replace(/\(\s*주된\s*창\s*기준\s*\)/gu, '(주된 창 기준)')
+    .replace(/,\s*,/gu, ',')
+    .trim();
+}
+function cleanAiAdText(value) {
+  return normalizeAiAdRegionText(value)
+    .replace(/\(\s*,\s*주된\s*창\s*기준\s*\)/gu, '(주된 창 기준)')
+    .replace(/\(\s*주된\s*창\s*기준\s*\)/gu, '(주된 창 기준)')
+    .replace(/\s+,/gu, ',')
+    .trim();
+}
+const aiAdTradeType = aiAdProperty ? (aiAdText(aiAdProperty.trade_type) || (aiAdIsSale ? '매매' : '월세')) : '';
+const aiAdCategory = aiAdProperty ? aiAdText(aiAdProperty.category) : '';
+const aiAdUnitType = aiAdCategory
+  ? aiAdCategory.replace(/\s*(?:월세|전세|반전세|단기|매매)\s*$/u, '').trim()
+  : (aiAdIsSale ? '매매' : '매물');
+const aiAdHeadlineType = aiAdUnique([aiAdUnitType, aiAdTradeType]).join(' ');
+const aiAdPublicTitle = aiAdProperty
+  ? cleanAiAdText(aiAdProperty.title || `${aiAdRegion.display} ${aiAdHeadlineType}` || '구미·칠곡 부동산 매물')
+  : '';
+const aiAdPrice = aiAdProperty
+  ? (aiAdIsSale
+      ? `매매가 ${formatAmount(aiAdProperty.sale_price)}`
+      : `보증금 ${formatAmount(aiAdProperty.deposit)} / 월세 ${formatAmount(aiAdProperty.rent)}`)
+  : '';
+const aiAdMoveIn = aiAdProperty ? cleanAiAdText(aiAdProperty.move_in || aiAdProperty.move_in_date) : '';
+const aiAdMaintenance = aiAdProperty ? cleanAiAdText(aiAdProperty.maintenance_fee) : '';
+const aiAdMaintenanceIncludes = aiAdProperty ? aiAdListText(aiAdProperty.maintenance_includes) : '';
+const aiAdDirection = aiAdProperty ? cleanAiAdDirection(aiAdProperty.direction) : '';
+const aiAdSummary = aiAdProperty ? cleanAiAdText(aiAdProperty.summary) : '';
 const aiAdFeatureLine = aiAdProperty ? aiAdUnique([
-  aiAdProperty.summary,
-  aiAdProperty.direction && !String(aiAdProperty.direction).includes('확인필요') ? aiAdProperty.direction : '',
+  aiAdSummary,
+  aiAdDirection && !aiAdDirection.includes('확인필요') ? aiAdDirection : '',
   aiAdMoveIn
 ]).join(' · ') : '';
-const aiAdRegionTag = aiAdProperty && aiAdText(aiAdProperty.address).includes('칠곡') ? '#칠곡부동산' : '#구미부동산';
-const aiAdTypeTag = aiAdPropertyType ? `#${aiAdPropertyType.replace(/[^0-9A-Za-z가-힣]/gu, '')}` : '';
-const aiAdHashtags = aiAdUnique([aiAdRegionTag, aiAdTypeTag, '#칸공인중개사']).join(' ');
+const aiAdLegalPropertyType = aiAdProperty
+  ? cleanAiAdText(aiAdProperty.legal_property_type || aiAdProperty.main_use || aiAdProperty.category)
+  : '';
+const aiAdArea = aiAdProperty ? cleanAiAdText(aiAdProperty.exclusive_area || aiAdProperty.area) : '';
+const aiAdFloorInfo = aiAdProperty ? cleanAiAdText(aiAdProperty.floor_info) : '';
+const aiAdFloorMatch = aiAdFloorInfo.match(/([^/]+)\/([^/]+)/u);
+const aiAdCurrentFloor = aiAdProperty ? aiAdFormatUnit(
+  aiAdProperty.current_floor || aiAdProperty.floor || (aiAdFloorMatch ? aiAdFloorMatch[1].trim() : ''),
+  '층'
+) : '';
+const aiAdTotalFloor = aiAdProperty ? aiAdFormatUnit(
+  aiAdProperty.total_floors || aiAdProperty.total_floor || aiAdProperty.total_floor_info || (aiAdFloorMatch ? aiAdFloorMatch[2].trim() : ''),
+  '층'
+) : '';
+const aiAdParkingTotal = aiAdProperty ? aiAdFormatUnit(
+  aiAdProperty.parking_total || aiAdProperty.total_parking || aiAdProperty.parking,
+  '대'
+) : '';
+const aiAdApprovalDate = aiAdProperty ? cleanAiAdText(aiAdProperty.approval_date || aiAdProperty.use_approval_date) : '';
+const aiAdRoomBath = aiAdProperty ? cleanAiAdText(aiAdProperty.room_bath) : '';
+const aiAdStructure = aiAdProperty ? cleanAiAdText(aiAdProperty.structure) : '';
+const aiAdMainUse = aiAdProperty ? cleanAiAdText(aiAdProperty.main_use) : '';
+const aiAdRegionBase = aiAdRegion.cityCounty || (aiAdText(aiAdProperty?.address).includes('칠곡') ? '칠곡' : '구미');
+const aiAdTagType = aiAdUnitType && aiAdUnitType !== '매물' ? aiAdUnitType.replace(/[^0-9A-Za-z가-힣]/gu, '') : '부동산';
+const aiAdTagTrade = aiAdTradeType ? aiAdTradeType.replace(/[^0-9A-Za-z가-힣]/gu, '') : '';
+const aiAdHashtags = aiAdUnique([
+  aiAdRegionBase ? `#${aiAdRegionBase}부동산` : '',
+  aiAdRegion.town ? `#${aiAdRegion.town}부동산` : '',
+  aiAdRegion.dongRi ? `#${aiAdRegion.dongRi}부동산` : '',
+  aiAdRegionBase && aiAdTagType ? `#${aiAdRegionBase}${aiAdTagType}` : '',
+  aiAdRegion.town && aiAdTagType ? `#${aiAdRegion.town}${aiAdTagType}` : '',
+  aiAdRegion.dongRi && aiAdTagType ? `#${aiAdRegion.dongRi}${aiAdTagType}` : '',
+  aiAdRegionBase && aiAdTagTrade ? `#${aiAdRegionBase}${aiAdTagTrade}` : '',
+  aiAdRegion.town && aiAdTagTrade ? `#${aiAdRegion.town}${aiAdTagTrade}` : '',
+  aiAdTagType && aiAdTagTrade ? `#${aiAdTagType}${aiAdTagTrade}` : '',
+  '#칸공인중개사'
+]).join(' ');
 
 function polishAiBlogBody(body) {
-  const normalized = String(body || '')
+  let normalized = cleanAiAdText(String(body || ''))
     .replace(/원룸[.\s]+미니투룸[.\s]+투룸/gu, '원룸·미니투룸·투룸')
     .replace(/상가[.\s]+다가구[.\s]+원룸건물/gu, '상가·다가구·원룸건물')
-    .replace(/https:\/\/kan-homepage-final\.vercel\.app/giu, window.location.origin);
+    .replace(/https:\/\/kan-homepage-final\.vercel\.app/giu, window.location.origin)
+    .replace(/([^\n])\s*※\s*/gu, '$1\n※ ');
+  normalized = normalizeAiAdRegionText(normalized)
+    .replace(/\(\s*,\s*주된\s*창\s*기준\s*\)/gu, '(주된 창 기준)');
   const lines = normalized.split('\n');
   const infoStart = lines.findIndex((line) => /기본정보|중개대상물 표시·광고/u.test(line));
-  const introEnd = infoStart >= 0 ? infoStart : Math.min(lines.length, 20);
+  const introEnd = infoStart >= 0 ? infoStart : Math.min(lines.length, 24);
   let moveInSeen = false;
-  const cleaned = lines.filter((line, index) => {
-    if (index >= introEnd) return true;
-    const compact = line.replace(/\s+/gu, '');
-    if (compact === '즉시입주' || compact === '즉시입주가능') {
-      if (moveInSeen) return false;
-      moveInSeen = true;
+  const cleaned = [];
+  for (let index = 0; index < lines.length; index += 1) {
+    const line = lines[index];
+    if (index < introEnd) {
+      const compact = line.replace(/\s+/gu, '');
+      const targetMoveIn = (aiAdMoveIn || '즉시입주').replace(/\s+/gu, '');
+      if (targetMoveIn && (compact === targetMoveIn || compact === `${targetMoveIn}가능`)) {
+        if (moveInSeen) continue;
+        moveInSeen = true;
+      }
     }
-    return true;
-  });
+    cleaned.push(line);
+  }
+  if (aiAdMaintenanceIncludes && !cleaned.some((line) => line.includes('관리비 포함항목'))) {
+    const feeIndex = cleaned.findIndex((line) => /^관리비\s*:/u.test(line.trim()));
+    if (feeIndex >= 0) cleaned.splice(feeIndex + 1, 0, `관리비 포함항목: ${aiAdMaintenanceIncludes}`);
+  }
   return cleaned.join('\n').replace(/\n{3,}/gu, '\n\n').trim();
 }
 
+const aiAdLegalMissing = aiAdProperty ? [
+  !aiAdLegalPropertyType && '중개대상물 종류',
+  !aiAdTradeType && '거래형태',
+  !aiAdText(aiAdProperty.address) && '소재지',
+  !aiAdPrice && '거래가격',
+  !aiAdIsSale && !aiAdMaintenance && '관리비',
+  !aiAdArea && '면적',
+  !aiAdCurrentFloor && '해당 층',
+  !aiAdTotalFloor && '총층수',
+  !aiAdRoomBath && '방/욕실',
+  !aiAdDirection && '방향',
+  !aiAdMoveIn && '입주가능일',
+  !aiAdParkingTotal && '총주차대수',
+  !aiAdApprovalDate && '사용승인일'
+].filter(Boolean) : [];
+const aiAdLegalWarning = aiAdLegalMissing.length
+  ? `⚠️ 게시 전 확인: ${aiAdLegalMissing.join(', ')}`
+  : '✅ 표시·광고 필수정보 기본점검 통과';
 const aiAdLegalLines = aiAdProperty ? [
-  `중개대상물 종류: ${aiAdPropertyType || '확인 필요'}`,
-  `거래형태: ${aiAdText(aiAdProperty.trade_type) || (aiAdIsSale ? '매매' : '임대')}`,
-  `소재지: ${aiAdText(aiAdProperty.address) || '확인 필요'}`,
-  `거래가격: ${aiAdPrice}`,
+  `중개대상물 종류: ${aiAdLegalPropertyType || '확인 필요'}`,
+  `거래형태: ${aiAdTradeType || '확인 필요'}`,
+  `소재지: ${cleanAiAdText(aiAdProperty.address) || '확인 필요'}`,
+  `거래가격: ${aiAdPrice || '확인 필요'}`,
   !aiAdIsSale ? `관리비: ${aiAdMaintenance || '확인 필요'}` : '',
-  aiAdText(aiAdProperty.area) ? `면적: ${aiAdText(aiAdProperty.area)}` : '',
-  aiAdText(aiAdProperty.floor_info) ? `층수: ${aiAdText(aiAdProperty.floor_info)}` : '',
-  aiAdText(aiAdProperty.room_bath) ? `방/욕실: ${aiAdText(aiAdProperty.room_bath)}` : '',
-  aiAdText(aiAdProperty.direction) ? `방향: ${aiAdText(aiAdProperty.direction)}` : '',
-  aiAdMoveIn ? `입주가능일: ${aiAdMoveIn}` : '',
-  aiAdText(aiAdProperty.parking) ? `주차: ${aiAdText(aiAdProperty.parking)}` : '',
-  aiAdText(aiAdProperty.approval_date) ? `사용승인일: ${aiAdText(aiAdProperty.approval_date)}` : '',
+  !aiAdIsSale && aiAdMaintenanceIncludes ? `관리비 포함항목: ${aiAdMaintenanceIncludes}` : '',
+  `면적: ${aiAdArea || '확인 필요'}`,
+  `해당 층: ${aiAdCurrentFloor || '확인 필요'}`,
+  `총층수: ${aiAdTotalFloor || '확인 필요'}`,
+  `방/욕실: ${aiAdRoomBath || '확인 필요'}`,
+  `총주차대수: ${aiAdParkingTotal || '확인 필요'}`,
+  `방향: ${aiAdDirection || '확인 필요'}`,
+  `입주가능일: ${aiAdMoveIn || '확인 필요'}`,
+  `사용승인일: ${aiAdApprovalDate || '확인 필요'}`,
+  aiAdMainUse ? `주용도: ${aiAdMainUse}` : '',
+  aiAdStructure ? `건물구조: ${aiAdStructure}` : '',
   `중개사무소: ${OFFICE.name}`,
   `대표공인중개사: ${OFFICE.broker}`,
   `등록번호: ${OFFICE.regNo}`,
@@ -4821,43 +4953,48 @@ const aiAdLegalLines = aiAdProperty ? [
 
 const aiAdBlog = aiAdBlogSource ? {
   ...aiAdBlogSource,
-  title: String(aiAdBlogSource.title || '').replace(/\s+/gu, ' ').trim(),
-  body: polishAiBlogBody(aiAdBlogSource.body)
+  title: cleanAiAdText(aiAdBlogSource.title || '').replace(/\s+/gu, ' ').trim(),
+  body: polishAiBlogBody(aiAdBlogSource.body),
+  tags: cleanAiAdText(aiAdBlogSource.tags || aiAdHashtags)
 } : null;
 
 const aiAdInstagram = aiAdProperty ? [
-  `🏠 ${aiAdProperty.title || '구미·칠곡 부동산 매물'}`,
+  `🏠 ${aiAdPublicTitle}`,
+  `매물번호 ${getPublicPropertyNumber(aiAdProperty) || '-'}`,
   `💰 ${aiAdPrice}`,
-  `📍 ${aiAdProperty.address || '위치 확인 필요'}`,
+  `📍 ${cleanAiAdText(aiAdProperty.address) || '위치 확인 필요'}`,
   aiAdFeatureLine ? `✨ ${aiAdFeatureLine}` : '',
   '',
   '사진만 보고 결정하지 마세요.',
   '가격·지도·상세조건을 홈페이지에서 한 번에 확인하세요.',
   `👉 ${aiAdDetailUrl}`,
   '',
-  '【중개대상물 표시·광고 정보】',
+  aiAdLegalWarning,
+  '【중개대상물 표시·광고 사항】',
   ...aiAdLegalLines,
   '',
   aiAdHashtags
 ].filter(Boolean).join('\n') : '';
 
 const aiAdFacebook = aiAdProperty ? [
-  `${aiAdProperty.title || '구미·칠곡 부동산 매물'}`,
+  `${aiAdPublicTitle}`,
   '',
   `먼저 조건부터 확인하세요. ${aiAdPrice}`,
   aiAdFeatureLine || '',
   '',
+  `${aiAdRegion.display || '구미·칠곡'}에서 ${aiAdHeadlineType || '매물'}을 찾는 분께 안내드립니다.`,
   '사진과 지도, 상세조건은 아래 매물 페이지에서 확인할 수 있습니다.',
   aiAdDetailUrl,
   '',
-  '【중개대상물 표시·광고 정보】',
+  aiAdLegalWarning,
+  '【중개대상물 표시·광고 사항】',
   ...aiAdLegalLines,
   '',
   '상담 시 매물번호를 말씀해 주시면 빠르게 확인해드립니다.'
 ].filter(Boolean).join('\n') : '';
 
 const aiAdHomepage = aiAdProperty ? [
-  `아직 원하는 ${aiAdPropertyType || '매물'}을 못 찾으셨나요?`,
+  `아직 ${aiAdHeadlineType || '원하는 매물'} 매물을 찾고 계신가요?`,
   `${aiAdPrice}${aiAdFeatureLine ? ` · ${aiAdFeatureLine}` : ''}`,
   '사진·지도·상세조건을 지금 확인해보세요.',
   aiAdDetailUrl
@@ -4866,22 +5003,22 @@ const aiAdHomepage = aiAdProperty ? [
 const aiAdChannels = aiAdProperty ? {
   blog: {
     label: '네이버 블로그',
-    guide: 'SEO 장문 · 반복문구 정리 · 상세정보 중심',
+    guide: `SEO 장문 · 지역명/중복/문법 자동정리 · ${aiAdLegalWarning}`,
     text: aiAdBlog ? `${aiAdBlog.title}\n\n${aiAdBlog.body}\n\n${aiAdBlog.tags}` : ''
   },
   instagram: {
     label: '인스타그램',
-    guide: '첫 화면 조건 강조 · 홈페이지 클릭유도 · 표시정보 포함',
+    guide: `클릭유도 + 법정 표시정보 + 지역 해시태그 · ${aiAdLegalWarning}`,
     text: aiAdInstagram
   },
   facebook: {
     label: '페이스북',
-    guide: '조건 확인 → 상세페이지 → 상담 순서로 구성',
+    guide: `상담유도 + 법정 표시정보 · ${aiAdLegalWarning}`,
     text: aiAdFacebook
   },
   homepage: {
     label: '홈페이지 유입',
-    guide: '짧은 클릭유도용 CTA',
+    guide: '짧은 CTA · 조사 오류 없는 문장',
     text: aiAdHomepage
   }
 } : {};
@@ -8340,7 +8477,7 @@ if (isStaffMode && currentStaff?.code) {
                     <div className="ai-v5-ad-head">
                       <div>
                         <span className="ai-v3-kicker">AI AD WRITER</span>
-                        <span className="ai-v7-quality">플랫폼별 문구 최적화 V7</span>
+                        <span className="ai-v7-quality">광고 자동수정 V8</span>
                         <h4>광고 자동작성 · #{getPublicPropertyNumber(aiAdProperty) || '-'} {aiAdProperty.title || '제목 없는 매물'}</h4>
                       </div>
                       <button type="button" className="small-btn" onClick={() => setAiAdPropertyId(null)}>닫기</button>
