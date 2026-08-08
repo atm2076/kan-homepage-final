@@ -96,7 +96,7 @@ export default function AIConsultation() {
         {!messages.length && <p className="ai-message assistant">상담을 시작하고 있습니다.</p>}
         {messages.map((message, index) => message.recommendations?.length
           ? <div key={`${message.role}-${index}`} className={`ai-message ${message.role}`}>
-            <p>{message.content}</p>
+            <p>{message.content.split('\n').filter((line) => !line.trim().startsWith('/#/listing/')).join('\n')}</p>
             <div style={{ display: 'grid', gap: 10, marginTop: 10 }}>
               {message.recommendations.map((recommendation) => <a key={recommendation.propertyId} href={recommendation.detailUrl} style={{ display: 'grid', gridTemplateColumns: '88px 1fr', gap: 10, padding: 10, border: '1px solid #ddd', borderRadius: 10, color: 'inherit', textDecoration: 'none' }}>
                 {recommendation.photoUrls?.[0]
