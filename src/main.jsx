@@ -4613,6 +4613,7 @@ const [buildingLedgerSearching, setBuildingLedgerSearching] = useState(false);
   const latestFormRef = useRef(form);
   const [advertisingPropertyId, setAdvertisingPropertyId] = useState(null);
   // AI 광고 자동작성 2단계 V5
+  // AI 광고작성 자동이동 V6
   const [aiAdPropertyId, setAiAdPropertyId] = useState(null);
   const [aiAdChannel, setAiAdChannel] = useState('blog');
   const [aiAdCopyStatus, setAiAdCopyStatus] = useState('');
@@ -8201,7 +8202,20 @@ if (isStaffMode && currentStaff?.code) {
                         </div>
                       </div>
                       <div className="ai-v5-actions">
-                        <button type="button" className="small-btn ai-v5-ad-btn" onClick={() => { setAiAdPropertyId(property.id); setAiAdChannel('blog'); setAiAdCopyStatus(''); }}>광고작성</button>
+                        <button
+                          type="button"
+                          className={`small-btn ai-v5-ad-btn ${String(aiAdPropertyId) === String(property.id) ? 'active' : ''}`}
+                          onClick={() => {
+                            setAiAdPropertyId(property.id);
+                            setAiAdChannel('blog');
+                            setAiAdCopyStatus('');
+                            window.setTimeout(() => {
+                              document.getElementById('ai-v5-ad-panel')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                            }, 100);
+                          }}
+                        >
+                          {String(aiAdPropertyId) === String(property.id) ? '광고작성 열림' : '광고작성'}
+                        </button>
                         <button type="button" className="small-btn" onClick={() => startEdit(property)}>수정</button>
                       </div>
                     </article>
@@ -8209,7 +8223,7 @@ if (isStaffMode && currentStaff?.code) {
                 </div>
 
                 {aiAdProperty && (
-                  <section className="ai-v5-ad-panel">
+                  <section id="ai-v5-ad-panel" className="ai-v5-ad-panel">
                     <div className="ai-v5-ad-head">
                       <div>
                         <span className="ai-v3-kicker">AI AD WRITER</span>
