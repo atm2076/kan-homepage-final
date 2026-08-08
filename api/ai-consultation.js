@@ -166,7 +166,10 @@ export default async function handler(req, res) {
         safetyIdentifier: tokenHash(conversation.id).slice(0, 32)
       };
       let llmIntent = null;
-      try { llmIntent = await interpretConsultationMessage(llmOptions); } catch { llmIntent = null; }
+      try { llmIntent = await interpretConsultationMessage(llmOptions); } catch (error) {
+        console.warn('consultation llm unavailable', { stage: 'intent', code: error?.message || 'unknown' });
+        llmIntent = null;
+      }
 
       if (context.awaitingField === 'desired_date') context.desiredDate = parseDesiredDate(message);
       if (context.awaitingField === 'desired_time') context.desiredTime = parseDesiredTime(message);
@@ -274,7 +277,10 @@ export default async function handler(req, res) {
       }
       context.recommendations = snapshot;
       let lead = '';
-      try { lead = await naturalizeSafeLead({ ...llmOptions, resultCount: snapshot.length }); } catch { lead = ''; }
+      try { lead = await naturalizeSafeLead({ ...llmOptions, resultCount: snapshot.length }); } catch (error) {
+        console.warn('consultation llm unavailable', { stage: 'lead', code: error?.message || 'unknown' });
+        lead = '';
+      }
       const verifiedReply = formatRecommendations(snapshot);
       const reply = await saveAssistant(service, conversation.id, lead && snapshot.length ? `${lead}\n${verifiedReply}` : verifiedReply, context);
       return send(res, 200, { ok: true, reply, recommendations: snapshot });
