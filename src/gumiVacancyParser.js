@@ -60,11 +60,13 @@ export function parseGumiMoney(value) {
 
 function normalizeDate(value) {
   const text = normalizeWhitespace(value);
-  const match = text.match(/(20\d{2})[.\-/년\s]+(\d{1,2})[.\-/월\s]+(\d{1,2})/u);
+  const match = text.match(/\b(\d{2}|20\d{2})[.\-/년\s]+(\d{1,2})[.\-/월\s]+(\d{1,2})\b/u);
   if (!match) return null;
-  const month = String(Number(match[2])).padStart(2, '0');
-  const day = String(Number(match[3])).padStart(2, '0');
-  return `${match[1]}-${month}-${day}`;
+  const rawYear = Number(match[1]);
+  const year = match[1].length === 2 ? 2000 + rawYear : rawYear;
+  const month = String(Number(match[2])).padStart(2, "0");
+  const day = String(Number(match[3])).padStart(2, "0");
+  return `${year}-${month}-${day}`;
 }
 
 function readLabel(block, aliases) {
@@ -199,7 +201,7 @@ export function parseGumiVacancyMarkdown(input, { maxRecords = 1000 } = {}) {
       if (!item.sourceRegisteredAt) return false;
       const cutoff = new Date();
       cutoff.setHours(0, 0, 0, 0);
-      cutoff.setDate(cutoff.getDate() - 90);
+      cutoff.setMonth(cutoff.getMonth() - 3);
       return new Date(`${item.sourceRegisteredAt}T00:00:00`) >= cutoff;
     }).length,
     readyCount: records.filter((item) => item.disposition === 'ready').length,
@@ -208,3 +210,4 @@ export function parseGumiVacancyMarkdown(input, { maxRecords = 1000 } = {}) {
     records
   };
 }
+

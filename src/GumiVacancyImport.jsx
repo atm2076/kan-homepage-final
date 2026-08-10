@@ -206,7 +206,7 @@ export default function GumiVacancyImport({ supabase, onReload }) {
 
       <div className="gumi-import-stats">
         <Stat label="분석 전체" value={stats.total} />
-        <Stat label="최근 90일" value={stats.recent90} />
+        <Stat label="최근 3개월" value={stats.recent90} />
         <Stat label="저장 가능" value={stats.ready} />
         <Stat label="중복확인 필요" value={stats.duplicate} />
         <Stat label="오류" value={stats.errors} />
