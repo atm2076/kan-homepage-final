@@ -80,21 +80,48 @@ function splitRecords(sanitized) {
   const lines = sanitized.split(/\r?\n/u);
   const blocks = [];
   let current = [];
-  const startsRecord = (line) => /^\s*(?:#{1,6}\s+|[-=]{3,}\s*$)/u.test(line);
-  const hasIdentityMarker = (items) => /(?:intseq|게시번호|매물번호|원본번호)\s*[:：=|-]/iu.test(items.join('\n'));
+
+  const startsStructuredRecord = (line) =>
+    /^\s*(?:#{1,6}\s+|[-=]{3,}\s*$)/u.test(line);
+
+  const startsRawRecord = (line) =>
+    /^\s*(?:월세|전세|매매)\s+(?:(?:경상북도|경북)\s+)?구미시\s+/u.test(line);
+
+  const hasIdentityMarker = (items) =>
+    /(?:intseq|게시번호|매물번호|원본번호)\s*[:：=|-]/iu.test(items.join('\n'));
 
   for (const line of lines) {
-    if (startsRecord(line) && current.some((item) => item.trim()) && hasIdentityMarker(current)) {
+    if (
+      startsRawRecord(line) &&
+      current.some((item) => item.trim())
+    ) {
+      blocks.push(current.join('\n'));
+      current = [];
+    } else if (
+      startsStructuredRecord(line) &&
+      current.some((item) => item.trim()) &&
+      hasIdentityMarker(current)
+    ) {
       blocks.push(current.join('\n'));
       current = [];
     }
+
     current.push(line);
-    if (!line.trim() && hasIdentityMarker(current) && current.filter((item) => item.trim()).length >= 4) {
+
+    if (
+      !line.trim() &&
+      hasIdentityMarker(current) &&
+      current.filter((item) => item.trim()).length >= 4
+    ) {
       blocks.push(current.join('\n'));
       current = [];
     }
   }
-  if (current.some((item) => item.trim())) blocks.push(current.join('\n'));
+
+  if (current.some((item) => item.trim())) {
+    blocks.push(current.join('\n'));
+  }
+
   return blocks.filter((block) => block.trim());
 }
 
@@ -105,13 +132,18 @@ function fallbackAddress(block) {
 }
 
 function fallbackUnit(block) {
-  const match = block.match(/(?:호실|호수|방)\s*[:：=|-]?\s*(\d{1,5})\s*호?/u)
-    || block.match(/(?:^|\s)(\d{3,5})\s*호(?:\s|$)/u);
+  const match =
+    block.match(/(?:호실|호수|방)\s*[:：=|-]?\s*(\d{1,5})\s*호?/u) ||
+    block.match(/(?:^|\s)(\d{3,5})\s*호(?:\s|$)/u) ||
+    block.match(/(?:^|\s)(\d{3,5})\s+(?=(?:원룸|미투|미니투룸|투룸|주인세대)(?:\s|$))/um);
+
   return match ? match[1] : '';
 }
 
 function fallbackPrice(block) {
-  const match = block.match(/(?:보증금\s*)?(\d[\d,]*)\s*[\/|-]\s*(\d[\d,]*)/u);
+  const match = block.match(
+    /(?:보증금\s*)?(\d[\d,]*)\s*\/\s*(\d[\d,]*)/u
+  );
   return match ? { deposit: match[1], rent: match[2] } : {};
 }
 
