@@ -1393,6 +1393,8 @@ if (currentHash.startsWith('/staff')) return 'staff';
   const [filters, setFilters] = useState(() =>
     isOneRoomPage && !queryMode ? { ...defaultFilters, trade: '월세' } : defaultFilters
   );
+  const isGumiOneRoomSearch = isOneRoomPage && !queryMode
+    && category === '원룸' && filters.trade === '월세';
   const [filterSheetOpen, setFilterSheetOpen] = useState(false);
   const [adminOpen, setAdminOpen] = useState(Boolean(queryMode));
   const [portalMode, setPortalMode] = useState(queryMode);
@@ -1586,8 +1588,11 @@ requestAnimationFrame(() => {
   }, [properties]);
 
    const filteredProperties = useMemo(() => {
-    return latestPublicProperties.filter((item) => matchesCustomerFilters(item, keyword, category, filters, dealMode));
-  }, [latestPublicProperties, keyword, category, filters, dealMode]);
+    return latestPublicProperties.filter((item) =>
+      (!isGumiOneRoomSearch || /(?:^|\s)구미(?:시)?(?:\s|$)/u.test(item.address || ''))
+      && matchesCustomerFilters(item, keyword, category, filters, dealMode)
+    );
+  }, [latestPublicProperties, keyword, category, filters, dealMode, isGumiOneRoomSearch]);
 
   useEffect(() => {
     setSelected((prev) => {
@@ -1855,6 +1860,7 @@ async function handleQuickDeleteProperty(property) {
         ) : (
           <>
             <CustomerListingSection
+              isGumiOneRoomSearch={isGumiOneRoomSearch}
               properties={filteredProperties}
               selected={selected}
               currentPage={customerPage}
@@ -1986,7 +1992,7 @@ function Header({ portalMode, isAdminRoute, onOpenAdmin }) {
           <input
             value={keyword}
             onChange={(e) => setKeyword(e.target.value)}
-            placeholder="인의동 원룸, 진평동 투룸, 옥계동 월세 검색"
+            placeholder={isOneRoomPage ? "인의동, 진평동, 사곡동 원룸 검색" : "인의동 원룸, 진평동 투룸, 옥계동 월세 검색"}
           />
           <a href="#properties">매물검색</a>
         </div>
@@ -3395,6 +3401,7 @@ function FilterBar({ filters, setFilters, onReset }) {
 }
 
 function CustomerListingSection({
+  isGumiOneRoomSearch,
   properties,
   selected,
   currentPage,
@@ -3472,7 +3479,7 @@ function CustomerListingSection({
       <div className="customer-market-head">
         <div>
           <p className="eyebrow">KhAN PROPERTY PLATFORM</p>
-          <h2>구미·칠곡 원룸·투룸·다가구 매물</h2>
+          <h2>{isGumiOneRoomSearch ? "구미 원룸 월세 매물" : "구미·칠곡 원룸·투룸·다가구 매물"}</h2>
           <p className="muted">검색, 필터, 지도 보기까지 한 화면에서 빠르게 확인하세요.</p>
         </div>
         <a className="map-view-button" href="#map-view">지도에서 가까운 방 찾기</a>
@@ -3492,7 +3499,7 @@ function CustomerListingSection({
           <input
             value={keyword}
             onChange={(e) => setKeyword(e.target.value)}
-            placeholder="인의동 원룸, 진평동 투룸, 옥계동 월세 검색"
+            placeholder={isGumiOneRoomSearch ? "인의동, 진평동, 사곡동 원룸 검색" : "인의동 원룸, 진평동 투룸, 옥계동 월세 검색"}
           />
           <button type="button" className="mobile-filter-open" onClick={() => setFilterSheetOpen(true)}>필터</button>
         </div>
