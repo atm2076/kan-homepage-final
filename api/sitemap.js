@@ -55,6 +55,7 @@ export default async function handler(req, res) {
 
     const urls = [
       `${SITE_ORIGIN}/`,
+      `${SITE_ORIGIN}/gumi-one-room`,
       ...properties
         .filter((property) => property?.id !== null && property?.id !== undefined)
         .map(
