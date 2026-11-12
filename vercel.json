@@ -5,6 +5,10 @@
       "destination": "/api/sitemap"
     },
     {
+      "source": "/gumi-one-room",
+      "destination": "/gumi-one-room.html"
+    },
+    {
       "source": "/listing/:id",
       "destination": "/api/listing-seo?id=:id"
     },

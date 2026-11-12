@@ -1349,6 +1349,9 @@ function getSaleCardPrimaryPrice(property = {}) {
   };
 }
 function App() {
+  const [isOneRoomPage] = useState(() =>
+    /^\/gumi-one-room(?:\.html)?\/?$/u.test(window.location.pathname)
+  );
   const getCustomerListingId = () => {
     const match = window.location.pathname.match(/^\/listing\/([^/]+)\/?$/);
     if (!match) return '';
@@ -1386,8 +1389,12 @@ if (currentHash.startsWith('/staff')) return 'staff';
   const [error, setError] = useState('');
   const [keyword, setKeyword] = useState('');
   const [dealMode, setDealMode] = useState(DEAL_MODES.RENT);
-  const [category, setCategory] = useState('전체');
-  const [filters, setFilters] = useState(defaultFilters);
+  const [category, setCategory] = useState(isOneRoomPage && !queryMode ? '원룸' : '전체');
+  const [filters, setFilters] = useState(() =>
+    isOneRoomPage && !queryMode ? { ...defaultFilters, trade: '월세' } : defaultFilters
+  );
+  const isGumiOneRoomSearch = isOneRoomPage && !queryMode
+    && category === '원룸' && filters.trade === '월세';
   const [filterSheetOpen, setFilterSheetOpen] = useState(false);
   const [adminOpen, setAdminOpen] = useState(Boolean(queryMode));
   const [portalMode, setPortalMode] = useState(queryMode);
@@ -1581,8 +1588,11 @@ requestAnimationFrame(() => {
   }, [properties]);
 
    const filteredProperties = useMemo(() => {
-    return latestPublicProperties.filter((item) => matchesCustomerFilters(item, keyword, category, filters, dealMode));
-  }, [latestPublicProperties, keyword, category, filters, dealMode]);
+    return latestPublicProperties.filter((item) =>
+      (!isGumiOneRoomSearch || /(?:^|\s)구미(?:시)?(?:\s|$)/u.test(item.address || ''))
+      && matchesCustomerFilters(item, keyword, category, filters, dealMode)
+    );
+  }, [latestPublicProperties, keyword, category, filters, dealMode, isGumiOneRoomSearch]);
 
   useEffect(() => {
     setSelected((prev) => {
@@ -1831,6 +1841,7 @@ async function handleQuickDeleteProperty(property) {
   onOpenAdmin={() => setAdminOpen(true)}
 />
      <Hero
+       isOneRoomPage={isOneRoomPage && !isAdminRoute}
        properties={filteredProperties}
   keyword={keyword}
   setKeyword={setKeyword}
@@ -1849,6 +1860,7 @@ async function handleQuickDeleteProperty(property) {
         ) : (
           <>
             <CustomerListingSection
+              isGumiOneRoomSearch={isGumiOneRoomSearch}
               properties={filteredProperties}
               selected={selected}
               currentPage={customerPage}
@@ -1917,7 +1929,7 @@ function Header({ portalMode, isAdminRoute, onOpenAdmin }) {
       ☎ {OFFICE.phone}
     </a>
 
-    <a className="brand top-brand" href="#top" aria-label="칸공인중개사 홈">
+    <a className="brand top-brand" href="/" aria-label="칸공인중개사 홈">
       <div className="logo-mark">KHAN</div>
       <div className="brand-text-line">
         <strong>{OFFICE.name}</strong>
@@ -1926,7 +1938,8 @@ function Header({ portalMode, isAdminRoute, onOpenAdmin }) {
     </a>
 
     <nav className="top-nav">
-      <a href="#properties">원룸/투룸</a>
+      {!isAdminRoute && <a href="/gumi-one-room#properties">구미 원룸 월세</a>}
+      <a href="#properties">전체 매물</a>
       <a href="#property-detail">매물상세</a>
       <a href={OFFICE.blog} target="_blank" rel="noreferrer">블로그</a>
 {isAdminRoute ? (
@@ -1944,6 +1957,7 @@ function Header({ portalMode, isAdminRoute, onOpenAdmin }) {
 
 
  function Hero({
+  isOneRoomPage,
   properties = [],
   keyword,
   setKeyword,
@@ -1958,16 +1972,27 @@ function Header({ portalMode, isAdminRoute, onOpenAdmin }) {
 
       <div className="hero-content">
        <p className="hero-badge">구미 원룸·투룸 3,000여 개 · 수익형 매물 150여 개 상담 가능</p>
-<h1>구미 방 찾을 때,<br />칸에서 먼저 확인하세요</h1>
-<p className="hero-lead">
-  원룸·미니투룸·투룸 월세부터 다가구 매매·수익형 부동산까지 조건별로 빠르게 안내합니다.
-</p>
+{isOneRoomPage ? (
+  <>
+    <h1>구미 원룸 월세 실매물</h1>
+    <p className="hero-lead">
+      인의동·진평동·사곡동 등 구미 동네별 원룸을 검색하고 보증금, 월세, 관리비와 입주 조건을 확인하세요.
+    </p>
+  </>
+) : (
+  <>
+    <h1>구미 방 찾을 때,<br />칸에서 먼저 확인하세요</h1>
+    <p className="hero-lead">
+      원룸·미니투룸·투룸 월세부터 다가구 매매·수익형 부동산까지 조건별로 빠르게 안내합니다.
+    </p>
+  </>
+)}
 
         <div className="hero-search">
           <input
             value={keyword}
             onChange={(e) => setKeyword(e.target.value)}
-            placeholder="인의동 원룸, 진평동 투룸, 옥계동 월세 검색"
+            placeholder={isOneRoomPage ? "인의동, 진평동, 사곡동 원룸 검색" : "인의동 원룸, 진평동 투룸, 옥계동 월세 검색"}
           />
           <a href="#properties">매물검색</a>
         </div>
@@ -3376,6 +3401,7 @@ function FilterBar({ filters, setFilters, onReset }) {
 }
 
 function CustomerListingSection({
+  isGumiOneRoomSearch,
   properties,
   selected,
   currentPage,
@@ -3453,7 +3479,7 @@ function CustomerListingSection({
       <div className="customer-market-head">
         <div>
           <p className="eyebrow">KhAN PROPERTY PLATFORM</p>
-          <h2>구미·칠곡 원룸·투룸·다가구 매물</h2>
+          <h2>{isGumiOneRoomSearch ? "구미 원룸 월세 매물" : "구미·칠곡 원룸·투룸·다가구 매물"}</h2>
           <p className="muted">검색, 필터, 지도 보기까지 한 화면에서 빠르게 확인하세요.</p>
         </div>
         <a className="map-view-button" href="#map-view">지도에서 가까운 방 찾기</a>
@@ -3473,7 +3499,7 @@ function CustomerListingSection({
           <input
             value={keyword}
             onChange={(e) => setKeyword(e.target.value)}
-            placeholder="인의동 원룸, 진평동 투룸, 옥계동 월세 검색"
+            placeholder={isGumiOneRoomSearch ? "인의동, 진평동, 사곡동 원룸 검색" : "인의동 원룸, 진평동 투룸, 옥계동 월세 검색"}
           />
           <button type="button" className="mobile-filter-open" onClick={() => setFilterSheetOpen(true)}>필터</button>
         </div>
@@ -10829,15 +10855,31 @@ function buildNaverBlogAd(property) {
     /리모델링/u.test(featureCorpus) ? '리모델링' : '',
     /풀옵션/u.test(featureCorpus) ? '풀옵션' : '',
     /(?:거실.?침실\s*분리|분리형)/u.test(featureCorpus) ? '거실·침실 분리형' : '',
-    /즉시\s*입주/u.test(featureCorpus) ? '즉시입주' : ''
+    !data.move_in_date && /즉시\s*입주/u.test(featureCorpus) ? '즉시입주' : ''
   ).filter((value) => !locationTitle.includes(value));
-  const automaticFeature = storedFeatures.slice(0, 3).join(' ');
+  const monthlyRent = parseBlogMaintenanceAmountManwon(data.monthly_rent);
+  const maintenanceFee = parseBlogMaintenanceAmountManwon(data.maintenance_fee);
+  const fixedAmount = /^(?:월\s*)?[\d,]+(?:\.\d+)?\s*(?:만원|원)$/u;
+  const rawMaintenanceFee = normalizeBlogText(data.raw.maintenance_fee || data.raw.maintenanceFee);
+  const monthlyTotal = data.trade_type === '월세'
+    && fixedAmount.test(data.monthly_rent)
+    && fixedAmount.test(data.maintenance_fee)
+    && !/포함|변동|별도\s*청구/u.test(rawMaintenanceFee)
+    && monthlyRent > 0 && maintenanceFee > 0
+    ? formatBlogMaintenanceAmount(monthlyRent + maintenanceFee)
+    : '';
+  const automaticFeature = normalizeBlogList(
+    ...storedFeatures,
+    /^즉시\s*입주/u.test(data.move_in_date) ? '즉시입주' : ''
+  ).slice(0, 2).join(' ');
+  const rentalTitleFeatures = [automaticFeature, monthlyTotal && `관리비 포함 월 ${monthlyTotal}`]
+    .filter(Boolean).join(' · ');
   const automaticTitle = data.is_sale
     ? [`${locationTitle} ${data.property_type} 매매`, data.sale_price ? `매매가 ${moneyText(data.sale_price)}` : ''].filter(Boolean).join('｜')
     : [
-        [`${locationTitle} ${data.property_type} ${data.trade_type}`, rentalTitlePrice].filter(Boolean).join('｜'),
-        automaticFeature
-      ].filter(Boolean).join(' ');
+        [`${locationTitle} ${data.property_type} ${data.trade_type}`, rentalTitlePrice].filter(Boolean).join(' '),
+        rentalTitleFeatures
+      ].filter(Boolean).join('｜');
   const title = automaticTitle.replace(/\s+/gu, ' ').trim().slice(0, 90);
   const priceText = data.is_sale
     ? (data.sale_price ? `매매가 ${moneyText(data.sale_price)}` : '')
@@ -10872,7 +10914,9 @@ function buildNaverBlogAd(property) {
     ? [`${locationTitle}에 위치한 ${data.property_type} 매매 매물입니다.`, `${priceText} 조건입니다.`]
     : [
         `${locationTitle}에 위치한 ${data.property_type} ${data.trade_type} 매물입니다.`,
-        [automaticFeature, `${priceText}${data.maintenance_fee ? ` / 관리비 ${data.maintenance_fee}` : ''}`, data.move_in_date].filter(Boolean).join('\n')
+        [priceText, data.maintenance_fee && `관리비 ${data.maintenance_fee}`].filter(Boolean).join(' / '),
+        monthlyTotal ? `월세와 관리비 합계는 월 ${monthlyTotal}입니다.` : '',
+        [...storedFeatures.slice(0, 2), data.move_in_date].filter(Boolean).join(' / ')
       ];
   const detailedDescription = data.floor
     ? data.detailed_description.replace(
@@ -10916,15 +10960,14 @@ function buildNaverBlogAd(property) {
         data.parking_total ? `총주차대수: ${data.parking_total}` : '',
         data.move_in_date ? `입주가능일: ${data.move_in_date}` : ''
       ];
-  const photoCount = data.photos.length;
-  const photoLines = photoCount
-    ? Array.from({ length: photoCount }, (_, index) =>
-        `📷 ${index + 1}번 사진 — ${data.photo_captions[index] || '매물 내부 모습'}`
-      )
-    : ['등록된 사진이 없습니다.'];
-  const recommendedLines = [
-    data.recommended_for || `${locationTitle}에서 ${data.property_type} 매물을 찾는 분께 추천드립니다.`
-  ];
+  const photoLines = data.photos.map((_, index) => {
+    const caption = data.photo_captions[index];
+    return `📷 ${index + 1}번 사진${caption ? ` — ${caption}` : ''}`;
+  });
+  const remainingPhotos = Math.max(0, photoLines.length - 1);
+  const structurePhotoEnd = 1 + Math.ceil(remainingPhotos / 3);
+  const conditionPhotoEnd = structurePhotoEnd + Math.ceil(remainingPhotos / 3);
+  const rentGuide = !data.is_sale && data.property_type === '원룸' && data.region.short_admin === '구미';
   const legalNoticeExtra = data.legal_notice
     .split(/\n|(?<=[.!?])\s+/u)
     .map(normalizeBlogText)
@@ -10979,23 +11022,26 @@ function buildNaverBlogAd(property) {
       ];
 
   const bodyLines = [
-    '안녕하세요.',
-    '구미 원룸·미니투룸·투룸 임대와 상가·다가구·원룸건물 매매를 전문으로 안내하는 칸공인중개사입니다.',
-    '', ...introduction, '',
-    ...section(`🏠 ${locationTitle} ${data.property_type} ${data.trade_type} 기본정보`, basicInfo), '',
+    ...introduction.filter(Boolean), '',
+    ...photoLines.slice(0, 1), '',
+    ...section('🏠 매물 기본정보', basicInfo), '',
+    ...section(data.is_sale ? '🏢 건물 구성과 상태' : '🛋️ 구조와 옵션', [
+      ...structureLines,
+      ...photoLines.slice(1, structurePhotoEnd)
+    ]), '',
+    ...section(data.is_sale ? '💹 매매·수익 조건' : '💳 관리비·주차·입주 조건', [
+      ...conditionLines,
+      ...photoLines.slice(structurePhotoEnd, conditionPhotoEnd)
+    ]), '',
     ...section('📍 위치와 생활권', [data.address, data.location_description]), '',
-    ...section(data.is_sale ? '🏢 건물 구성과 상태' : '🛋️ 구조와 옵션', structureLines), '',
-    ...section(data.is_sale ? '💹 매매·수익 조건' : '💳 관리비·주차·입주 조건', conditionLines), '',
-    ...section(`📷 ${locationTitle} ${data.property_type} ${data.trade_type} 내부사진`, photoLines), '',
-    ...section(data.is_sale ? '📈 투자 포인트' : '🙋 이런 분께 추천드립니다', data.is_sale ? [data.investment_point] : recommendedLines), '',
- ...section('🌐 칸공인중개사 홈페이지·앱 안내', [
-  '이 매물 외에도 구미 원룸·미니투룸·투룸 임대와 상가·다가구·원룸건물 매매가 계속 등록되고 있습니다.',
-  '사진·가격·지도·상세정보는 칸공인중개사 홈페이지에서 편리하게 확인하실 수 있습니다.',
-  '홈페이지: https://www.khanhouse.co.kr',
-  '',
-  '휴대폰에서 더 편리하게 매물을 확인하려면',
-  '플레이스토어에서 ‘칸공인중개사’를 검색하세요.'
-]), '',
+    ...photoLines.slice(conditionPhotoEnd), '',
+    ...(data.is_sale && data.investment_point ? [...section('📈 투자 포인트', [data.investment_point]), ''] : []),
+    ...(!data.is_sale && data.recommended_for ? [...section('🙋 이런 분께 추천드립니다', [data.recommended_for]), ''] : []),
+    ...section('🌐 칸공인중개사 매물 보기', [
+      rentGuide
+        ? '구미 원룸 월세 매물 보기: https://www.khanhouse.co.kr/gumi-one-room'
+        : '칸공인중개사 홈페이지: https://www.khanhouse.co.kr'
+    ]), '',
     ...section('📞 전화·문자·상담 문의', [
       '방문 전 전화 또는 문자로 매물 가능 여부를 확인해 주세요.',
       `문의: ${OFFICE.phone} / ${OFFICE.tel}`
@@ -11042,7 +11088,7 @@ function buildNaverBlogAd(property) {
   const missingFields = warnings
     .filter((warning) => warning.startsWith('게시 전 확인 필요:'))
     .flatMap((warning) => warning.replace('게시 전 확인 필요:', '').split(',').map((item) => item.trim()).filter(Boolean));
-  return { title, body, tags, warnings, missingFields, photoCount, normalized: data };
+  return { title, body, tags, warnings, missingFields, photoCount: photoLines.length, normalized: data };
 }
 
 async function copyAdvertisementText(text) {

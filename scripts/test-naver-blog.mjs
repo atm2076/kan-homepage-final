@@ -38,7 +38,7 @@ const fixtures = [
       recommended_for: null,
       legal_notice: ''
     },
-    expectedTitle: '구미 인의동 원룸 월세'
+    expectedTitle: '구미 인의동 원룸 월세 300/28｜관리비 포함 월 38만원'
   },
   {
     name: '진평동 투룸 배열 입력',
@@ -52,10 +52,11 @@ const fixtures = [
       maintenance_fee: '10만원',
       maintenance_includes: ['인터넷', '유선방송', '인터넷'],
       convenience: ['에어컨', '냉장고'],
+      representative_location: '진평먹자골목 인근',
       photos: ['photo-1', 'photo-2'],
       photo_captions: ['1번 사진 거실', '2. 주방']
     },
-    expectedTitle: '구미 진평동 투룸 월세｜500/45 진평먹자골목 인근'
+    expectedTitle: '구미 진평동 투룸 월세 500/45｜진평먹자골목 인근 · 관리비 포함 월 55만원'
   },
   {
     name: 'null 매물',
@@ -76,4 +77,29 @@ for (const fixture of fixtures) {
 
 if (!source.includes('네이버 블로그 문구 생성 중 오류가 발생했습니다.')) {
   throw new Error('관리자 오류 안내 문구가 없습니다.');
+}
+
+const listing3896 = buildNaverBlogAd({
+  address: '경상북도 구미시 상사서로25길 16-12 (사곡동)',
+  category: '미니투룸',
+  trade_type: '월세',
+  deposit: 200,
+  rent: 25,
+  maintenance_fee: '10만원',
+  move_in: '즉시입주',
+  representative_location: '사곡역 도보 약 5분',
+  photos: Array.from({ length: 12 }, (_, index) => `photo-${index + 1}`)
+});
+if (!listing3896.title.includes('사곡역 도보 약 5분') || !listing3896.body.includes('월 35만원')) {
+  throw new Error('3896번 글의 위치 또는 월세와 관리비 합계가 빠졌습니다.');
+}
+const photoPositions = [...listing3896.body.matchAll(/📷 (\d+)번 사진/gu)];
+if (photoPositions.length !== 12 ||
+    photoPositions.some((match, index) => Number(match[1]) !== index + 1) ||
+    photoPositions[0].index > listing3896.body.indexOf('매물 기본정보') ||
+    photoPositions[11].index < listing3896.body.indexOf('위치와 생활권')) {
+  throw new Error('3896번 사진의 순서 또는 분산 배치가 올바르지 않습니다.');
+}
+if (!buildNaverBlogAd(fixtures[0].property).body.includes('https://www.khanhouse.co.kr/gumi-one-room')) {
+  throw new Error('구미 원룸 글에서 원룸 안내 페이지 링크가 빠졌습니다.');
 }
