@@ -3,8 +3,12 @@ import React, { useEffect, useRef, useState } from 'react';
 const STORAGE_KEY = 'kanAiConsultation';
 
 async function post(payload, token) {
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 12000);
+  try {
   const response = await fetch('/api/ai-consultation', {
     method: 'POST',
+    signal: controller.signal,
     headers: { 'Content-Type': 'application/json', ...(token ? { Authorization: `Bearer ${token}` } : {}) },
     body: JSON.stringify(payload)
   });
@@ -13,6 +17,12 @@ async function post(payload, token) {
   try { result = responseText ? JSON.parse(responseText) : null; } catch { result = null; }
   if (!response.ok || result?.ok === false) throw new Error(result?.error || '상담 요청에 실패했습니다.');
   return result;
+  } catch (error) {
+    if (error?.name === 'AbortError') throw new Error('서버 응답이 지연되고 있습니다. 잠시 후 다시 시도해 주세요.');
+    throw error;
+  } finally {
+    clearTimeout(timeout);
+  }
 }
 
 export function openAiConsultation(propertyId = null) {
@@ -28,6 +38,7 @@ export default function AIConsultation() {
   const [input, setInput] = useState('');
   const [busy, setBusy] = useState(false);
   const endRef = useRef(null);
+  const startingRef = useRef(false);
 
   useEffect(() => {
     const listener = (event) => {
@@ -39,11 +50,16 @@ export default function AIConsultation() {
   }, [conversation]);
 
   useEffect(() => {
-    endRef.current?.scrollIntoView({ behavior: 'smooth' });
+    if (open) {
+      const container = endRef.current?.parentElement;
+      if (container) container.scrollTop = container.scrollHeight;
+    }
   }, [messages, open]);
 
   async function start(propertyId = null, force = false) {
     if (conversation && !force) return conversation;
+    if (startingRef.current) return null;
+    startingRef.current = true;
     setBusy(true);
     try {
       const result = await post({ action: 'start', propertyId });
@@ -55,12 +71,12 @@ export default function AIConsultation() {
     } catch (error) {
       setMessages([{ role: 'assistant', content: error.message }]);
       return null;
-    } finally { setBusy(false); }
+    } finally { startingRef.current = false; setBusy(false); }
   }
 
   async function toggle() {
     setOpen((value) => !value);
-    if (!conversation) await start();
+    if (!conversation && !startingRef.current) await start();
   }
 
   async function submit(event) {
@@ -85,7 +101,7 @@ export default function AIConsultation() {
     sessionStorage.removeItem(STORAGE_KEY);
     setConversation(null);
     setMessages([]);
-    start();
+    if (!startingRef.current) start(null, true);
   }
 
   return <>
