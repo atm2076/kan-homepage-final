@@ -4590,6 +4590,24 @@ function AddressLedgerSearchSection({
   );
 }
 
+// Persist this manual advertising checklist flag in the existing private admin tags field.
+const ADVERTISING_DONE_TAG = '광고완료';
+
+function hasAdvertisingDone(property) {
+  return String(property?.internal_tags || '')
+    .split(/[,，;\r\n]+/u)
+    .some((tag) => tag.trim() === ADVERTISING_DONE_TAG);
+}
+
+function withAdvertisingDoneTag(tags, completed) {
+  const remainingTags = String(tags || '')
+    .split(/[,，;\r\n]+/u)
+    .map((tag) => tag.trim())
+    .filter((tag) => tag && tag !== ADVERTISING_DONE_TAG);
+  if (completed) remainingTags.push(ADVERTISING_DONE_TAG);
+  return remainingTags.join(', ');
+}
+
 function AdminModal({ mode, setMode, isAdmin, setIsAdmin, onClose, properties, reload, refreshAdminPublishedProperties }) {
   const [password, setPassword] = useState('');
   const [form, setForm] = useState(emptyForm);
@@ -4653,6 +4671,7 @@ const [buildingLedgerSearching, setBuildingLedgerSearching] = useState(false);
   const [daangnPreparationResult, setDaangnPreparationResult] = useState(null);
   const latestFormRef = useRef(form);
   const [advertisingPropertyId, setAdvertisingPropertyId] = useState(null);
+  const [advertisingSaveId, setAdvertisingSaveId] = useState(null);
   // AI 광고 자동작성 2단계 V5
   // AI 광고작성 자동이동 V6
   // AI 광고 문구 품질개선 V7
@@ -7019,6 +7038,37 @@ if (isStaffMode && currentStaff?.code) {
     }
   }
 
+  async function changeAdvertisingDone(property, completed) {
+    if (!canEditExisting) {
+      setStatus('대표 관리자만 광고 완료 상태를 변경할 수 있습니다.');
+      return;
+    }
+    if (!isSupabaseReady) {
+      setStatus('Supabase 연결 전에는 광고 완료 상태를 저장할 수 없습니다.');
+      return;
+    }
+    if (!property?.id || advertisingSaveId) return;
+
+    setAdvertisingSaveId(property.id);
+    try {
+      const internal_tags = withAdvertisingDoneTag(property.internal_tags, completed);
+      const { error } = await supabase
+        .from('properties')
+        .update({ internal_tags })
+        .eq('id', property.id);
+      if (error) throw error;
+      setStatus(completed
+        ? '광고 완료로 표시했습니다. 실제 게시 여부는 각 광고 채널에서 확인하세요.'
+        : '광고 완료 표시를 취소했습니다.');
+      await reload();
+    } catch (error) {
+      console.error('광고 완료 상태 변경 실패:', error);
+      setStatus(`광고 완료 상태 저장 실패: ${error?.message || '알 수 없는 오류'}`);
+    } finally {
+      setAdvertisingSaveId(null);
+    }
+  }
+
   async function deleteProperty(id) {
     if (!canEditExisting) {
       setStatus('대표 관리자만 매물을 삭제할 수 있습니다.');
@@ -8816,6 +8866,7 @@ if (isStaffMode && currentStaff?.code) {
       : '';
 
   const isAdvertisingOpen = advertisingPropertyId === property.id;
+  const advertisingDone = hasAdvertisingDone(property);
   const cleanPhotoCount = getCleanPropertyPhotos(property).length;
   const isBlogPhotoSaving =
     String(blogPhotoProgress.propertyId) === String(property.id);
@@ -9234,6 +9285,14 @@ const facebookText =
             <em className={`status-chip status-${property.status || 'pending'}`}>
               {statusText}
             </em>
+            {advertisingDone && (
+              <span
+                className="status-chip"
+                style={{ background: '#e0f2fe', color: '#075985', border: '1px solid #7dd3fc' }}
+              >
+                광고완료
+              </span>
+            )}
           </div>
 
           <p className="muted" style={{ margin: '4px 0 8px' }}>
@@ -9395,6 +9454,23 @@ const facebookText =
                 facebookText={facebookText}
                 setStatus={setStatus}
               />
+              {isAdminMode && (
+                <button
+                  type="button"
+                  disabled={Boolean(advertisingSaveId)}
+                  onClick={() => changeAdvertisingDone(property, !advertisingDone)}
+                  style={{
+                    background: advertisingDone ? '#ffffff' : '#155e75',
+                    color: advertisingDone ? '#155e75' : '#ffffff',
+                    border: '1px solid #155e75',
+                    fontWeight: 700
+                  }}
+                >
+                  {advertisingSaveId === property.id
+                    ? '광고 상태 저장 중...'
+                    : advertisingDone ? '광고 완료 취소' : '광고 완료'}
+                </button>
+              )}
             </div>
           )}
         </div>
