@@ -75,7 +75,11 @@ export default function AIConsultation() {
   }
 
   async function toggle() {
-    setOpen((value) => !value);
+    if (open) {
+      setOpen(false);
+      return;
+    }
+    setOpen(true);
     if (!conversation && !startingRef.current) await start();
   }
 
