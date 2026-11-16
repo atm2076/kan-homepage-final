@@ -1,3 +1,4 @@
+import { consultationQuestionKind, explainSelectedProperty } from '../src/consultationAdvice.js';
 import crypto from 'node:crypto';
 import { createClient } from '@supabase/supabase-js';
 import {
@@ -200,6 +201,16 @@ export default async function handler(req, res) {
           : `${recommendationNumber}번 매물은 현재 사진 준비중입니다. 사진이 등록되면 같은 상세페이지에 바로 표시됩니다.\n${selectedRecommendation.snapshot.detailUrl}`;
         await saveAssistant(service, conversation.id, reply, context);
         return send(res, 200, { ok: true, reply, recommendation: selectedRecommendation.snapshot });
+      }
+
+      // Answer conversational follow-ups before treating them as new listing searches.
+      const questionKind = consultationQuestionKind(message);
+      if (questionKind) {
+        const snapshots = Array.isArray(context.recommendations) ? context.recommendations : [];
+        const selected = context.selectedPropertySnapshot || (snapshots.length === 1 ? snapshots[0] : null);
+        const reply = explainSelectedProperty(selected, snapshots, questionKind);
+        await saveAssistant(service, conversation.id, reply, context);
+        return send(res, 200, { ok: true, reply });
       }
 
       if (context.viewingRequestId) {
