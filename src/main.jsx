@@ -4590,22 +4590,30 @@ function AddressLedgerSearchSection({
   );
 }
 
-// Persist this manual advertising checklist flag in the existing private admin tags field.
-const ADVERTISING_DONE_TAG = '광고완료';
+// Internal-only manual completion markers, independent of publication status.
+const LEGACY_ADVERTISING_DONE_TAG = '광고완료';
+const ADVERTISING_CHANNELS = [
+  { key: 'blog', label: '블로그', tag: '블로그완료' },
+  { key: 'daangn', label: '당근', tag: '당근완료' },
+  { key: 'instagram', label: '인스타', tag: '인스타완료' },
+  { key: 'facebook', label: '페이스북', tag: '페이스북완료' }
+];
 
-function hasAdvertisingDone(property) {
-  return String(property?.internal_tags || '')
-    .split(/[,，;\r\n]+/u)
-    .some((tag) => tag.trim() === ADVERTISING_DONE_TAG);
-}
-
-function withAdvertisingDoneTag(tags, completed) {
-  const remainingTags = String(tags || '')
+function parseAdvertisingTags(tags) {
+  return String(tags || '')
     .split(/[,，;\r\n]+/u)
     .map((tag) => tag.trim())
-    .filter((tag) => tag && tag !== ADVERTISING_DONE_TAG);
-  if (completed) remainingTags.push(ADVERTISING_DONE_TAG);
-  return remainingTags.join(', ');
+    .filter(Boolean);
+}
+
+function isAdvertisingChannelDone(property, channelTag) {
+  return parseAdvertisingTags(property?.internal_tags).includes(channelTag);
+}
+
+function withAdvertisingChannelTag(tags, channelTag, completed) {
+  const currentTags = parseAdvertisingTags(tags).filter((tag) => tag !== channelTag);
+  if (completed) currentTags.push(channelTag);
+  return currentTags.join(', ');
 }
 
 function AdminModal({ mode, setMode, isAdmin, setIsAdmin, onClose, properties, reload, refreshAdminPublishedProperties }) {
@@ -7038,7 +7046,7 @@ if (isStaffMode && currentStaff?.code) {
     }
   }
 
-  async function changeAdvertisingDone(property, completed) {
+  async function changeAdvertisingChannelDone(property, channel, completed) {
     if (!canEditExisting) {
       setStatus('대표 관리자만 광고 완료 상태를 변경할 수 있습니다.');
       return;
@@ -7047,23 +7055,28 @@ if (isStaffMode && currentStaff?.code) {
       setStatus('Supabase 연결 전에는 광고 완료 상태를 저장할 수 없습니다.');
       return;
     }
-    if (!property?.id || advertisingSaveId) return;
+    if (!property?.id || advertisingSaveId || !ADVERTISING_CHANNELS.some((item) => item.tag === channel.tag)) return;
 
     setAdvertisingSaveId(property.id);
     try {
-      const internal_tags = withAdvertisingDoneTag(property.internal_tags, completed);
+      // Read the latest tags so a separate manager edit is not overwritten by stale UI data.
+      const { data: latest, error: readError } = await supabase
+        .from('properties')
+        .select('internal_tags')
+        .eq('id', property.id)
+        .single();
+      if (readError) throw readError;
+      const internal_tags = withAdvertisingChannelTag(latest?.internal_tags, channel.tag, completed);
       const { error } = await supabase
         .from('properties')
         .update({ internal_tags })
         .eq('id', property.id);
       if (error) throw error;
-      setStatus(completed
-        ? '광고 완료로 표시했습니다. 실제 게시 여부는 각 광고 채널에서 확인하세요.'
-        : '광고 완료 표시를 취소했습니다.');
+      setStatus(`${channel.label} 광고 ${completed ? '완료' : '완료 취소'}로 표시했습니다. 실제 게시 여부는 해당 채널에서 확인하세요.`);
       await reload();
     } catch (error) {
-      console.error('광고 완료 상태 변경 실패:', error);
-      setStatus(`광고 완료 상태 저장 실패: ${error?.message || '알 수 없는 오류'}`);
+      console.error('채널별 광고 완료 상태 변경 실패:', error);
+      setStatus(`${channel.label} 광고 완료 상태 저장 실패: ${error?.message || '알 수 없는 오류'}`);
     } finally {
       setAdvertisingSaveId(null);
     }
@@ -8866,7 +8879,11 @@ if (isStaffMode && currentStaff?.code) {
       : '';
 
   const isAdvertisingOpen = advertisingPropertyId === property.id;
-  const advertisingDone = hasAdvertisingDone(property);
+  const completedAdvertisingChannels = ADVERTISING_CHANNELS.filter((channel) =>
+    isAdvertisingChannelDone(property, channel.tag)
+  );
+  const hasLegacyAdvertisingDone = parseAdvertisingTags(property.internal_tags)
+    .includes(LEGACY_ADVERTISING_DONE_TAG);
   const cleanPhotoCount = getCleanPropertyPhotos(property).length;
   const isBlogPhotoSaving =
     String(blogPhotoProgress.propertyId) === String(property.id);
@@ -9285,12 +9302,17 @@ const facebookText =
             <em className={`status-chip status-${property.status || 'pending'}`}>
               {statusText}
             </em>
-            {advertisingDone && (
+            {completedAdvertisingChannels.length > 0 && (
               <span
                 className="status-chip"
                 style={{ background: '#e0f2fe', color: '#075985', border: '1px solid #7dd3fc' }}
               >
-                광고완료
+                광고 {completedAdvertisingChannels.length}/4 완료
+              </span>
+            )}
+            {hasLegacyAdvertisingDone && completedAdvertisingChannels.length === 0 && (
+              <span className="status-chip" title="이전 통합 완료 표시로, 채널별 완료 여부는 확인되지 않았습니다.">
+                이전 광고완료(채널 미확인)
               </span>
             )}
           </div>
@@ -9455,21 +9477,39 @@ const facebookText =
                 setStatus={setStatus}
               />
               {isAdminMode && (
-                <button
-                  type="button"
-                  disabled={Boolean(advertisingSaveId)}
-                  onClick={() => changeAdvertisingDone(property, !advertisingDone)}
+                <div
                   style={{
-                    background: advertisingDone ? '#ffffff' : '#155e75',
-                    color: advertisingDone ? '#155e75' : '#ffffff',
-                    border: '1px solid #155e75',
-                    fontWeight: 700
+                    flexBasis: '100%',
+                    display: 'flex',
+                    flexWrap: 'wrap',
+                    gap: '8px',
+                    paddingTop: '8px',
+                    borderTop: '1px solid #cbd5e1'
                   }}
                 >
-                  {advertisingSaveId === property.id
-                    ? '광고 상태 저장 중...'
-                    : advertisingDone ? '광고 완료 취소' : '광고 완료'}
-                </button>
+                  {ADVERTISING_CHANNELS.map((channel) => {
+                    const completed = isAdvertisingChannelDone(property, channel.tag);
+                    return (
+                      <button
+                        key={channel.key}
+                        type="button"
+                        disabled={Boolean(advertisingSaveId)}
+                        aria-pressed={completed}
+                        onClick={() => changeAdvertisingChannelDone(property, channel, !completed)}
+                        style={{
+                          background: completed ? '#e0f2fe' : '#155e75',
+                          color: completed ? '#075985' : '#ffffff',
+                          border: '1px solid #155e75',
+                          fontWeight: 700
+                        }}
+                      >
+                        {advertisingSaveId === property.id
+                          ? '저장 중...'
+                          : completed ? `${channel.label} 완료 취소` : `${channel.label} 완료`}
+                      </button>
+                    );
+                  })}
+                </div>
               )}
             </div>
           )}
