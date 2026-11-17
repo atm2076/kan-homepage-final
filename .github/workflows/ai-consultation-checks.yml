@@ -1,0 +1,29 @@
+name: AI Consultation Checks
+on:
+  pull_request:
+    paths:
+      - 'src/AIConsultation.jsx'
+      - 'src/consultationEngine.js'
+      - 'src/consultationAnswers.js'
+      - 'src/llmConsultation.js'
+      - 'api/ai-consultation.js'
+      - 'scripts/test-consultation-*.mjs'
+      - 'scripts/test-llm-consultation.mjs'
+      - 'package.json'
+      - 'package-lock.json'
+      - '.github/workflows/ai-consultation-checks.yml'
+  workflow_dispatch:
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - run: npm ci
+      - run: npm run test:consultation
+      - run: npm run test:answers
+      - run: npm run test:llm
+      - run: npm run build

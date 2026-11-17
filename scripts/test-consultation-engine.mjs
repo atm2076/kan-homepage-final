@@ -20,7 +20,17 @@ const rows = [
   { ...base, id: 'missing', listing_number: 4, listing_type: 'normal', photos: ['x.jpg'], availability_status: 'missing' }
 ];
 const conditions = extractConsultationConditions('인의동 보증금 300 이하 월세 30 정도 미투 있어요?');
-assert.deepEqual(conditions, { region: '인의동', propertyType: '미니투룸', maxDeposit: 300, maxRent: 30, maxManagementFee: null });
+assert.equal(conditions.region, '인의동');
+assert.equal(conditions.propertyType, '미니투룸');
+assert.equal(conditions.maxDeposit, 300);
+assert.equal(conditions.minDeposit, 0);
+assert.equal(conditions.maxRent, 40);
+assert.equal(conditions.minRent, 20);
+assert.equal(conditions.maxManagementFee, null);
+assert.equal(extractConsultationConditions('진평동 미니투룸 추천해줘').maxRent, null);
+assert.equal(extractConsultationConditions('진평동 미니투룸 추천해줘').maxDeposit, null);
+assert.equal(extractConsultationConditions('계약하면 이 방의 장점은?').region, null);
+assert.equal(extractConsultationConditions('이 방 계약하면 유리한 점?', { region: '진평동' }).region, '진평동');
 const results = filterAndRankProperties(rows, conditions);
 assert.deepEqual(results.map((row) => row.id), ['normal', 'quick-photo', 'quick-empty']);
 assert(results.every(assertNoPrivatePropertyFields));

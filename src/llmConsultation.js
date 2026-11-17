@@ -17,17 +17,25 @@ function responseText(response) {
 
 async function requestStructured({ apiKey, model, name, schema, input, safetyIdentifier }) {
   if (!apiKey) return null;
-  const response = await fetch('https://api.openai.com/v1/responses', {
-    method: 'POST',
-    headers: { Authorization: `Bearer ${apiKey}`, 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      model, store: false, safety_identifier: safetyIdentifier,
-      input, max_output_tokens: 500,
-      text: { format: { type: 'json_schema', name, strict: true, schema } }
-    })
-  });
-  if (!response.ok) throw new Error(`llm_http_${response.status}`);
-  return JSON.parse(responseText(await response.json()));
+  // 모델 응답이 느려도 공개 매물 검색 자체는 계속 작동해야 합니다.
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 2800);
+  try {
+    const response = await fetch('https://api.openai.com/v1/responses', {
+      method: 'POST',
+      signal: controller.signal,
+      headers: { Authorization: `Bearer ${apiKey}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        model, store: false, safety_identifier: safetyIdentifier,
+        input, max_output_tokens: 500,
+        text: { format: { type: 'json_schema', name, strict: true, schema } }
+      })
+    });
+    if (!response.ok) throw new Error(`llm_http_${response.status}`);
+    return JSON.parse(responseText(await response.json()));
+  } finally {
+    clearTimeout(timeout);
+  }
 }
 
 export async function interpretConsultationMessage({ apiKey, model, message, context, safetyIdentifier }) {

@@ -10,7 +10,8 @@ import {
   recommendationSnapshot,
   toAiPublicProperty
 } from '../src/consultationEngine.js';
-import { interpretConsultationMessage, naturalizeSafeLead } from '../src/llmConsultation.js';
+import { interpretConsultationMessage } from '../src/llmConsultation.js';
+import { compareProperties, describeProperty, extractListingNumbers, isPropertyQuestion } from '../src/consultationAnswers.js';
 
 const MAX_MESSAGE_LENGTH = 1000;
 const PUBLIC_SELECT = 'id,listing_number,listing_type,title,category,property_type,trade_type,address,deposit,rent,maintenance_fee,area,floor_info,direction,parking,move_in,summary,description,photos,availability_status,status,ad_visibility,review_state,updated_at';
@@ -70,6 +71,29 @@ async function searchProperties(service, conditions) {
   });
   if (error) throw error;
   return (data || []).map(toAiPublicProperty);
+}
+
+async function getPublicPropertiesByNumbers(service, numbers) {
+  if (!numbers.length) return [];
+  const { data, error } = await service.from('properties').select(PUBLIC_SELECT)
+    .in('listing_number', numbers)
+    .eq('status', 'published').eq('availability_status', 'active')
+    .eq('ad_visibility', '공개').eq('review_state', 'approved');
+  if (error) throw error;
+  return (data || []).map(toAiPublicProperty);
+}
+
+async function getPublicPropertyById(service, id) {
+  if (!id) return null;
+  const { data, error } = await service.from('properties').select(PUBLIC_SELECT)
+    .eq('id', id).eq('status', 'published').eq('availability_status', 'active')
+    .eq('ad_visibility', '공개').eq('review_state', 'approved').maybeSingle();
+  if (error) throw error;
+  return data ? toAiPublicProperty(data) : null;
+}
+
+function makeSnapshot(property) {
+  return recommendationSnapshot([property])[0];
 }
 
 function nextViewingQuestion(context) {
@@ -151,6 +175,21 @@ export default async function handler(req, res) {
       return send(res, 200, { ok: true, conversationId: conversation.id, accessToken, reply });
     }
 
+    if (action === 'history') {
+      const conversation = await loadConversation(service, body.conversationId, body.accessToken);
+      if (!conversation || conversation.status === 'closed') return send(res, 401, { ok: false, error: '유효하지 않은 상담입니다.' });
+      const { data, error } = await service.from('ai_conversation_messages')
+        .select('role,content').eq('conversation_id', conversation.id)
+        .order('created_at', { ascending: false }).limit(30);
+      if (error) throw error;
+      const messages = (data || []).reverse().map((item) => ({ role: item.role, content: item.content }));
+      const last = messages.at(-1);
+      if (last?.role === 'assistant' && Array.isArray(conversation.context?.recommendations)) {
+        last.recommendations = conversation.context.recommendations;
+      }
+      return send(res, 200, { ok: true, messages });
+    }
+
     if (action === 'message') {
       const message = String(body.message || '').trim().slice(0, MAX_MESSAGE_LENGTH);
       if (!message) return send(res, 400, { ok: false, error: '메시지를 입력해주세요.' });
@@ -193,24 +232,68 @@ export default async function handler(req, res) {
         }
       }
 
-      if ((llmIntent?.intent === 'photo_question' || /사진/u.test(message)) && selectedRecommendation) {
-        const photoUrls = Array.isArray(selectedRecommendation.snapshot?.photoUrls) ? selectedRecommendation.snapshot.photoUrls : [];
-        const reply = photoUrls.length
-          ? `${recommendationNumber}번 매물에 등록된 사진 ${photoUrls.length}장이 있습니다. 상세페이지에서 확인해주세요.\n${selectedRecommendation.snapshot.detailUrl}`
-          : `${recommendationNumber}번 매물은 현재 사진 준비중입니다. 사진이 등록되면 같은 상세페이지에 바로 표시됩니다.\n${selectedRecommendation.snapshot.detailUrl}`;
-        await saveAssistant(service, conversation.id, reply, context);
-        return send(res, 200, { ok: true, reply, recommendation: selectedRecommendation.snapshot });
+      // 매물번호 직접 질문, 비교, 직전 추천 매물의 장점 등은 금액 입력 없이 응답합니다.
+      const listingNumbers = extractListingNumbers(message);
+      const comparisonRequested = /비교|차이|어느\s*(방|쪽).*좋/u.test(message);
+      // 새 매물 검색에 포함된 '월세/주차/사진'은 설명 질문으로 오인하지 않습니다.
+      const freshSearch = /추천|찾아|보여\s*줘|있어\s*요|있나|더\s*싼|저렴|다른\s*방|조건.*방/u.test(message);
+      const newSearchTerms = extractConsultationConditions(message, {});
+      const mentionsSearchTarget = Boolean(newSearchTerms.region || newSearchTerms.propertyType);
+      const questionRequested = !freshSearch && (
+        (isPropertyQuestion(message) && (!mentionsSearchTarget || listingNumbers.length > 0))
+        || Boolean(selectedRecommendation && /이\s*방|해당\s*방/u.test(message))
+      );
+      if (comparisonRequested || questionRequested || listingNumbers.length) {
+        const numbered = await getPublicPropertiesByNumbers(service, listingNumbers);
+        const numberedMap = new Map(numbered.map((property) => [Number(property.listing_number), property]));
+        const ordered = listingNumbers.map((number) => numberedMap.get(number)).filter(Boolean);
+        if (comparisonRequested) {
+          const candidates = ordered.length >= 2 ? ordered : [];
+          if (candidates.length < 2 && Array.isArray(context.recommendations)) {
+            for (const candidate of context.recommendations) {
+              if (candidates.some((item) => item.id === candidate.propertyId)) continue;
+              const fresh = await getPublicPropertyById(service, candidate.propertyId);
+              if (fresh) candidates.push(fresh);
+              if (candidates.length >= 2) break;
+            }
+          }
+          const reply = candidates.length >= 2
+            ? compareProperties(makeSnapshot(candidates[0]), makeSnapshot(candidates[1]))
+            : '공개 중인 비교 매물 두 개를 확인하지 못했습니다. 예: 3897번과 3891번을 비교해 줘.';
+          await saveAssistant(service, conversation.id, reply, context);
+          return send(res, 200, { ok: true, reply });
+        }
+        const property = ordered[0]
+          || (!listingNumbers.length ? await getPublicPropertyById(service, context.selectedPropertyId) : null);
+        if (property) {
+          context.selectedPropertyId = property.id;
+          context.selectedPropertySnapshot = makeSnapshot(property);
+          const reply = describeProperty(context.selectedPropertySnapshot, message);
+          await saveAssistant(service, conversation.id, reply, context);
+          return send(res, 200, { ok: true, reply });
+        }
+        if (listingNumbers.length || questionRequested) {
+          const reply = listingNumbers.length
+            ? '요청하신 매물번호는 현재 공개 중인 공실에서 확인되지 않습니다. 번호를 확인하거나 다른 매물을 추천받아 보세요.'
+            : '설명할 매물을 먼저 선택해 주세요. 매물번호를 입력하거나 지역과 방 종류를 말씀하시면 추천해 드립니다.';
+          await saveAssistant(service, conversation.id, reply, context);
+          return send(res, 200, { ok: true, reply });
+        }
       }
 
-      if (context.viewingRequestId) {
-        const reply = '이미 방보기 요청이 접수되었습니다. 담당자가 확인 후 안내드립니다.';
-        await addMessage(service, conversation.id, 'assistant', reply);
+      const viewingIntent = /보고\s*싶|방\s*보기|보러\s*가|예약|방문\s*(신청|예약|하고\s*싶)/u.test(message)
+        || llmIntent?.intent === 'viewing'
+        || Boolean(context.awaitingField);
+      if (context.viewingRequestId && viewingIntent) {
+        const reply = '기존 방보기 요청이 접수되어 있습니다. 담당자가 확인 후 안내드립니다.';
+        await saveAssistant(service, conversation.id, reply, context);
         return send(res, 200, { ok: true, reply, viewingRequestId: context.viewingRequestId });
       }
-      const viewingIntent = /보고\s*싶|방\s*보기|방문|보러/u.test(message)
-        || llmIntent?.intent === 'viewing'
-        || Boolean(context.awaitingField)
-        || Boolean(context.selectedPropertyId && (context.desiredDate || context.desiredTime));
+      if (viewingIntent && !context.selectedPropertyId) {
+        const reply = '방보기를 원하시는 매물을 선택해 주세요. 예: 1번 방을 보고 싶어요.';
+        await saveAssistant(service, conversation.id, reply, context);
+        return send(res, 200, { ok: true, reply });
+      }
       if (viewingIntent && context.selectedPropertyId) {
         const [field, question] = nextViewingQuestion(context);
         if (field) {
@@ -254,10 +337,10 @@ export default async function handler(req, res) {
           if (Number.isFinite(baseline)) context.conditions.maxRent = Math.max(0, baseline - 1);
         }
       }
-      const missingQuestion = !context.conditions.region ? '원하시는 지역을 알려주세요.'
-        : !context.conditions.propertyType ? '원룸, 미투, 투룸 중 어떤 종류를 찾으시나요?'
-          : context.conditions.maxDeposit == null ? '보증금 상한을 알려주세요.'
-            : context.conditions.maxRent == null ? '월세 상한을 알려주세요.' : null;
+      // 금액은 선택 조건입니다. 지역 또는 방 종류 하나만 알아도 추천합니다.
+      const missingQuestion = !context.conditions.region && !context.conditions.propertyType
+        ? '지역이나 방 종류를 알려주세요. 예: 진평동 미니투룸 추천해 줘. 보증금·월세는 입력하지 않아도 됩니다.'
+        : null;
       if (missingQuestion) {
         const reply = await saveAssistant(service, conversation.id, missingQuestion, context);
         return send(res, 200, { ok: true, reply });
@@ -276,13 +359,8 @@ export default async function handler(req, res) {
         if (error) throw error;
       }
       context.recommendations = snapshot;
-      let lead = '';
-      try { lead = await naturalizeSafeLead({ ...llmOptions, resultCount: snapshot.length }); } catch (error) {
-        console.warn('consultation llm unavailable', { stage: 'lead', code: error?.message || 'unknown' });
-        lead = '';
-      }
-      const verifiedReply = formatRecommendations(snapshot);
-      const reply = await saveAssistant(service, conversation.id, lead && snapshot.length ? `${lead}\n${verifiedReply}` : verifiedReply, context);
+      // 검증된 목록을 바로 보냅니다. 두 번째 LLM 호출로 응답이 지연되지 않습니다.
+      const reply = await saveAssistant(service, conversation.id, formatRecommendations(snapshot), context);
       return send(res, 200, { ok: true, reply, recommendations: snapshot });
     }
 
