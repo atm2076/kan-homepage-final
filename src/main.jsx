@@ -9407,11 +9407,11 @@ const facebookText =
                     } catch {
                       popupWarning = '네이버 블로그 창을 열지 못했습니다. 팝업 허용 여부를 확인해 주세요.';
                     }
-                    const copied = await copyAdvertisementText(
-                      `${blogAd.title}\n\n${blogAd.body}\n\n${blogAd.tags}`
-                    );
+                    const copied = await copyNaverBlogAd(blogAd);
                     const message = copied
-                      ? '네이버 블로그 문구가 복사되었습니다. 네이버 블로그 글쓰기 화면에 붙여넣으세요.'
+                      ? (copied === 'html'
+                        ? '사진을 본문에 분산한 글이 복사되었습니다. 네이버에 붙여넣은 뒤 사진 표시를 확인해 주세요. 편집기가 사진을 제외하면 각 사진 위치에 직접 업로드해 주세요.'
+                        : '텍스트가 복사되었습니다. 네이버에 붙여넣고 표시된 사진 위치에 사진을 업로드해 주세요.')
                       : '네이버 블로그 문구를 복사하지 못했습니다. 다시 시도해 주세요.';
                     const statusMessage = [message, popupWarning].filter(Boolean).join(' ');
                     setStatus(statusMessage);
@@ -10641,9 +10641,15 @@ function normalizeBlogProperty(property = {}) {
   const maintenanceFromFee = maintenanceFeeSource.match(/포함\s*항목\s*:\s*([^)]*)/u)?.[1] || '';
 
   const photoSource = normalizeBlogList(property.photos, property.photoUrls);
-  const photoCaptions = normalizeBlogList(property.photo_captions, property.photoCaptions)
-    .map(normalizePhotoCaption)
-    .filter(Boolean);
+  const captionSource = property.photo_captions || property.photoCaptions || [];
+  const photoCaptions = (Array.isArray(captionSource)
+    ? captionSource
+    : String(captionSource).split(/\r?\n/u))
+    .map((caption) => normalizePhotoCaption(normalizeBlogText(
+      caption && typeof caption === 'object'
+        ? caption.caption || caption.description || caption.text || caption.label || ''
+        : caption
+    )));
   const options = normalizeBlogList(property.convenience, property.options)
     .filter((item) => !/(인근|생활권|출퇴근|통근|버스|편의점|마트|병원|학교|산업단지)/u.test(item));
 
@@ -10896,10 +10902,12 @@ function buildNaverBlogAd(property) {
     !/(?:확인\s*필요|미확인|확인중)/u.test(option)
   );
   const featureWords = [
-    data.move_in_date && /즉시/u.test(data.move_in_date) ? '즉시입주' : '',
     /리모델링/u.test(featureCorpus) ? '리모델링' : '',
     /풀옵션/u.test(featureCorpus) ? '풀옵션' : '',
-    /(?:거실.?침실\s*분리|분리형)/u.test(featureCorpus) ? '분리형' : ''
+    validOptions.includes('건조기') ? '건조기 옵션' : '',
+    validOptions.includes('침대') ? '침대 옵션' : '',
+    /(?:거실.?침실\s*분리|분리형)/u.test(featureCorpus) ? '분리형' : '',
+    data.move_in_date && /즉시/u.test(data.move_in_date) ? '즉시입주' : ''
   ].filter(Boolean).slice(0, 2);
   const rentalPrice = [titleMoney(data.deposit), titleMoney(data.monthly_rent)]
     .filter(Boolean).join('/');
@@ -10962,7 +10970,8 @@ function buildNaverBlogAd(property) {
         [priceText, data.maintenance_fee ? `관리비 ${data.maintenance_fee}` : '', data.move_in_date]
           .filter(Boolean).join(' / '),
         monthlyTotal,
-        data.short_description
+        data.short_description,
+        validOptions.length ? `갖춰진 옵션은 ${validOptions.join(', ')}입니다.` : ''
       ];
   const detailedDescription = data.floor
     ? data.detailed_description.replace(
@@ -10998,9 +11007,10 @@ function buildNaverBlogAd(property) {
   const count = data.photos.length;
   const photoLine = (index) =>
     `📷 ${index + 1}번 사진${data.photo_captions[index] ? ` — ${data.photo_captions[index]}` : ''}`;
-  const photos = [0, 1, 2].map((group) => {
-    const start = Math.floor(group * count / 3);
-    const end = Math.floor((group + 1) * count / 3);
+  const photos = [0, 1, 2, 3].map((group) => {
+    const remaining = Math.max(0, count - 1);
+    const start = 1 + Math.floor(group * remaining / 4);
+    const end = 1 + Math.floor((group + 1) * remaining / 4);
     return Array.from({ length: end - start }, (_, i) => photoLine(start + i));
   });
   const picturePart = (heading, lines) => lines.length
@@ -11008,7 +11018,7 @@ function buildNaverBlogAd(property) {
   const recommendation = data.is_sale
     ? data.investment_point
     : data.recommended_for ||
-      `${locationTitle}에서 ${data.property_type}를 비교하실 때 보증금·관리비·입주일과 현장 사진을 함께 확인해 보세요.`;
+      `${locationTitle}에서 ${data.property_type} 월세를 찾으며 ${validOptions.includes('침대') ? '침대 등 기본 옵션과 ' : ''}보증금·월 관리비·입주일을 함께 비교하는 분께 안내드립니다.`;
   const legalNoticeExtra = data.legal_notice
     .split(/\n|(?<=[.!?])\s+/u)
     .map(normalizeBlogText)
@@ -11038,14 +11048,16 @@ function buildNaverBlogAd(property) {
   ];
   const bodyLines = [
     ...introduction.filter(Boolean), '',
+    ...picturePart('📷 대표사진', count ? [photoLine(0)] : []),
     ...section(`🏠 ${locationTitle} ${data.property_type} 핵심조건`, basicInfo), '',
     ...picturePart('📷 현장사진 ①', photos[0]),
     ...section('🛋️ 실제 구조와 옵션', structureLines), '',
-    ...section('📍 위치와 생활권', [data.address, data.location_description]), '',
     ...picturePart('📷 현장사진 ②', photos[1]),
+    ...section('📍 위치와 생활권', [data.address, data.location_description]), '',
+    ...picturePart('📷 현장사진 ③', photos[2]),
     ...section(data.is_sale ? '💹 매매·수익 조건' : '💳 관리비·주차·입주 조건', conditionLines), '',
     ...section(data.is_sale ? '📈 투자 검토' : '🙋 이런 조건을 찾는 분께', [recommendation]), '',
-    ...picturePart('📷 현장사진 ③', photos[2]),
+    ...picturePart('📷 현장사진 ④', photos[3]),
     ...section('🌐 매물 사진과 상세정보 확인', [
       data.listing_number ? `매물번호 ${data.listing_number}` : '',
       '칸공인중개사 홈페이지에서 가격과 사진을 함께 확인할 수 있습니다.',
@@ -11091,6 +11103,43 @@ function buildNaverBlogAd(property) {
     .flatMap((warning) => warning.replace('게시 전 확인 필요:', '')
       .split(',').map((item) => item.trim()).filter(Boolean));
   return { title, body, tags, warnings, missingFields, photoCount: count, normalized: data };
+}
+
+function renderNaverBlogHtml(blogAd) {
+  const escape = (value) => String(value || '').replace(/[&<>"']/gu, (character) => ({
+    '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
+  })[character]);
+  const lines = [blogAd.title, '', ...blogAd.body.split('\n'), '', blogAd.tags];
+  return lines.map((line, index) => {
+    const photo = line.match(/^📷 (\d+)번 사진/u);
+    if (photo) {
+      const photoIndex = Number(photo[1]) - 1;
+      const url = blogAd.normalized.photos[photoIndex];
+      const caption = blogAd.normalized.photo_captions[photoIndex] || '';
+      if (/^https?:\/\//iu.test(url || '')) {
+        return `<p style="text-align:center"><img src="${escape(url)}" alt="${escape(caption)}" style="max-width:100%;height:auto" /></p>${caption ? `<p>${escape(caption)}</p>` : ''}`;
+      }
+    }
+    if (!line) return '<p><br></p>';
+    if (index === 0) return `<h1>${escape(line)}</h1>`;
+    return `<p>${escape(line)}</p>`;
+  }).join('');
+}
+
+async function copyNaverBlogAd(blogAd) {
+  const text = `${blogAd.title}\n\n${blogAd.body}\n\n${blogAd.tags}`;
+  if (typeof ClipboardItem !== 'undefined' && navigator.clipboard?.write) {
+    try {
+      await navigator.clipboard.write([new ClipboardItem({
+        'text/plain': new Blob([text], { type: 'text/plain' }),
+        'text/html': new Blob([renderNaverBlogHtml(blogAd)], { type: 'text/html' })
+      })]);
+      return 'html';
+    } catch {
+      // Browsers that reject HTML clipboard writes retain plain-text copying.
+    }
+  }
+  return await copyAdvertisementText(text) ? 'text' : '';
 }
 
 async function copyAdvertisementText(text) {

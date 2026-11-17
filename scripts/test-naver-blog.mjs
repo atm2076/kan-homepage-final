@@ -8,9 +8,9 @@ if (start < 0 || end < 0) throw new Error('네이버 블로그 생성 함수 범
 const factory = new Function('OFFICE', `
   function cleanBlogBodyStart(text) { return String(text || '').trimStart(); }
   ${source.slice(start, end)}
-  return { buildNaverBlogAd };
+  return { buildNaverBlogAd, renderNaverBlogHtml };
 `);
-const { buildNaverBlogAd } = factory({
+const { buildNaverBlogAd, renderNaverBlogHtml } = factory({
   phone: '010-0000-0000',
   tel: '054-000-0000',
   broker: '테스트 중개사',
@@ -111,3 +111,17 @@ for (const fixture of fixtures) {
 if (!source.includes('네이버 블로그 문구 생성 중 오류가 발생했습니다.')) {
   throw new Error('관리자 오류 안내 문구가 없습니다.');
 }
+
+const photoAd = buildNaverBlogAd({
+  address: '경상북도 구미시 진평길 75-9 (진평동)', category: '미니투룸',
+  deposit: 200, rent: 20, convenience: ['침대', '옷장'],
+  photos: Array.from({ length: 15 }, (_, i) => `https://example.com/${i}.jpg`),
+  photo_captions: ['', '주방', '주방', '<script>설명</script>']
+});
+const html = renderNaverBlogHtml(photoAd);
+if (!photoAd.title.includes('침대 옵션')) throw new Error('등록 옵션이 제목에 반영되지 않았습니다.');
+if ((html.match(/<img /gu) || []).length !== 15) throw new Error('사진이 누락되거나 중복됐습니다.');
+if (html.includes('<script>')) throw new Error('사진 설명 HTML 이스케이프 실패');
+if (photoAd.normalized.photo_captions[2] !== '주방') throw new Error('사진 설명 순서가 바뀌었습니다.');
+if (photoAd.body.indexOf('1번 사진') > photoAd.body.indexOf('핵심조건')) throw new Error('대표사진 위치 오류');
+console.log('사진 분산·옵션 제목·HTML 안전성: PASS');
