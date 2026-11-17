@@ -12,9 +12,10 @@
     "test:answers": "node scripts/test-consultation-answers.mjs",
     "test:llm": "node scripts/test-llm-consultation.mjs",
     "test:migrations": "node scripts/test-migrations-pglite.mjs",
-    "test:all": "npm run test:gumi-parser && npm run test:gumi-sync && npm run test:consultation && npm run test:answers && npm run test:llm && npm run test:migrations",
+    "test:all": "npm run test:gumi-parser && npm run test:gumi-sync && npm run test:consultation && npm run test:answers && npm run test:llm && npm run test:migrations && npm run test:naver-blog && npm run test:seo && npm run test:polish",
     "test:naver-blog": "node scripts/test-naver-blog.mjs",
     "test:seo": "node scripts/test-seo-landing.mjs",
+    "test:polish": "node scripts/test-homepage-polish.mjs",
     "preview": "vite preview"
   },
   "engines": {

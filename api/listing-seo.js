@@ -71,17 +71,21 @@ function money(value) {
     : raw;
 }
 
-function maintenance(value) {
+export function formatListingMaintenance(value) {
   const raw = text(value);
-
   if (!raw) return '';
-  if (/없음|포함|월|원/u.test(raw)) return raw;
+  // 입력 값이 이미 '관리비 10만원 별도'이면 중복 접두어를 붙이지 않습니다.
+  if (raw.startsWith('관리비')) return raw;
+  if (/없음/u.test(raw)) return '관리비 없음';
+  if (/확인|미정|협의/u.test(raw)) return '관리비 확인 필요';
+  if (/월세\s*포함/u.test(raw)) return '관리비 월세 포함';
+  if (/포함/u.test(raw) && !/\d/u.test(raw)) return '관리비 포함';
+  if (/원|월|포함|별도/u.test(raw)) return `관리비 ${raw}`;
 
   const number = Number(raw.replaceAll(',', ''));
-
   return Number.isFinite(number)
-    ? `월 ${number.toLocaleString()}만원`
-    : raw;
+    ? `관리비 월 ${number.toLocaleString()}만원`
+    : `관리비 ${raw}`;
 }
 
 function absoluteUrl(value) {
@@ -230,7 +234,7 @@ function makeSnapshot(
       ? `월세 ${money(property.rent)}`
       : '',
     property.maintenance_fee
-      ? `관리비 ${maintenance(property.maintenance_fee)}`
+      ? formatListingMaintenance(property.maintenance_fee)
       : ''
   ]
     .filter(Boolean)
