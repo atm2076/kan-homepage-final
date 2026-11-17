@@ -237,8 +237,10 @@ export default async function handler(req, res) {
       const comparisonRequested = /비교|차이|어느\s*(방|쪽).*좋/u.test(message);
       // 새 매물 검색에 포함된 '월세/주차/사진'은 설명 질문으로 오인하지 않습니다.
       const freshSearch = /추천|찾아|보여\s*줘|있어\s*요|있나|더\s*싼|저렴|다른\s*방|조건.*방/u.test(message);
+      const newSearchTerms = extractConsultationConditions(message, {});
+      const mentionsSearchTarget = Boolean(newSearchTerms.region || newSearchTerms.propertyType);
       const questionRequested = !freshSearch && (
-        (isPropertyQuestion(message) && Boolean(context.selectedPropertyId || listingNumbers.length))
+        (isPropertyQuestion(message) && (!mentionsSearchTarget || listingNumbers.length > 0))
         || Boolean(selectedRecommendation && /이\s*방|해당\s*방/u.test(message))
       );
       if (comparisonRequested || questionRequested || listingNumbers.length) {
