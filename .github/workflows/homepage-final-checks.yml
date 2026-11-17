@@ -1,0 +1,30 @@
+name: Homepage Final Checks
+on:
+  pull_request:
+    paths:
+      - 'src/main.jsx'
+      - 'api/listing-seo.js'
+      - 'public/sw.js'
+      - 'scripts/test-homepage-polish.mjs'
+      - 'package.json'
+      - '.github/workflows/homepage-final-checks.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - run: npm ci
+      - run: npm run test:polish
+      - run: npm run test:seo
+      - run: npm run test:consultation
+      - run: npm run test:answers
+      - run: npm run test:llm
+      - run: npm run test:naver-blog
+      - run: npm run build
