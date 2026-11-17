@@ -1957,7 +1957,7 @@ function Header({ portalMode, isAdminRoute, onOpenAdmin }) {
       <div className="hero-overlay" />
 
       <div className="hero-content">
-       <p className="hero-badge">구미 원룸·투룸 3,000여 개 · 수익형 매물 150여 개 상담 가능</p>
+       <p className="hero-badge">구미 원룸·미니투룸·투룸 월세 및 원룸건물·다가구 매매 상담</p>
 <h1>구미 방 찾을 때,<br />칸에서 먼저 확인하세요</h1>
 <p className="hero-lead">
   원룸·미니투룸·투룸 월세부터 다가구 매매·수익형 부동산까지 조건별로 빠르게 안내합니다.
@@ -13810,6 +13810,13 @@ function Footer() {
       <div>
         <h2>매물 접수와 상담 문의</h2>
         <p>원룸·투룸 임대, 다가구·원룸건물 매매, 수익형 부동산 투자 상담을 도와드립니다.</p>
+        <nav aria-label="구미 지역 부동산 매물 안내" style={{display:'flex',flexWrap:'wrap',gap:'10px 16px',marginTop:16}}>
+          <a href="/gumi-one-room">구미원룸 월세</a>
+          <a href="/jinpyeong-mini-two-room">진평동 미니투룸</a>
+          <a href="/gumi-two-room">구미 투룸 월세</a>
+          <a href="/gumi-rental-building-sale">구미 원룸건물·다가구 매매</a>
+          <a href="https://blog.naver.com/atm750" target="_blank" rel="noopener noreferrer">칸공인중개사 네이버 블로그</a>
+        </nav>
       </div>
       <div className="footer-info">
         <p>{OFFICE.name}</p>
