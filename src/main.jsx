@@ -12,7 +12,7 @@ const OFFICE = {
   phone: '010-5323-3883',
   tel: '054-474-0367',
   regNo: '제47190-2023-00014',
-  blog: 'https://blog.naver.com/atm750/224293919179'
+  blog: 'https://blog.naver.com/atm750'
 };
 
 const defaultFilters = {
@@ -1374,8 +1374,9 @@ if (currentHash.startsWith('/staff')) return 'staff';
     if (params.get('staff') === '1') return 'staff';
     return '';
   }, []);
-  const [properties, setProperties] = useState(sampleProperties);
-  const [selected, setSelected] = useState(queryMode ? sampleProperties[0] : null);
+  // 실제 데이터가 로드되기 전에는 가상 샘플 매물을 소비자에게 노출하지 않습니다.
+  const [properties, setProperties] = useState([]);
+  const [selected, setSelected] = useState(null);
   const [listingId, setListingId] = useState(getCustomerListingId);
   const [detailProperty, setDetailProperty] = useState(null);
   const [detailLoading, setDetailLoading] = useState(Boolean(getCustomerListingId()));
@@ -1501,10 +1502,11 @@ requestAnimationFrame(() => {
     setLoading(true);
 
     if (!isSupabaseReady) {
-      const previewList = canManageAll ? sampleProperties : toPublicProperties(sampleProperties.filter((item) => item.status === 'published'));
-      const visibleList = canManageAll ? previewList : dedupePublicProperties(previewList);
-      setProperties(visibleList);
-      setSelected((prev) => visibleList.find((item) => item.id === prev?.id) || (canManageAll ? visibleList[0] : null));
+      // 운영 화면의 샘플 매물은 실제 거래 가능 여부가 검증되지 않았습니다.
+      const previewList = import.meta.env.DEV && canManageAll ? sampleProperties : [];
+      setProperties(previewList);
+      setSelected(null);
+      setError('매물 정보를 연결할 수 없습니다. 잠시 후 다시 확인하거나 전화로 문의해 주세요.');
       setLoading(false);
       return;
     }
@@ -1526,14 +1528,14 @@ requestAnimationFrame(() => {
     const { data, error: fetchError } = await query;
 
     if (fetchError) {
-      setError(fetchError.message);
-      const fallbackList = canManageAll ? sampleProperties : toPublicProperties(sampleProperties.filter((item) => item.status === 'published'));
-      const visibleList = canManageAll ? fallbackList : dedupePublicProperties(fallbackList);
-      setProperties(visibleList);
-      setSelected(canManageAll ? visibleList[0] : null);
+      console.error('공개 매물 조회 실패', fetchError);
+      setError(canManageAll ? fetchError.message : '매물 정보를 일시적으로 불러오지 못했습니다. 잠시 후 다시 시도해 주세요.');
+      const previewList = import.meta.env.DEV && canManageAll ? sampleProperties : [];
+      setProperties(previewList);
+      setSelected(null);
     } else {
-      const fallbackList = canManageAll ? sampleProperties : toPublicProperties(sampleProperties.filter((item) => item.status === 'published'));
-      const rawList = data?.length ? data : fallbackList;
+      // 공개 매물이 0건이면 실제로 0건 표시: 테스트용 매물로 대체하지 않습니다.
+      const rawList = data || [];
       const list = canManageAll ? rawList : dedupePublicProperties(toPublicProperties(rawList));
       setProperties(list);
       setSelected((prev) => list.find((item) => item.id === prev?.id) || (canManageAll ? list[0] : null));
