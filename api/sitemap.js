@@ -1,3 +1,4 @@
+import { SEO_LANDING_URLS } from '../src/seoLandingConfig.js';
 import { createClient } from '@supabase/supabase-js';
 
 const SITE_ORIGIN = 'https://www.khanhouse.co.kr';
@@ -55,6 +56,7 @@ export default async function handler(req, res) {
 
     const urls = [
       `${SITE_ORIGIN}/`,
+      ...SEO_LANDING_URLS,
       ...properties
         .filter((property) => property?.id !== null && property?.id !== undefined)
         .map(
