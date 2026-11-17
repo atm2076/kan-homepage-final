@@ -29,6 +29,8 @@ assert.equal(conditions.minRent, 20);
 assert.equal(conditions.maxManagementFee, null);
 assert.equal(extractConsultationConditions('진평동 미니투룸 추천해줘').maxRent, null);
 assert.equal(extractConsultationConditions('진평동 미니투룸 추천해줘').maxDeposit, null);
+assert.equal(extractConsultationConditions('계약하면 이 방의 장점은?').region, null);
+assert.equal(extractConsultationConditions('이 방 계약하면 유리한 점?', { region: '진평동' }).region, '진평동');
 const results = filterAndRankProperties(rows, conditions);
 assert.deepEqual(results.map((row) => row.id), ['normal', 'quick-photo', 'quick-empty']);
 assert(results.every(assertNoPrivatePropertyFields));
