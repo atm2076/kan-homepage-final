@@ -77,7 +77,7 @@ function renderCard(property, sale) {
   </article>`;
 }
 
-function renderPage(page, listings) {
+export function renderPage(page, listings) {
   const canonical = `${ORIGIN}/${page.slug}`;
   const listItems = listings.map((item, index) => ({
     '@type': 'ListItem', position: index + 1, url: linkFor(item),
