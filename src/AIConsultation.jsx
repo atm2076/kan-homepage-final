@@ -4,7 +4,7 @@ const STORAGE_KEY = 'kanAiConsultation';
 
 async function post(payload, token) {
   const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), 12000);
+  const timeout = setTimeout(() => controller.abort(), 18000);
   try {
   const response = await fetch('/api/ai-consultation', {
     method: 'POST',
@@ -16,6 +16,7 @@ async function post(payload, token) {
   let result = null;
   try { result = responseText ? JSON.parse(responseText) : null; } catch { result = null; }
   if (!response.ok || result?.ok === false) throw new Error(result?.error || '상담 요청에 실패했습니다.');
+  if (!result || result.ok !== true) throw new Error('AI 상담 서버의 응답 형식을 확인할 수 없습니다.');
   return result;
   } catch (error) {
     if (error?.name === 'AbortError') throw new Error('서버 응답이 지연되고 있습니다. 잠시 후 다시 시도해 주세요.');
@@ -44,10 +45,12 @@ export default function AIConsultation() {
     const listener = (event) => {
       setOpen(true);
       if (event.detail?.propertyId) start(event.detail.propertyId, true);
+      else if (!conversation && !startingRef.current) start();
+      else if (conversation && !messages.length) restore();
     };
     window.addEventListener('kan:ai-open', listener);
     return () => window.removeEventListener('kan:ai-open', listener);
-  }, [conversation]);
+  }, [conversation, messages.length]);
 
   useEffect(() => {
     if (open) {
@@ -74,9 +77,27 @@ export default function AIConsultation() {
     } finally { startingRef.current = false; setBusy(false); }
   }
 
+  async function restore() {
+    if (!conversation || startingRef.current) return;
+    setBusy(true);
+    try {
+      const result = await post({ action: 'history', ...conversation });
+      setMessages(result.messages?.length ? result.messages : [{ role: 'assistant', content: '원하는 지역과 방 종류를 자유롭게 말씀해주세요.' }]);
+    } catch (error) {
+      if (/유효하지 않은 상담/u.test(error.message)) {
+        sessionStorage.removeItem(STORAGE_KEY);
+        setConversation(null);
+        setMessages([{ role: 'assistant', content: '이전 상담이 만료되었습니다. 새 상담을 시작해 주세요.' }]);
+      } else setMessages([{ role: 'assistant', content: error.message }]);
+    } finally { setBusy(false); }
+  }
+
   async function toggle() {
-    setOpen((value) => !value);
+    const nextOpen = !open;
+    setOpen(nextOpen);
+    if (!nextOpen) return;
     if (!conversation && !startingRef.current) await start();
+    else if (conversation && !messages.length) await restore();
   }
 
   async function submit(event) {
@@ -132,7 +153,7 @@ export default function AIConsultation() {
         {busy && <p className="ai-message assistant">확인 중입니다…</p>}
         <div ref={endRef} />
       </div>
-      <form onSubmit={submit}><input value={input} onChange={(event) => setInput(event.target.value)} maxLength={1000} placeholder="예: 인의동 미투 보증금 300 월세 30" /><button disabled={busy}>전송</button></form>
+      <form onSubmit={submit}><input value={input} onChange={(event) => setInput(event.target.value)} maxLength={1000} placeholder="예: 진평동 미니투룸 추천해 줘" aria-label="AI에게 자유롭게 질문하기" /><button disabled={busy}>전송</button></form>
       <button type="button" className="ai-new-chat" onClick={reset}>새 상담 시작</button>
     </aside>}
   </>;
