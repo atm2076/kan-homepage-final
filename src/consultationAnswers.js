@@ -13,7 +13,9 @@ function amount(value) {
   const text = String(value ?? '').replaceAll(',', '').trim();
   if (!text || /미정|협의|확인|문의|없음/u.test(text)) return null;
   const match = text.match(/\d+(?:\.\d+)?/u);
-  return match ? Number(match[0]) : null;
+  if (!match) return null;
+  const number = Number(match[0]);
+  return /원/u.test(text) && !/만원|만\s*원/u.test(text) ? number / 10000 : number;
 }
 
 export function monthlyTotal(property) {
