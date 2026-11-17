@@ -5,6 +5,22 @@
       "destination": "/api/sitemap"
     },
     {
+      "source": "/gumi-one-room",
+      "destination": "/api/seo-landing?slug=gumi-one-room"
+    },
+    {
+      "source": "/jinpyeong-mini-two-room",
+      "destination": "/api/seo-landing?slug=jinpyeong-mini-two-room"
+    },
+    {
+      "source": "/gumi-two-room",
+      "destination": "/api/seo-landing?slug=gumi-two-room"
+    },
+    {
+      "source": "/gumi-rental-building-sale",
+      "destination": "/api/seo-landing?slug=gumi-rental-building-sale"
+    },
+    {
       "source": "/listing/:id",
       "destination": "/api/listing-seo?id=:id"
     },

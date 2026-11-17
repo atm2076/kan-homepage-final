@@ -14,6 +14,7 @@
     "test:migrations": "node scripts/test-migrations-pglite.mjs",
     "test:all": "npm run test:gumi-parser && npm run test:gumi-sync && npm run test:consultation && npm run test:answers && npm run test:llm && npm run test:migrations",
     "test:naver-blog": "node scripts/test-naver-blog.mjs",
+    "test:seo": "node scripts/test-seo-landing.mjs",
     "preview": "vite preview"
   },
   "engines": {
