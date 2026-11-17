@@ -44,9 +44,28 @@ function numberNear(text, label) {
   return match ? Number(match[1].replaceAll(',', '')) : null;
 }
 
+// 지역명이 아닌 '하면', '있으면'을 동네로 오인하지 않도록 실제 구미·인근 지명만 허용합니다.
+const LOCAL_REGIONS = [
+  '선주원남동', '상모사곡동', '형곡1동', '형곡2동', '신평1동', '신평2동',
+  '인의동', '진평동', '구평동', '황상동', '사곡동', '원평동', '옥계동',
+  '봉곡동', '형곡동', '송정동', '광평동', '임은동', '오태동', '상모동',
+  '도량동', '신평동', '비산동', '공단동', '지산동', '신동', '구포동',
+  '양호동', '임수동', '시미동', '부곡동', '금전동', '남통동', '선기동',
+  '거의동', '수점동', '선산읍', '고아읍', '산동읍', '무을면',
+  '옥성면', '도개면', '해평면', '장천면',
+  '왜관읍', '석적읍', '북삼읍', '약목면', '기산면', '동명면',
+  '인동'
+];
+
+function detectLocalRegion(message) {
+  const text = String(message || '');
+  return LOCAL_REGIONS.find((name) => text.includes(name)) || null;
+}
+
 export function extractConsultationConditions(message, previous = {}) {
   const text = String(message || '').trim();
-  const region = text.match(/([가-힣]{1,12}(?:동|읍|면))/u)?.[1] || previous.region || null;
+  const region = detectLocalRegion(text)
+    || (LOCAL_REGIONS.includes(previous.region) ? previous.region : null);
   const propertyType = /주인세대/u.test(text) ? '주인세대'
     : /미니?투룸|미투/u.test(text) ? '미니투룸'
       : /투룸/u.test(text) ? '투룸'
