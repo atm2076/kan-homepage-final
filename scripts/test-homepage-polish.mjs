@@ -35,6 +35,14 @@ assert(main.includes("...(isStaffMode ? { convenienceText: '', safetyText: '', e
 assert(main.includes("aria-pressed={selected.includes(option)}"));
 assert(main.includes("...linesToArray(form.convenienceText)"));
 
+// 직원 한 화면 등록의 매물 상세설명은 기존 description 필드와 동일하게 저장됩니다.
+assert(main.includes('<h4>매물 상세설명</h4>'));
+assert(main.includes('label="매물 상세설명 (고객 공개용)"'));
+assert(main.includes("onChange={(value) => updateField('description', value)}"));
+assert(main.includes("const saveForm = isStaffMode\n      ? {\n          ...form,"));
+assert(main.includes("<TextLines value={property.description}"));
+
+
 
 
 const workerCode = readFileSync(new URL('../public/sw.js', import.meta.url), 'utf8');
