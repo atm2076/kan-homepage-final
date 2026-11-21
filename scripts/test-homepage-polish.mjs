@@ -16,6 +16,14 @@ assert(main.includes('const rawList = data || [];'));
 assert(main.includes('import.meta.env.DEV && canManageAll ? sampleProperties : []'));
 assert(main.includes("blog: 'https://blog.naver.com/atm750'"));
 
+// 직원 등록 화면은 기존 한 화면 간단등록으로 유지합니다.
+assert(main.includes('const STAFF_REGISTRATION_CLASSIC = true;'));
+assert(main.includes("useState(mode === 'staff' ? 'simple' : 'detail')"));
+assert(main.includes("staffView === 'register' && !STAFF_REGISTRATION_CLASSIC"));
+assert(main.includes("entryMode === 'simple' && (!isStaffMode || (STAFF_REGISTRATION_CLASSIC && staffView === 'register'))"));
+assert(main.includes("isStaffMode ? '대표 검수대기로 등록'"));
+
+
 const workerCode = readFileSync(new URL('../public/sw.js', import.meta.url), 'utf8');
 const events = {};
 const store = new Map();
