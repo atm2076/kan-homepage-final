@@ -23,6 +23,19 @@ assert(main.includes("staffView === 'register' && !STAFF_REGISTRATION_CLASSIC"))
 assert(main.includes("entryMode === 'simple' && (!isStaffMode || (STAFF_REGISTRATION_CLASSIC && staffView === 'register'))"));
 assert(main.includes("isStaffMode ? '대표 검수대기로 등록'"));
 
+// 직원 클래식 등록 화면에 옵션 선택이 보이고, 실제 매물 데이터로 저장되어야 합니다.
+assert(main.includes("label=\"옵션/편의\""));
+assert(main.includes("label=\"안전시설\""));
+assert(main.includes("label=\"생활권\""));
+assert(main.includes("{(isAdminMode || isStaffMode) && (\n    <SelectableOptionGroup\n      label=\"옵션/편의\""));
+assert(main.includes("{(isAdminMode || isStaffMode) && (\n    <SelectableOptionGroup\n      label=\"안전시설\""));
+assert(main.includes("{(isAdminMode || isStaffMode) && (\n    <SelectableOptionGroup\n      label=\"생활권\""));
+assert(main.includes("mode === 'staff'\n    ? { ...emptyForm, convenienceText: '', safetyText: '', educationText: '' }"));
+assert(main.includes("...(isStaffMode ? { convenienceText: '', safetyText: '', educationText: '' } : {})"));
+assert(main.includes("aria-pressed={selected.includes(option)}"));
+assert(main.includes("...linesToArray(form.convenienceText)"));
+
+
 
 const workerCode = readFileSync(new URL('../public/sw.js', import.meta.url), 'utf8');
 const events = {};
