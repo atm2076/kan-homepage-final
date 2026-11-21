@@ -5,6 +5,10 @@ import GumiVacancyImport from './GumiVacancyImport';
 import AIConsultation, { AIConsultationCallout, ViewingRequestsAdmin, openAiConsultation } from './AIConsultation';
 import './styles.css';
 
+// 직원 등록 화면은 변경 전 한 화면 간단등록 양식으로 고정합니다.
+// 10단계 위저드는 기록으로 남겨두되 직원에게 표시하지 않습니다.
+const STAFF_REGISTRATION_CLASSIC = true;
+
 const OFFICE = {
   name: '칸공인중개사사무소',
   address: '경상북도 구미시 인의동 991-4번지 4층',
@@ -4647,7 +4651,7 @@ function AdminModal({ mode, setMode, isAdmin, setIsAdmin, onClose, properties, r
   const [photoEnhanceMode, setPhotoEnhanceMode] = useState('batch');
   const [photoEnhanceByUrl, setPhotoEnhanceByUrl] = useState({});
   const [photoSourceByUrl, setPhotoSourceByUrl] = useState({});
-  const [entryMode, setEntryMode] = useState('detail');
+  const [entryMode, setEntryMode] = useState(mode === 'staff' ? 'simple' : 'detail');
   const [staffStep, setStaffStep] = useState(0);
     const [currentStaff, setCurrentStaff] = useState(null);
   const [staffView, setStaffView] = useState('register');
@@ -7418,7 +7422,7 @@ if (isStaffMode && currentStaff?.code) {
   </button>
 </div>
 )}
-               {isStaffMode && staffView === 'register' && (
+               {isStaffMode && staffView === 'register' && !STAFF_REGISTRATION_CLASSIC && (
                   <section className="staff-step-register">
                   <div className="staff-step-head">
                     <div>
@@ -7699,7 +7703,7 @@ if (isStaffMode && currentStaff?.code) {
                 </section>
               )}
 
-              {entryMode === 'simple' && !isStaffMode && (
+              {entryMode === 'simple' && (!isStaffMode || (STAFF_REGISTRATION_CLASSIC && staffView === 'register')) && (
   <section className="admin-section-block priority-block">
     <h4>{isAdminMode ? '간단 매물 등록' : '직원 간단 등록'}</h4>
     <p className="muted">
@@ -7968,7 +7972,7 @@ if (isStaffMode && currentStaff?.code) {
 
   </section>
 )}
-              {entryMode === 'detail' && (
+              {entryMode === 'detail' && isAdminMode && (
               <section className="admin-section-block priority-block">
                 <h4>1. 기본정보</h4>
                 <Field label="제목" value={form.title} onChange={(v) => updateField('title', v)} placeholder="예: 진평초등 앞 리모델링 원룸임대" />
@@ -8485,10 +8489,10 @@ if (isStaffMode && currentStaff?.code) {
                   </div>
                 </section>
               )}
-              {!isStaffMode && (
+              {(!isStaffMode || (STAFF_REGISTRATION_CLASSIC && staffView === 'register')) && (
   <div className="submit-action-row">
-    <button className="primary-btn submit-btn" type="submit">
-      {editingId ? '수정 저장' : '매물 등록하기'}
+    <button className="primary-btn submit-btn" type="submit" disabled={isStaffMode && !quickReady} title={isStaffMode && !quickReady ? `필수 확인 필요: ${quickMissingItems.join(', ')}` : undefined}>
+      {editingId ? '수정 저장' : isStaffMode ? '대표 검수대기로 등록' : '매물 등록하기'}
     </button>
 
     {editingId && canEditExisting && (
