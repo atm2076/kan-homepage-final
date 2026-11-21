@@ -38,6 +38,12 @@ assert(html.includes('href="https://www.khanhouse.co.kr/gumi-one-room"'));
 assert(html.includes('https://blog.naver.com/atm750'));
 assert(html.includes('application/ld+json'));
 assert(html.includes('매물번호 3903'));
+assert(html.includes('구미 진평동 원룸'));
+assert(html.includes('관리비 10만원'));
+assert(!html.includes('관리비 관리비'));
+const saleHtml = renderPage(getSeoLanding('gumi-rental-building-sale'), [published.find(x => x.id === 'sale')]);
+assert(saleHtml.includes('구미 원룸건물 매매·다가구 매매'));
+
 assert(html.includes('&lt;script&gt;alert(1)&lt;/script&gt;'));
 assert(!html.includes('<script>alert(1)</script>'));
 assert(!html.includes('비공개'));
