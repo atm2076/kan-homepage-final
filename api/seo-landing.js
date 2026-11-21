@@ -33,6 +33,13 @@ function money(value) {
   return Number.isFinite(number) ? `${number.toLocaleString('ko-KR')}만원` : raw;
 }
 
+function maintenanceLabel(value) {
+  const raw = text(value);
+  if (!raw) return '관리비 확인 필요';
+  if (/^관리비/u.test(raw)) return raw;
+  return `관리비 ${money(raw)}`;
+}
+
 function linkFor(property) {
   return `${ORIGIN}/listing/${encodeURIComponent(String(property.id))}`;
 }
@@ -58,10 +65,16 @@ function navigation(active) {
 function renderCard(property, sale) {
   const href = linkFor(property);
   const image = photos(property)[0];
-  const headline = text(property.title) || [property.address, property.category].map(text).filter(Boolean).join(' ');
+  const originalHeadline = text(property.title) || [property.address, property.category].map(text).filter(Boolean).join(' ');
+  const district = text(property.address).match(/(?:^|[\s(])([가-힣0-9]+(?:동|읍|면))(?=[\s),]|$)/u)?.[1] || '';
+  const prefix = /구미/u.test(originalHeadline) ? '' : [
+    '구미',
+    district && !originalHeadline.includes(district) ? district : ''
+  ].filter(Boolean).join(' ');
+  const headline = [prefix, originalHeadline].filter(Boolean).join(' ');
   const price = sale
     ? `매매가 ${money(property.sale_price || property.deposit)}`
-    : `보증금 ${money(property.deposit)} · 월세 ${money(property.rent)} · 관리비 ${money(property.maintenance_fee)}`;
+    : `보증금 ${money(property.deposit)} · 월세 ${money(property.rent)} · ${maintenanceLabel(property.maintenance_fee)}`;
   return `<article class="property">
     <a href="${escapeHtml(href)}" class="image">${image
       ? `<img src="${escapeHtml(image)}" loading="lazy" alt="${escapeHtml(headline || '매물 사진')}" />`
