@@ -97,10 +97,34 @@ function absoluteUrl(value) {
   return `${SITE_ORIGIN}${raw.startsWith('/') ? '' : '/'}${raw}`;
 }
 
+export function buildListingSeoTitle(property) {
+  const address = text(property.address);
+  const supplied = text(property.title);
+  const city = /구미시|구미/u.test(address) ? '구미'
+    : /칠곡군/u.test(address) ? '칠곡'
+    : /김천시/u.test(address) ? '김천'
+    : /포항시/u.test(address) ? '포항'
+    : /대구/u.test(address) ? '대구'
+    : '';
+  const district = address.match(
+    /(?:^|[\s(])([가-힣0-9]+(?:동|읍|면))(?=[\s),]|$)/u
+  )?.[1] || '';
+  const base = supplied || [
+    text(property.category || property.main_use),
+    text(property.trade_type)
+  ].filter(Boolean).join(' ') || '부동산 매물';
+  const prefix = [
+    city && !base.includes(city) ? city : '',
+    district && !base.includes(district) ? district : ''
+  ].filter(Boolean).join(' ');
+  return [prefix, base].filter(Boolean).join(' ');
+}
+
 function makeDescription(property, priceText) {
   const summary = text(
     property.summary ||
-    property.short_description
+    property.short_description ||
+    property.description
   );
 
   const parts = [
@@ -226,19 +250,13 @@ function makeSnapshot(
   description,
   image
 ) {
-  const priceText = [
-    property.deposit
-      ? `보증금 ${money(property.deposit)}`
-      : '',
-    property.rent
-      ? `월세 ${money(property.rent)}`
-      : '',
-    property.maintenance_fee
-      ? formatListingMaintenance(property.maintenance_fee)
-      : ''
-  ]
-    .filter(Boolean)
-    .join(' / ');
+  const priceText = property.trade_type === '매매'
+    ? [property.sale_price ? `매매가 ${money(property.sale_price)}` : ''].filter(Boolean).join(' / ')
+    : [
+        property.deposit ? `보증금 ${money(property.deposit)}` : '',
+        property.rent ? `월세 ${money(property.rent)}` : '',
+        property.maintenance_fee ? formatListingMaintenance(property.maintenance_fee) : ''
+      ].filter(Boolean).join(' / ');
 
   const rows = [
     ['매물번호', property.listing_number],
@@ -268,6 +286,9 @@ function makeSnapshot(
     '<main id="seo-listing-snapshot">',
     `  <h1>${escapeHtml(displayTitle)}</h1>`,
     `  <p>${escapeHtml(description)}</p>`,
+    text(property.description)
+      ? `  <section aria-label="매물 상세설명"><h2>매물 상세설명</h2><p>${escapeHtml(text(property.description).slice(0, 1400))}</p></section>`
+      : '',
     image
       ? `  <img src="${escapeHtml(image)}" alt="${escapeHtml(displayTitle)}" />`
       : '',
@@ -427,24 +448,20 @@ export default async function handler(req, res) {
       .join(' ');
 
     const baseTitle =
-      text(property.title) ||
+      buildListingSeoTitle(property) ||
       generatedTitle ||
-      '구미 부동산 매물';
+      '부동산 매물';
 
     const title =
       `${baseTitle} | ${OFFICE_NAME}`
         .slice(0, 90);
 
-    const priceText = [
-      property.deposit
-        ? `보증금 ${money(property.deposit)}`
-        : '',
-      property.rent
-        ? `월세 ${money(property.rent)}`
-        : ''
-    ]
-      .filter(Boolean)
-      .join(' / ');
+    const priceText = tradeType === '매매'
+      ? (property.sale_price ? `매매가 ${money(property.sale_price)}` : '')
+      : [
+          property.deposit ? `보증금 ${money(property.deposit)}` : '',
+          property.rent ? `월세 ${money(property.rent)}` : ''
+        ].filter(Boolean).join(' / ');
 
     const description =
       makeDescription(property, priceText) ||
