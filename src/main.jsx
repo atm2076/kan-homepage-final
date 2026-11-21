@@ -7903,6 +7903,20 @@ if (isStaffMode && currentStaff?.code) {
     />
     )}
 
+    {isStaffMode && (
+      <section className="quick-field-section">
+        <h4>매물 상세설명</h4>
+        <p className="muted">고객에게 공개할 매물의 구조, 옵션, 장점, 입주 조건을 입력하세요. 대표 검수 후 공개됩니다. 비밀번호나 집주인 연락처 등 비공개 정보는 입력하지 마세요.</p>
+        <TextArea
+          label="매물 상세설명 (고객 공개용)"
+          value={form.description}
+          onChange={(value) => updateField('description', value)}
+          rows={6}
+          placeholder="예: 구미 진평동에 위치한 채광 좋은 투룸입니다. 에어컨과 세탁기가 있으며 즉시입주 가능합니다."
+        />
+      </section>
+    )}
+
     <section className="quick-field-section">
       <h4>{isStaffMode ? '비공개 메모' : '제목 키워드와 메모'}</h4>
       {isAdminMode && (
