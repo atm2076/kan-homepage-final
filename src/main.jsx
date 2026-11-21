@@ -183,7 +183,7 @@ const STATUS_LABELS = {
 };
 
 const OPTION_PRESETS = {
-  convenienceText: ['에어컨', '세탁기', '냉장고', 'TV', '인덕션', '전자레인지', '스타일러', '침대', '옷장', '신발장', '책상', '의자', '인터넷', '유선방송'],
+  convenienceText: ['에어컨', '세탁기', '냉장고', 'TV', '인덕션', '가스레인지', '전자레인지', '싱크대', '건조기', '스타일러', '침대', '옷장', '신발장', '책상', '의자', '인터넷', '유선방송', '도어락'],
   safetyText: ['실사진 확인 매물', '직접 확인 후 안내', '공동현관', 'CCTV', '도어락', '방범창', '화재감지기', '엘리베이터'],
   educationText: ['편의점 인근', '버스 이용 편리', '공단 출퇴근 동선', '마트 인근', '식당가 인근', '병원 인근', '학교 인근', '주차 편리', '조용한 주거지']
 };
@@ -4624,7 +4624,9 @@ function withAdvertisingChannelTag(tags, channelTag, completed) {
 
 function AdminModal({ mode, setMode, isAdmin, setIsAdmin, onClose, properties, reload, refreshAdminPublishedProperties }) {
   const [password, setPassword] = useState('');
-  const [form, setForm] = useState(emptyForm);
+  const [form, setForm] = useState(() => mode === 'staff'
+    ? { ...emptyForm, convenienceText: '', safetyText: '', educationText: '' }
+    : emptyForm);
   const [bulkText, setBulkText] = useState('');
   const [editingId, setEditingId] = useState(null);
   const [status, setStatus] = useState('');
@@ -5255,6 +5257,10 @@ const ledgerPreviewItems = [
   }, [quickRoomType, isStaffMode, editingId]);
 
 function chooseMode(nextMode) {
+  // Staff's new listing begins with no unverified options selected.
+  if (nextMode === 'staff' && !editingId) {
+    setLatestForm((prev) => ({ ...prev, convenienceText: '', safetyText: '', educationText: '' }));
+  }
   setMode(nextMode);
   setIsAdmin(false);
   setPassword('');
@@ -5962,7 +5968,11 @@ setStaffStep(0);
   }
 
   function resetForm() {
-    const nextForm = { ...emptyForm, status: 'published' };
+    const nextForm = {
+      ...emptyForm,
+      status: 'published',
+      ...(isStaffMode ? { convenienceText: '', safetyText: '', educationText: '' } : {})
+    };
     setEditingId(null);
     latestFormRef.current = nextForm;
     setLatestForm(nextForm);
@@ -7917,7 +7927,7 @@ if (isStaffMode && currentStaff?.code) {
       />
     </section>
 
-    {isAdminMode && (
+    {(isAdminMode || isStaffMode) && (
     <SelectableOptionGroup
       label="옵션/편의"
       value={form.convenienceText}
@@ -7927,7 +7937,7 @@ if (isStaffMode && currentStaff?.code) {
     />
     )}
 
-    {isAdminMode && (
+    {(isAdminMode || isStaffMode) && (
     <SelectableOptionGroup
       label="안전시설"
       value={form.safetyText}
@@ -7937,7 +7947,7 @@ if (isStaffMode && currentStaff?.code) {
     />
     )}
 
-    {isAdminMode && (
+    {(isAdminMode || isStaffMode) && (
     <SelectableOptionGroup
       label="생활권"
       value={form.educationText}
@@ -13741,9 +13751,10 @@ function SelectableOptionGroup({ label, value, options, onChange, placeholder = 
             key={option}
             type="button"
             className={selected.includes(option) ? 'selected' : ''}
+            aria-pressed={selected.includes(option)}
             onClick={() => toggleOption(option)}
           >
-            {option}
+            {selected.includes(option) ? '✓ ' : ''}{option}
           </button>
         ))}
       </div>
