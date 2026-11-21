@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import vm from 'node:vm';
-import { formatListingMaintenance } from '../api/listing-seo.js';
+import { formatListingMaintenance, buildListingSeoTitle } from '../api/listing-seo.js';
 
 assert.equal(formatListingMaintenance('관리비 10만원 별도'), '관리비 10만원 별도');
 assert.equal(formatListingMaintenance('10만원 별도'), '관리비 10만원 별도');
@@ -9,6 +9,19 @@ assert.equal(formatListingMaintenance('10'), '관리비 월 10만원');
 assert.equal(formatListingMaintenance('관리비 포함'), '관리비 포함');
 assert.equal(formatListingMaintenance('관리비 없음'), '관리비 없음');
 assert.equal(formatListingMaintenance(''), '');
+assert.equal(
+  buildListingSeoTitle({ title: '투룸 월세 2000/43', category: '투룸', address: '경상북도 구미시 수출대로33길 28 (인의동)', trade_type: '월세' }),
+  '구미 인의동 투룸 월세 2000/43'
+);
+assert.equal(
+  buildListingSeoTitle({ title: '구미 진평동 원룸 월세', address: '구미시 진평동 101' }),
+  '구미 진평동 원룸 월세'
+);
+assert.equal(
+  buildListingSeoTitle({ title: '원룸 월세', address: '경상북도 칠곡군 석적읍 중리 100' }),
+  '칠곡 석적읍 원룸 월세'
+);
+
 
 const main = readFileSync(new URL('../src/main.jsx', import.meta.url), 'utf8');
 assert(!main.includes('useState(sampleProperties)'));
