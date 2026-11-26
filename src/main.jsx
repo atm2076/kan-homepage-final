@@ -2765,27 +2765,34 @@ const groupMarkerItems = (items, zoom) => {
 }
 
   if (zoom >= 20) {
-    return items.map((item) => ({
-      type: 'property',
-      lat: item.point.lat,
-      lng: item.point.lng,
-      items: [item],
+    // Keep listings with exactly the same saved coordinates selectable together.
+    const byPoint = new Map();
+    items.forEach((item) => {
+      const key = `${item.point.lat},${item.point.lng}`;
+      if (!byPoint.has(key)) {
+        byPoint.set(key, {
+          lat: item.point.lat,
+          lng: item.point.lng,
+          items: [],
+        });
+      }
+      byPoint.get(key).items.push(item);
+    });
+    return Array.from(byPoint.values(), (group) => ({
+      ...group,
+      type: group.items.length > 1 ? 'cluster' : 'property',
     }));
   }
 
-  let gridSize;
-
-  if (zoom <= 11) {
-    gridSize = 0.03;
-  } else if (zoom === 12) {
-    gridSize = 0.018;
-  } else if (zoom === 13) {
-    gridSize = 0.01;
-  } else if (zoom === 14) {
-    gridSize = 0.006;
-  } else {
-    gridSize = 0.003;
-  }
+  // Shrink geographic clustering at every customer-map zoom level.
+  const gridSize = ({
+    14: 0.003,
+    15: 0.001,
+    16: 0.0005,
+    17: 0.0002,
+    18: 0.0001,
+    19: 0.00005,
+  })[zoom] ?? 0.003;
 const groups = [];
 const buckets = new Map();
 
@@ -2913,7 +2920,7 @@ const clearMarkers = () => {
           ),
           zoom: Number(restoredMapState?.zoom) || 12,
           minZoom: 10,
-          maxZoom: 17,
+          maxZoom: 20,
           zoomControl: true,
           zoomControlOptions: { position: naver.maps.Position.TOP_RIGHT }
         });
@@ -3085,7 +3092,12 @@ maps.Event.trigger(map, 'resize');
     setPanelCollapsed(false);
     setSheetExpanded(true);
     map.setCenter(new naver.maps.LatLng(group.lat, group.lng));
-    map.setZoom(Math.min(map.getZoom() + 2, 17));
+    if (map.getZoom() < 20) {
+      map.setZoom(Math.min(map.getZoom() + 2, 20));
+    } else {
+      clusterNavigationRef.current = false;
+      persistMapState(clusterItems);
+    }
 
     if (!firstItem) return;
   });
