@@ -3,8 +3,8 @@ import { getSeoLanding, SEO_LANDING_PAGES, SEO_LANDING_URLS, selectSeoLandingPro
 import { renderPage } from '../api/seo-landing.js';
 
 const allPages = SEO_LANDING_PAGES;
-assert.equal(allPages.length, 4);
-assert.equal(SEO_LANDING_URLS.length, 4);
+assert.equal(allPages.length, 12);
+assert.equal(SEO_LANDING_URLS.length, 12);
 assert.equal(getSeoLanding('missing'), null);
 const base = {
   id: '00000000-0000-4000-8000-000000000001',
@@ -51,3 +51,22 @@ assert(!html.includes('out-of-region'));
 const empty = renderPage(getSeoLanding('gumi-one-room'), []);
 assert(empty.includes('공개된 조건 일치 매물이 없습니다'));
 console.log('SEO pages, public listing filters, and HTML escaping: ok');
+
+const district = getSeoLanding('jinpyeong-one-room');
+const districtFixtures = [...published,
+  { ...base, id: 'compact', address: '경북 구미시 진평동80-9' },
+  { ...base, id: 'different-city', address: '부산광역시 사하구 구평동' },
+  { ...base, id: 'wrong-trade', trade_type: '전세' },
+  { ...base, id: 'not-approved', review_state: 'pending' },
+  { ...base, id: 'different-area', address: '경북 구미시 인의동' },
+];
+assert.deepEqual(selectSeoLandingProperties(district, districtFixtures).map(x => x.id).sort(), [base.id, 'compact', 'malicious'].sort());
+assert.equal(selectSeoLandingProperties(getSeoLanding('gupyeong-one-room'), districtFixtures).length, 0);
+assert.equal(selectSeoLandingProperties(getSeoLanding('okgye-mini-two-room'), [{...base,address:'경북 구미시 옥계동',category:'미투',property_type:'미투'}]).length,1);
+assert.equal(selectSeoLandingProperties(getSeoLanding('sandong-two-room'), [{...base,address:'경북 구미시 산동읍',category:'투룸',property_type:'투룸'}]).length,1);
+assert(renderPage(district, []).includes('content="noindex,follow"'));
+assert(renderPage(district, [base]).includes('content="index,follow,max-image-preview:large"'));
+assert.equal((renderPage(district,[base]).match(/<h1>/gu)||[]).length,1);
+assert(renderPage(district,[base]).includes('alt="구미 진평동 원룸"'));
+assert.equal(new Set(allPages.map(x=>x.title)).size, allPages.length);
+console.log('District SEO checks: ok');
