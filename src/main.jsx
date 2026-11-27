@@ -13868,6 +13868,14 @@ function Footer() {
           <a href="/jinpyeong-mini-two-room">진평동 미니투룸</a>
           <a href="/gumi-two-room">구미 투룸 월세</a>
           <a href="/gumi-rental-building-sale">구미 원룸건물·다가구 매매</a>
+          <a href="/inui-one-room">인의동 원룸</a>
+          <a href="/jinpyeong-one-room">진평동 원룸</a>
+          <a href="/gupyeong-one-room">구평동 원룸</a>
+          <a href="/okgye-one-room">옥계동 원룸</a>
+          <a href="/sandong-one-room">산동 원룸</a>
+          <a href="/okgye-mini-two-room">옥계 미니투룸</a>
+          <a href="/imsu-two-room">임수동 투룸</a>
+          <a href="/sandong-two-room">산동 투룸</a>
           <a href="https://blog.naver.com/atm750" target="_blank" rel="noopener noreferrer">칸공인중개사 네이버 블로그</a>
         </nav>
       </div>
