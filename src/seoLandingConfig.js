@@ -291,7 +291,13 @@ export function matchesSeoLanding(page, property) {
   if (/칠곡군|김천시|포항시|대구광역시/u.test(address)) return false;
   const category = [property.category, property.property_type].map(normalized).join(' ');
   const trade = normalized(property.trade_type);
-  if (page.districts && !page.districts.some((district) => address.split(/[\s(),]+/u).includes(district))) return false;
+  if (page.districts) {
+    if (!/구미시|(?:^|\s)구미(?:\s|$)/u.test(address)) return false;
+    const parts = address.split(/[\s(),]+/u);
+    if (!page.districts.some((district) => parts.some((part) =>
+      part === district || (part.startsWith(district) && /^\d/u.test(part.slice(district.length)))
+    ))) return false;
+  }
   if (page.monthlyOnly && !/월세/u.test(trade)) return false;
   const sale = /매매/u.test(trade);
   if (page.mode === 'building-sale') {
