@@ -1,4 +1,4 @@
-import { SEO_LANDING_URLS } from '../src/seoLandingConfig.js';
+import { SEO_LANDING_PAGES, matchesSeoLanding } from '../src/seoLandingConfig.js';
 import { createClient } from '@supabase/supabase-js';
 
 const SITE_ORIGIN = 'https://www.khanhouse.co.kr';
@@ -35,7 +35,7 @@ export default async function handler(req, res) {
     for (let from = 0; ; from += PAGE_SIZE) {
       const { data, error } = await supabase
         .from('properties')
-        .select('id')
+        .select('id,address,category,property_type,trade_type,title,status,availability_status,review_state,ad_visibility,updated_at')
         .eq('status', 'published')
         .eq('availability_status', 'active')
         .eq('review_state', 'approved')
@@ -56,7 +56,9 @@ export default async function handler(req, res) {
 
     const urls = [
       `${SITE_ORIGIN}/`,
-      ...SEO_LANDING_URLS,
+      ...SEO_LANDING_PAGES
+        .filter((page) => properties.some((property) => matchesSeoLanding(page, property)))
+        .map((page) => `${SITE_ORIGIN}/${page.slug}`),
       ...properties
         .filter((property) => property?.id !== null && property?.id !== undefined)
         .map(

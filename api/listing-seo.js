@@ -324,15 +324,14 @@ export default async function handler(req, res) {
     const supabaseAnonKey =
       process.env.VITE_SUPABASE_ANON_KEY;
 
-    if (
-      !id ||
-      id.length > 120 ||
-      !supabaseUrl ||
-      !supabaseAnonKey
-    ) {
-      return res
-        .status(404)
-        .send('매물을 찾을 수 없습니다.');
+    if (!id || id.length > 120) {
+      return res.status(404).send('매물을 찾을 수 없습니다.');
+    }
+    // A temporary service configuration failure must not signal a deleted listing.
+    if (!supabaseUrl || !supabaseAnonKey) {
+      res.setHeader('Cache-Control', 'no-store');
+      res.setHeader('Retry-After', '300');
+      return res.status(503).send('매물 정보를 일시적으로 확인할 수 없습니다.');
     }
 
     const supabase = createClient(

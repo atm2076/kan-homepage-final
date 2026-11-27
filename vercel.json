@@ -25,8 +25,87 @@
       "destination": "/api/listing-seo?id=:id"
     },
     {
+      "source": "/inui-one-room",
+      "destination": "/api/seo-landing?slug=inui-one-room"
+    },
+    {
+      "source": "/jinpyeong-one-room",
+      "destination": "/api/seo-landing?slug=jinpyeong-one-room"
+    },
+    {
+      "source": "/gupyeong-one-room",
+      "destination": "/api/seo-landing?slug=gupyeong-one-room"
+    },
+    {
+      "source": "/okgye-one-room",
+      "destination": "/api/seo-landing?slug=okgye-one-room"
+    },
+    {
+      "source": "/sandong-one-room",
+      "destination": "/api/seo-landing?slug=sandong-one-room"
+    },
+    {
+      "source": "/okgye-mini-two-room",
+      "destination": "/api/seo-landing?slug=okgye-mini-two-room"
+    },
+    {
+      "source": "/imsu-two-room",
+      "destination": "/api/seo-landing?slug=imsu-two-room"
+    },
+    {
+      "source": "/sandong-two-room",
+      "destination": "/api/seo-landing?slug=sandong-two-room"
+    },
+    {
       "source": "/(.*)",
       "destination": "/"
+    }
+  ],
+  "headers": [
+    {
+      "source": "/signup",
+      "headers": [
+        {
+          "key": "X-Robots-Tag",
+          "value": "noindex, follow"
+        }
+      ]
+    },
+    {
+      "source": "/login",
+      "headers": [
+        {
+          "key": "X-Robots-Tag",
+          "value": "noindex, follow"
+        }
+      ]
+    },
+    {
+      "source": "/legal/terms",
+      "headers": [
+        {
+          "key": "X-Robots-Tag",
+          "value": "noindex, follow"
+        }
+      ]
+    },
+    {
+      "source": "/legal/privacy",
+      "headers": [
+        {
+          "key": "X-Robots-Tag",
+          "value": "noindex, follow"
+        }
+      ]
+    },
+    {
+      "source": "/sso-api",
+      "headers": [
+        {
+          "key": "X-Robots-Tag",
+          "value": "noindex, follow"
+        }
+      ]
     }
   ]
 }

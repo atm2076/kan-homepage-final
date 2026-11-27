@@ -142,7 +142,7 @@ export function renderPage(page, listings) {
 <meta name="viewport" content="width=device-width, initial-scale=1" />
 <title>${escapeHtml(page.title)}</title>
 <meta name="description" content="${escapeHtml(page.description)}" />
-<meta name="robots" content="index,follow,max-image-preview:large" />
+<meta name="robots" content="${listings.length ? 'index,follow,max-image-preview:large' : 'noindex,follow'}" />
 <link rel="canonical" href="${escapeHtml(canonical)}" />
 <meta property="og:type" content="website" />
 <meta property="og:locale" content="ko_KR" />
@@ -198,9 +198,11 @@ export default async function handler(req, res) {
     let query = service.from('properties').select(SELECT)
       .eq('status', 'published').eq('availability_status', 'active')
       .eq('ad_visibility', '공개').eq('review_state', 'approved');
+    if (page.districts) query = query.ilike('address', `%${page.districts.at(-1)}%`);
+    if (page.monthlyOnly) query = query.ilike('trade_type', '%월세%');
     if (page.mode === 'jinpyeong-mini') query = query.ilike('address', '%진평동%');
     if (page.mode === 'one-room') query = query.or('category.ilike.%원룸%,property_type.ilike.%원룸%');
-    if (page.mode === 'jinpyeong-mini') query = query.or('category.ilike.%미니투룸%,property_type.ilike.%미니투룸%');
+    if (['jinpyeong-mini', 'mini-room'].includes(page.mode)) query = query.or('category.ilike.%미니투룸%,property_type.ilike.%미니투룸%,category.ilike.%미투%,property_type.ilike.%미투%');
     if (page.mode === 'two-room') query = query.or('category.ilike.%투룸%,property_type.ilike.%투룸%');
     if (page.mode === 'building-sale') query = query.or('category.ilike.%다가구%,category.ilike.%원룸건물%,property_type.ilike.%다가구%,property_type.ilike.%원룸건물%');
     const { data, error } = await query.order('updated_at', { ascending: false }).limit(300);
@@ -209,7 +211,7 @@ export default async function handler(req, res) {
     const html = renderPage(page, listings);
     res.setHeader('Content-Type', 'text/html; charset=utf-8');
     res.setHeader('Content-Language', 'ko');
-    res.setHeader('X-Robots-Tag', 'index, follow');
+    res.setHeader('X-Robots-Tag', listings.length ? 'index, follow' : 'noindex, follow');
     res.setHeader('Cache-Control', 'public, max-age=0, s-maxage=300, stale-while-revalidate=600');
     return res.status(200).send(req.method === 'HEAD' ? '' : html);
   } catch (error) {
